@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f0ea" />
+    <title>Yongyong Visual Lab — Filter Recipe Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Yongyong Visual Lab 首页">
+          <span class="brand-mark">Y.</span>
+          <span>
+            <strong>Yongyong Visual Lab</strong>
+            <small>Filter Recipe Studio · Demo 01</small>
+          </span>
+        </a>
+
+        <div class="top-actions">
+          <button class="text-button" id="importRecipeButton" type="button">导入配方</button>
+          <button class="text-button" id="saveRecipeButton" type="button">保存配方</button>
+          <button class="primary-button" id="exportCardButton" type="button">导出配方卡</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="stage-column" aria-label="配方卡预览工作区">
+          <div class="stage-heading">
+            <div>
+              <p class="eyebrow">01 / RECIPE CARD PREVIEW</p>
+              <h1>配方卡预览</h1>
+              <p class="stage-caption">原图、效果图与图层参数会一起导出。</p>
+            </div>
+
+            <label class="upload-button" for="imageInput">
+              <span>更换照片</span>
+              <small>JPG / PNG / WEBP</small>
+            </label>
+          </div>
+
+          <div class="canvas-frame" id="dropZone">
+            <canvas id="previewCanvas" width="900" height="1200" aria-label="配方卡实时预览"></canvas>
+            <div class="drop-message" id="dropMessage">
+              <strong>把照片拖到这里</strong>
+              <span>照片只在你的浏览器中处理</span>
+            </div>
+          </div>
+
+          <div class="stage-footer">
+            <p><span class="status-dot"></span><span id="imageStatus">等待你的照片</span></p>
+            <div>
+              <span id="exportResolutionText">导出 1080 × 1440</span>
+              <button class="download-link" id="exportImageButton" type="button">另存效果图 ↘</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="inspector" aria-label="滤镜设置面板">
+          <section class="recipe-meta">
+            <div class="settings-intro">
+              <div>
+                <p class="eyebrow">02 / CARD SETTINGS</p>
+                <strong>配方卡设置</strong>
+              </div>
+              <button id="randomAllButton" type="button"><span>全部随机 ✦</span><small>一键抽方案</small></button>
+            </div>
+
+            <details class="settings-group title-settings" open>
+              <summary>标题与文字</summary>
+              <label for="recipeName">滤镜名称</label>
+              <input id="recipeName" type="text" value="bloom study" maxlength="32" autocomplete="off" />
+            </details>
+
+            <details class="settings-group" open>
+              <summary>背景</summary>
+              <fieldset class="style-picker">
+              <div class="style-options">
+                <button class="style-option is-active" data-card-style="pink-dot" type="button">
+                  <span class="style-swatch pink-dot"></span><span>粉色波点</span>
+                </button>
+                <button class="style-option" data-card-style="gray-dot" type="button">
+                  <span class="style-swatch gray-dot"></span><span>灰白波点</span>
+                </button>
+                <button class="style-option" data-card-style="clean" type="button">
+                  <span class="style-swatch clean"></span><span>纯色留白</span>
+                </button>
+                <button class="style-option" data-card-style="yellow-dot" type="button">
+                  <span class="style-swatch yellow-dot"></span><span>黄油白点</span>
+                </button>
+                <button class="style-option" data-card-style="candy-gradient" type="button">
+                  <span class="style-swatch candy-gradient"></span><span>糖果渐变</span>
+                </button>
+                <button class="style-option" data-card-style="blush-dot" type="button">
+                  <span class="style-swatch blush-dot"></span><span>淡粉小点</span>
+                </button>
+                <button class="style-option" data-card-style="checker" type="button">
+                  <span class="style-swatch checker"></span><span>奶油棋盘</span>
+                </button>
+                <button class="style-option" data-card-style="grid" type="button">
+                  <span class="style-swatch grid"></span><span>方格纸</span>
+                </button>
+              </div>
+              <div class="background-custom-row">
+                <label class="color-setting">自定义颜色 <input id="backgroundColor" type="color" value="#F6F6F2" /></label>
+                <label class="mini-action" for="backgroundImageInput">换背景图</label>
+                <button class="mini-action" id="clearBackgroundButton" type="button">移除背景图</button>
+              </div>
+              <small class="background-status" id="backgroundStatus">当前使用：粉色波点</small>
+              </fieldset>
+            </details>
+
+            <details class="settings-group composition-controls" open>
+              <summary>照片与装饰</summary>
+              <div class="control-heading">
+                <span>照片比例</span>
+                <div class="ratio-options" role="group" aria-label="照片比例">
+                  <button data-photo-ratio="square" type="button">1:1</button>
+                  <button class="is-active" data-photo-ratio="four-five" type="button">4:5</button>
+                  <button data-photo-ratio="three-four" type="button">3:4</button>
+                </div>
+              </div>
+
+              <label class="range-control">
+                <span>版面占比 <output id="photoScaleOutput">100%</output></span>
+                <input id="photoScale" type="range" min="65" max="145" value="100" />
+              </label>
+
+              <label class="range-control">
+                <span>内容缩放 <output id="zoomOutput">100%</output></span>
+                <input id="cropZoom" type="range" min="100" max="220" value="100" />
+              </label>
+              <label class="range-control">
+                <span>左右 <output id="cropXOutput">0</output></span>
+                <input id="cropX" type="range" min="-100" max="100" value="0" />
+              </label>
+              <label class="range-control">
+                <span>上下 <output id="cropYOutput">0</output></span>
+                <input id="cropY" type="range" min="-100" max="100" value="0" />
+              </label>
+              <small class="crop-hint">移动照片时会自动轻微放大，避免边缘露空。</small>
+
+              <div class="toggle-row">
+                <label><input id="showTitle" type="checkbox" checked /> 标题</label>
+                <label><input id="showArrows" type="checkbox" checked /> 箭头</label>
+                <label><input id="showLabels" type="checkbox" /> 前后文字</label>
+                <button id="resetCropButton" type="button">重置裁切</button>
+              </div>
+            </details>
+
+            <details class="settings-group position-controls" open>
+              <summary>排版位置</summary>
+              <p>分别移动元素，让版面保持一点错落感。</p>
+              <div class="position-grid">
+                <label>原图横移 <output id="beforeXOutput">0</output><input id="beforeX" type="range" min="-120" max="120" value="0" /></label>
+                <label>原图纵移 <output id="beforeYOutput">0</output><input id="beforeY" type="range" min="-120" max="120" value="0" /></label>
+                <label>效果横移 <output id="afterXOutput">0</output><input id="afterX" type="range" min="-120" max="120" value="0" /></label>
+                <label>效果纵移 <output id="afterYOutput">0</output><input id="afterY" type="range" min="-120" max="120" value="0" /></label>
+                <label>面板横移 <output id="panelXOutput">0</output><input id="panelX" type="range" min="-120" max="120" value="0" /></label>
+                <label>面板纵移 <output id="panelYOutput">0</output><input id="panelY" type="range" min="-120" max="120" value="0" /></label>
+                <label>箭头横移 <output id="arrowXOutput">0</output><input id="arrowX" type="range" min="-160" max="160" value="0" /></label>
+                <label>箭头纵移 <output id="arrowYOutput">0</output><input id="arrowY" type="range" min="-160" max="160" value="0" /></label>
+              </div>
+              <div class="layout-actions">
+                <div class="layout-primary-actions">
+                  <button class="random-layout" id="randomLayoutButton" type="button">随机排版 ✦</button>
+                  <button class="swap-layout" id="swapPhotosButton" type="button">上下对调 ⇅</button>
+                </div>
+                <button class="subtle-reset" id="resetLayoutButton" type="button">恢复默认位置</button>
+              </div>
+            </details>
+
+            <details class="settings-group export-settings" open>
+              <summary>画布与导出</summary>
+              <div class="export-settings-grid">
+                <div>
+                <label for="cardRatio">画布比例</label>
+                <select id="cardRatio">
+                  <option value="3:4">竖版 · 3:4</option>
+                  <option value="1:1">方形 · 1:1</option>
+                  <option value="2:3">竖版 · 2:3</option>
+                  <option value="16:9">横版 · 16:9</option>
+                </select>
+                </div>
+                <div>
+                <label for="exportSize">导出分辨率</label>
+                <select id="exportSize"></select>
+                </div>
+              </div>
+            </details>
+          </section>
+
+          <details class="layers-section master-settings-group">
+            <summary class="section-heading">
+              <div>
+                <p class="eyebrow">03 / COLOR LAYERS</p>
+                <h2>图层</h2>
+              </div>
+              <button class="round-button" id="addLayerButton" type="button" title="添加颜色图层" aria-label="添加颜色图层">＋</button>
+            </summary>
+
+            <details class="settings-group color-preset-bar" open>
+              <summary>调色预设</summary>
+              <div class="preset-controls">
+                <select id="colorPreset">
+                  <optgroup label="基础">
+                    <option value="bloom">Bloom 柔雾</option>
+                  </optgroup>
+                  <optgroup label="相机色彩灵感">
+                    <option value="canon-portrait">Canon 人像暖肤 · 灵感</option>
+                    <option value="fuji-classic-chrome">Fuji Classic Chrome · 灵感</option>
+                    <option value="fuji-nostalgic-neg">Fuji Nostalgic Neg. · 灵感</option>
+                    <option value="fuji-acros">Fuji ACROS 黑白 · 灵感</option>
+                  </optgroup>
+                  <optgroup label="参考图配方">
+                    <option value="ref-yellow-flash">黄油闪光粉</option>
+                    <option value="ref-candy-pink">糖果高亮粉</option>
+                    <option value="ref-sakura-pink">樱花旧相机</option>
+                  </optgroup>
+                </select>
+                <button id="applyColorPresetButton" type="button">应用预设</button>
+              </div>
+              <small id="colorPresetNote">纯色色层模拟色彩方向，不等同相机原生配置。</small>
+            </details>
+
+            <details class="settings-group atmosphere-controls" open>
+              <summary>整卡氛围滤镜</summary>
+              <p>最终作用于整张配方卡，包括背景、照片、文字、箭头和图层面板。</p>
+              <div class="atmosphere-presets" aria-label="氛围滤镜预设">
+                <button data-atmosphere-preset="clean" type="button">干净</button>
+                <button data-atmosphere-preset="motion" type="button">动态拖影</button>
+                <button data-atmosphere-preset="grain" type="button">胶片杂色</button>
+                <button data-atmosphere-preset="mixed" type="button">氛围混合</button>
+              </div>
+              <label class="effect-range">
+                <span>运动模糊 <output id="motionBlurOutput">0</output></span>
+                <input id="motionBlur" type="range" min="0" max="10" step="0.1" value="0" />
+              </label>
+              <label class="effect-range">
+                <span>模糊方向 <output id="motionAngleOutput">0°</output></span>
+                <input id="motionAngle" type="range" min="-180" max="180" value="0" />
+              </label>
+              <label class="effect-range">
+                <span>杂色强度 <output id="noiseAmountOutput">0</output></span>
+                <input id="noiseAmount" type="range" min="0" max="35" value="0" />
+              </label>
+              <label class="effect-range">
+                <span>颗粒大小 <output id="noiseSizeOutput">1</output></span>
+                <input id="noiseSize" type="range" min="1" max="5" value="1" />
+              </label>
+            </details>
+
+            <details class="settings-group layer-stack" open>
+              <summary>颜色图层</summary>
+              <ol class="layer-list" id="layerList" aria-live="polite"></ol>
+            </details>
+          </details>
+
+          <section class="quick-actions">
+            <button id="copyReferenceButton" type="button">
+              <span>复制 PS 参数</span>
+              <small>便于回到 Photoshop 复刻</small>
+            </button>
+            <button id="resetButton" type="button">
+              <span>刷新页面</span>
+              <small>清空本次修改并重新开始</small>
+            </button>
+          </section>
+
+          <p class="privacy-note">LOCAL ONLY<br />图片不会离开这台电脑。</p>
+        </aside>
+      </main>
+    </div>
+
+    <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input id="backgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input id="recipeInput" type="file" accept="application/json,.json" hidden />
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
