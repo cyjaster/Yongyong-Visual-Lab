@@ -4,7 +4,32 @@
 .poster-tools { border-right: 1px solid var(--line); }
 .poster-inspector { border-left: 1px solid var(--line); }
 .poster-panel-heading h1 { font-size: 29px; }
-.poster-panel-heading > p:last-child { margin: 9px 0 22px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.poster-panel-heading > p:last-child { margin: 9px 0 14px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.poster-mode-switcher { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 18px; }
+.poster-mode-switcher button { min-height: 28px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: #e8e5de; color: var(--muted); font: 700 8.5px ui-monospace, Consolas, monospace; cursor: pointer; text-align: center; transition: all 120ms ease; }
+.poster-mode-switcher button small { font-size: 7.5px; opacity: .8; }
+.poster-mode-switcher button:hover { border-color: var(--ink); color: var(--ink); }
+.poster-mode-switcher button.is-active { border-color: var(--ink); background: var(--ink); color: var(--white); font-weight: 800; }
+.poster-mode-switcher button.is-active small { color: #ff6040; }
+#posterImageTrayGroup { display: none; }
+.poster-workspace.is-multi-mode #posterImageTrayGroup { display: block; }
+.poster-workspace.is-multi-mode .poster-single-upload { display: none; }
+.poster-tray-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2px; }
+.poster-tray-count { font: 700 8px ui-monospace, Consolas, monospace; color: var(--muted); letter-spacing: .08em; }
+.poster-image-tray { display: grid; gap: 6px; margin-top: 8px; max-height: 260px; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; }
+.poster-tray-item { display: flex; gap: 8px; padding: 6px; border: 1px solid var(--line); border-radius: 4px; background: #e8e5de; align-items: center; transition: border-color 120ms ease; }
+.poster-tray-item:hover { border-color: var(--ink); }
+.poster-tray-item.is-main { border-color: #171717; background: #dedad0; }
+.poster-tray-thumb { position: relative; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 2px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; }
+.poster-tray-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.poster-tray-badge { position: absolute; bottom: 0; left: 0; right: 0; padding: 1px 0; background: rgba(23,23,23,.88); color: #fff; font: 800 6.5px ui-monospace, Consolas, monospace; text-align: center; letter-spacing: .04em; }
+.poster-tray-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.poster-tray-name { font-size: 8.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.poster-tray-actions { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.poster-tray-btn { padding: 2px 5px; border: 1px solid var(--line); border-radius: 2px; background: transparent; color: var(--ink); font: 700 7.5px ui-monospace, Consolas, monospace; cursor: pointer; transition: all 100ms ease; }
+.poster-tray-btn:hover { border-color: var(--ink); background: var(--ink); color: #fff; }
+.poster-tray-btn-del { margin-left: auto; color: #b6272d; padding: 2px 4px; }
+.poster-tray-btn-del:hover { background: #b6272d; border-color: #b6272d; color: #fff; }
 .poster-tool-group { padding: 15px 0; border-top: 1px solid var(--line); }
 .poster-tool-label { display: block; margin-bottom: 3px; color: var(--muted); font: 700 8px ui-monospace, Consolas, monospace; letter-spacing: .13em; }
 .poster-tool-desc { display: block; margin-bottom: 9px; color: var(--muted); font-size: 9px; line-height: 1.4; }

@@ -284,12 +284,26 @@
             <p class="eyebrow">02 / COLLAGE POSTER</p>
             <h1>索引拼贴</h1>
             <p>框选细节、拉出局部，再把信息排成一张海报。</p>
+            <div class="poster-mode-switcher" role="radiogroup" aria-label="拼贴模式">
+              <button type="button" class="is-active" data-poster-mode="single">单图索引 <small>SINGLE</small></button>
+              <button type="button" data-poster-mode="multi">多图拼贴 <small>MULTI</small></button>
+            </div>
           </div>
+
+          <section class="poster-tool-group poster-tray-group" id="posterImageTrayGroup">
+            <div class="poster-tray-header">
+              <span class="poster-tool-label">IMAGE TRAY</span>
+              <span class="poster-tray-count" id="posterTrayCount">0 IMAGES</span>
+            </div>
+            <small class="poster-tool-desc">管理主图与拼贴辅图素材</small>
+            <label class="poster-action poster-action-primary" for="posterMultiImageInput">+ 上传图片素材 <small>BATCH / MULTI</small></label>
+            <div class="poster-image-tray" id="posterImageTray"></div>
+          </section>
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">IMAGE / FRAMES</span>
             <small class="poster-tool-desc">上传图片并建立索引</small>
-            <label class="poster-action poster-action-primary" for="posterImageInput">上传主图 <small>JPG / PNG / WEBP</small></label>
+            <label class="poster-action poster-action-primary poster-single-upload" for="posterImageInput">上传主图 <small>JPG / PNG / WEBP</small></label>
             <button class="poster-action" type="button" data-poster-action="demo">恢复示范模板 <kbd>DEMO 01</kbd></button>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
             <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
@@ -414,6 +428,7 @@
     <input id="backgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <input id="recipeInput" type="file" accept="application/json,.json" hidden />
     <input id="posterImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input id="posterMultiImageInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <input id="posterBackgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
