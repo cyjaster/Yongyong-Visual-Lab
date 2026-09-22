@@ -1,4 +1,4 @@
-// Collage Poster v1.2 — focused, framework-free indexed poster editor.
+// Collage Poster v1.4 — focused, framework-free indexed poster editor.
 (() => {
   const $ = (s) => document.querySelector(s);
   const canvas = $('#posterCanvas');
@@ -8,6 +8,8 @@
   const inspector = $('#posterInspectorContent');
   const inspectorTitle = $('#posterInspectorTitle');
   const inspectorSelection = $('#posterInspectorSelection');
+  const holdBeforeButton = $('#posterHoldBeforeButton');
+  const remixStatusNode = $('#posterRemixStatus');
   const emptyState = $('#posterEmptyState');
   const status = $('#posterStatus');
   const viewport = $('#posterViewport');
@@ -18,11 +20,21 @@
   const makeMain = () => ({ id:'main-image', x:imageBox.x, y:imageBox.y, w:imageBox.w, h:imageBox.h, rotation:0, zoom:1, panX:0, panY:0, layoutMode:'FULL BASE' });
   const makeId = () => `poster-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const clone = (v) => JSON.parse(JSON.stringify(v));
+  let isBeforePreviewActive = false;
+  const cleanFilters = () => ({ bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 8, halftoneDensity: 50, halftoneAngle: 0, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 });
 
   const state = {
     image: null, imageName: '', main: makeMain(), fragments: [], frames: [], details: [], texts: [], layers: [], selected: null,
     background: '#efeee8', backgroundStyle:'solid', backgroundImageId:null, backgroundImageOpacity:38, backgroundImageFit:'cover', border: true, borderColor: '#fff', borderWidth: 5,
     filters: { bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 },
+    remixInfo: {
+      anchorZh: '示范模板', anchorEn: 'Demo Template',
+      mainLayoutZh: '完整底图', mainLayoutEn: 'Full Base',
+      typographyZh: '编辑排版', typographyEn: 'Editorial Stack',
+      backgroundZh: '纯色', backgroundEn: 'Solid',
+      strengthZh: '标准 · 平衡', strengthEn: 'Standard · Balanced',
+      isManuallyEdited: false,
+    },
   };
   let drag = null, history = [], historyIndex = -1, historyTimer = 0;
   let remixBaseSnapshot = null, remixLastResultSnapshot = null;
@@ -64,7 +76,54 @@
     const save = () => { const value = snapshot(); if (history[historyIndex] === value) return; history = history.slice(0, historyIndex + 1); history.push(value); if (history.length > 60) history.shift(); historyIndex = history.length - 1; };
     clearTimeout(historyTimer); if (immediate) save(); else historyTimer = setTimeout(save, 180);
   }
-  function restore(index) { if (index < 0 || index >= history.length) return; const image = state.image; Object.assign(state, JSON.parse(history[index]), { image }); historyIndex = index; renderInspector(); render(); }
+  function markManuallyEdited() {
+    if (state.remixInfo && !state.remixInfo.isManuallyEdited) {
+      state.remixInfo.isManuallyEdited = true;
+      updateRemixCard();
+    }
+  }
+  function updateRemixCard() {
+    if (!remixStatusNode) return;
+    const info = state.remixInfo || {
+      anchorZh: '示范模板', anchorEn: 'Demo Template',
+      mainLayoutZh: '完整底图', mainLayoutEn: 'Full Base',
+      typographyZh: '编辑排版', typographyEn: 'Editorial Stack',
+      backgroundZh: '纯色', backgroundEn: 'Solid',
+      strengthZh: '标准 · 平衡', strengthEn: 'Standard · Balanced',
+      isManuallyEdited: false,
+    };
+    remixStatusNode.innerHTML = `
+      <div class="poster-remix-status-header">
+        <span class="poster-remix-status-title">CURRENT REMIX</span>
+        <span class="poster-remix-badge ${info.isManuallyEdited ? 'is-edited' : 'is-fresh'}">
+          ${info.isManuallyEdited ? '已手动调整 · MANUALLY EDITED' : '生成方案 · REMIXED'}
+        </span>
+      </div>
+      <div class="poster-remix-grid">
+        <div class="poster-remix-row">
+          <span class="poster-remix-key">视觉锚点 / ANCHOR</span>
+          <div class="poster-remix-val">${info.anchorZh} <small>${info.anchorEn}</small></div>
+        </div>
+        <div class="poster-remix-row">
+          <span class="poster-remix-key">主图布局 / MAIN LAYOUT</span>
+          <div class="poster-remix-val">${info.mainLayoutZh} <small>${info.mainLayoutEn}</small></div>
+        </div>
+        <div class="poster-remix-row">
+          <span class="poster-remix-key">文字构图 / TYPOGRAPHY</span>
+          <div class="poster-remix-val">${info.typographyZh} <small>${info.typographyEn}</small></div>
+        </div>
+        <div class="poster-remix-row">
+          <span class="poster-remix-key">背景纸张 / BACKGROUND</span>
+          <div class="poster-remix-val">${info.backgroundZh} <small>${info.backgroundEn}</small></div>
+        </div>
+        <div class="poster-remix-row">
+          <span class="poster-remix-key">生成强度 / STRENGTH</span>
+          <div class="poster-remix-val">${info.strengthZh} <small>${info.strengthEn}</small></div>
+        </div>
+      </div>
+    `;
+  }
+  function restore(index) { if (index < 0 || index >= history.length) return; const image = state.image; Object.assign(state, JSON.parse(history[index]), { image }); historyIndex = index; renderInspector(); render(); updateRemixCard(); }
   function undo() { if (historyIndex > 0) restore(historyIndex - 1); else toast('已经是最早一步。'); }
   function redo() { if (historyIndex < history.length - 1) restore(historyIndex + 1); else toast('没有可重做的操作。'); }
 
@@ -134,16 +193,73 @@
     let imageData; try { imageData = tc.getImageData(0, 0, target.width, target.height); } catch (e) { console.warn('Pixel effects skipped.', e); return; }
     const d = imageData.data, lum = new Float32Array(target.width * target.height);
     for (let i = 0, p = 0; i < d.length; i += 4, p++) lum[p] = d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114;
-    const levels = o.posterize ? Math.max(2, Math.round(8 - o.posterize / 16)) : 0, step = levels ? 255 / (levels - 1) : 0;
-    const block = o.compression ? Math.max(2, Math.round(2 + o.compression / 12)) : 1;
+
+    let levels = 0, step = 0;
+    if (o.posterize) {
+      if (o.posterize < 35) levels = Math.max(5, Math.round(8 - (o.posterize / 35) * 3));
+      else if (o.posterize < 70) levels = Math.max(3, Math.round(5 - ((o.posterize - 35) / 35) * 2));
+      else levels = Math.max(2, Math.round(3 - ((o.posterize - 70) / 30)));
+      step = 255 / (levels - 1);
+    }
+
+    const blockSize = o.compression ? Math.max(3, Math.round(3 + (o.compression / 100) * 13)) : 1;
+    const compressionWeight = o.compression ? Math.min(1, Math.pow(o.compression / 100, 0.72) * 1.15) : 0;
+    const roughBlend = o.rough ? Math.min(1, Math.pow(o.rough / 100, 0.75) * 1.05) : 0;
+    const outlineBlend = o.outline ? Math.min(1, Math.pow(o.outline / 100, 0.75) * 1.1) : 0;
+
     for (let y = 0; y < target.height; y++) for (let x = 0; x < target.width; x++) {
-      const p = y * target.width + x, i = p * 4; let r = d[i], g = d[i + 1], b = d[i + 2], l = lum[p];
-      if (o.rough) { const t = l > 126 + (noise(p) - .5) * o.rough ? 238 : 18, m = o.rough / 105; r += (t - r) * m; g += (t - g) * m; b += (t - b) * m; }
-      if (o.outline) { const edge = Math.min(255, Math.abs(l - lum[Math.min(p + 1, lum.length - 1)]) + Math.abs(l - lum[Math.min(p + target.width, lum.length - 1)]) * 1.5), ink = 255 - edge * 3.2, m = o.outline / 100; r += (ink - r) * m; g += (ink - g) * m; b += (ink - b) * m; }
-      if (levels) { r = Math.round(r / step) * step; g = Math.round(g / step) * step; b = Math.round(b / step) * step; }
-      if (o.compression && (x % block === 0 || y % block === 0)) { const shift = (noise(Math.floor(x / block) + Math.floor(y / block) * 99) - .5) * o.compression; r += shift; g += shift * .5; b -= shift * .35; }
-      if (o.grain) { const n = (noise(p) - .5) * o.grain * 2.3; r += n; g += n; b += n; }
-      d[i] = Math.max(0, Math.min(255, r)); d[i + 1] = Math.max(0, Math.min(255, g)); d[i + 2] = Math.max(0, Math.min(255, b));
+      const p = y * target.width + x, i = p * 4;
+      let r = d[i], g = d[i + 1], b = d[i + 2], l = lum[p];
+
+      if (o.rough) {
+        const threshold = 126 + (noise(p * 3) - 0.5) * (o.rough * 1.8);
+        const t = l > threshold ? 242 : 16;
+        r += (t - r) * roughBlend;
+        g += (t - g) * roughBlend;
+        b += (t - b) * roughBlend;
+      }
+
+      if (o.outline) {
+        const nextX = Math.min(p + 1, lum.length - 1);
+        const nextY = Math.min(p + target.width, lum.length - 1);
+        const edge = Math.min(255, (Math.abs(l - lum[nextX]) * 1.5 + Math.abs(l - lum[nextY]) * 1.8) * 2.4);
+        const ink = Math.max(0, 255 - edge);
+        r += (ink - r) * outlineBlend;
+        g += (ink - g) * outlineBlend;
+        b += (ink - b) * outlineBlend;
+      }
+
+      if (levels) {
+        r = Math.round(r / step) * step;
+        g = Math.round(g / step) * step;
+        b = Math.round(b / step) * step;
+      }
+
+      if (o.compression) {
+        const bx = Math.floor(x / blockSize) * blockSize;
+        const by = Math.floor(y / blockSize) * blockSize;
+        const blockOriginIdx = (by * target.width + bx) * 4;
+        if (blockOriginIdx < d.length - 4) {
+          r += (d[blockOriginIdx] - r) * compressionWeight * 0.88;
+          g += (d[blockOriginIdx + 1] - g) * compressionWeight * 0.88;
+          b += (d[blockOriginIdx + 2] - b) * compressionWeight * 0.88;
+        }
+        if (x % blockSize === 0 || y % blockSize === 0) {
+          const shift = (noise((bx * 17 + by * 37) % 999) - 0.5) * (o.compression * 1.7);
+          r += shift;
+          g += shift * 0.6;
+          b -= shift * 0.5;
+        }
+      }
+
+      if (o.grain) {
+        const n = (noise(p) - 0.5) * (o.grain * 2.8);
+        r += n; g += n; b += n;
+      }
+
+      d[i] = Math.max(0, Math.min(255, r));
+      d[i + 1] = Math.max(0, Math.min(255, g));
+      d[i + 2] = Math.max(0, Math.min(255, b));
     }
     tc.putImageData(imageData, 0, 0);
   }
@@ -153,22 +269,98 @@
     const tc = target.getContext('2d'); let pixels;
     try { pixels = tc.getImageData(0, 0, target.width, target.height).data; } catch (e) { console.warn('Halftone skipped.', e); return; }
     const overlay = raster(target.width, target.height, () => {}), oc = overlay.getContext('2d');
-    const spacing = Math.max(3, 15 - Math.max(1, o.halftoneDensity || 50) * .115), size = Math.max(.5, o.halftoneSize || 7), angle = (o.halftoneAngle || 0) * Math.PI / 180, diagonal = Math.hypot(target.width, target.height);
+    const spacing = Math.max(3, 16 - Math.max(1, o.halftoneDensity || 50) * .12);
+    const size = Math.max(.5, o.halftoneSize || 7);
+    const angle = (o.halftoneAngle || 0) * Math.PI / 180;
+    const diagonal = Math.hypot(target.width, target.height);
+    const strength = Math.pow(o.halftone / 100, 0.8);
     oc.save(); oc.translate(target.width / 2, target.height / 2); oc.rotate(angle); oc.fillStyle = '#111';
     for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
-      const cos = Math.cos(-angle), sin = Math.sin(-angle), sx = Math.round(gx * cos - gy * sin + target.width / 2), sy = Math.round(gx * sin + gy * cos + target.height / 2);
+      const cos = Math.cos(-angle), sin = Math.sin(-angle);
+      const sx = Math.round(gx * cos - gy * sin + target.width / 2);
+      const sy = Math.round(gx * sin + gy * cos + target.height / 2);
       if (sx < 0 || sy < 0 || sx >= target.width || sy >= target.height) continue;
-      const p = (sy * target.width + sx) * 4, l = pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114, radius = Math.max(.15, (1 - l / 255) * size * .5 * (o.halftone / 65));
+      const p = (sy * target.width + sx) * 4;
+      const l = pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114;
+      const radius = Math.max(.2, (1 - l / 255) * size * .52 * Math.min(1.6, 0.35 + strength * 1.15));
       oc.beginPath(); oc.arc(gx, gy, radius, 0, Math.PI * 2); oc.fill();
     }
-    oc.restore(); tc.save(); tc.globalAlpha = Math.min(1, o.halftone / 100); tc.globalCompositeOperation = 'multiply'; tc.drawImage(overlay, 0, 0); tc.restore();
+    oc.restore();
+    tc.save();
+    tc.globalAlpha = Math.min(1, 0.25 + strength * 0.75);
+    tc.globalCompositeOperation = 'multiply';
+    tc.drawImage(overlay, 0, 0);
+    tc.restore();
   }
 
   function surfaceTexture(target, o) {
     const tc = target.getContext('2d');
-    if (o.paper) { tc.save(); tc.globalAlpha = o.paper / 350; tc.fillStyle = '#786e5f'; for (let i = 0; i < 900; i++) tc.fillRect(noise(i * 3) * target.width, noise(i * 7) * target.height, noise(i * 11) * 2 + .3, noise(i * 13) * 9 + 1); tc.restore(); }
-    if (o.scan) { tc.save(); tc.globalAlpha = o.scan / 180; tc.strokeStyle = '#111'; tc.lineWidth = 1; const step = Math.max(2, 9 - o.scan / 15); if (Math.abs(o.scanAngle || 0) > 45) for (let x = 0; x < target.width; x += step) { tc.beginPath(); tc.moveTo(x, 0); tc.lineTo(x, target.height); tc.stroke(); } else for (let y = 0; y < target.height; y += step) { tc.beginPath(); tc.moveTo(0, y); tc.lineTo(target.width, y); tc.stroke(); } tc.restore(); }
-    if (o.dirty) { tc.save(); tc.fillStyle = '#151515'; tc.globalAlpha = o.dirty / 210; for (let i = 0; i < o.dirty * 2.4; i++) { const x = noise(i * 19 + 4) * target.width, y = noise(i * 23 + 6) * target.height, rw = 1 + noise(i * 29) * o.dirty * .7, rh = 1 + noise(i * 31) * o.dirty * .2; tc.save(); tc.translate(x, y); tc.rotate(noise(i * 37) * Math.PI); tc.fillRect(-rw / 2, -rh / 2, rw, rh); tc.restore(); } tc.restore(); }
+    if (o.paper) {
+      const alpha = Math.min(0.92, Math.pow(o.paper / 100, 0.72) * 0.8);
+      tc.save();
+      tc.globalAlpha = alpha * 0.32;
+      tc.fillStyle = '#d4cbbd';
+      tc.fillRect(0, 0, target.width, target.height);
+      tc.globalAlpha = alpha * 0.82;
+      tc.fillStyle = '#372f23';
+      const fiberCount = Math.round(1400 + (o.paper / 100) * 2600);
+      for (let i = 0; i < fiberCount; i++) {
+        tc.fillRect(noise(i * 3.7 + 1) * target.width, noise(i * 7.1 + 2) * target.height, noise(i * 11.3) * 2.8 + .5, noise(i * 13.9) * 11 + 1.2);
+      }
+      tc.globalAlpha = alpha * 0.42;
+      tc.fillStyle = '#fffdf7';
+      for (let i = 0; i < fiberCount * 0.4; i++) {
+        tc.fillRect(noise(i * 17.3 + 5) * target.width, noise(i * 19.9 + 7) * target.height, noise(i * 23.1) * 2 + .4, noise(i * 29.5) * 8 + 1);
+      }
+      tc.restore();
+    }
+    if (o.scan) {
+      const alpha = Math.min(0.88, 0.14 + Math.pow(o.scan / 100, 0.8) * 0.74);
+      tc.save();
+      tc.globalAlpha = alpha;
+      tc.strokeStyle = '#0d0d0d';
+      tc.lineWidth = 1;
+      const step = Math.max(3, Math.round(9 - (o.scan / 100) * 5));
+      const isVertical = Math.abs(o.scanAngle || 0) > 45;
+      if (isVertical) {
+        for (let x = 0; x < target.width; x += step) {
+          tc.beginPath(); tc.moveTo(x, 0); tc.lineTo(x, target.height); tc.stroke();
+        }
+      } else {
+        for (let y = 0; y < target.height; y += step) {
+          tc.beginPath(); tc.moveTo(0, y); tc.lineTo(target.width, y); tc.stroke();
+        }
+      }
+      tc.restore();
+    }
+    if (o.dirty) {
+      const alpha = Math.min(0.92, 0.18 + Math.pow(o.dirty / 100, 0.75) * 0.74);
+      tc.save();
+      tc.fillStyle = '#11100e';
+      tc.globalAlpha = alpha;
+      const count = Math.round(70 + (o.dirty / 100) * 350);
+      for (let i = 0; i < count; i++) {
+        const x = noise(i * 19 + 4) * target.width, y = noise(i * 23 + 6) * target.height;
+        const rw = (1 + noise(i * 29) * (o.dirty * .42 + 4)), rh = (1 + noise(i * 31) * (o.dirty * .22 + 3));
+        tc.save();
+        tc.translate(x, y);
+        tc.rotate(noise(i * 37) * Math.PI);
+        tc.fillRect(-rw / 2, -rh / 2, rw, rh);
+        tc.restore();
+      }
+      const smudgeCount = Math.round(2 + (o.dirty / 100) * 16);
+      for (let i = 0; i < smudgeCount; i++) {
+        const sx = noise(i * 41 + 11) * target.width, sy = noise(i * 43 + 13) * target.height;
+        const sr = 3 + noise(i * 47) * (o.dirty * .35 + 8);
+        tc.save();
+        tc.globalAlpha = alpha * 0.55;
+        tc.beginPath();
+        tc.arc(sx, sy, sr, 0, Math.PI * 2);
+        tc.fill();
+        tc.restore();
+      }
+      tc.restore();
+    }
   }
 
   function filteredImage(source, rect, w, h, o) {
@@ -237,9 +429,21 @@
     if (d.connectorType === 'elbow') { const bx = p.start.x + (p.end.x - p.start.x) * .55; ctx.lineTo(bx, p.start.y); ctx.lineTo(bx, p.end.y); }
     ctx.lineTo(p.end.x, p.end.y); ctx.stroke(); endpoint(p.start, d.endpointStyle, ctx.lineWidth); endpoint(p.end, d.endpointStyle, ctx.lineWidth); ctx.restore();
   }
-  function drawDetail(d) { const f = frameById(d.frameId); if (!f || !state.image) return; const cut = filteredImage(state.image, sourceRect(f), d.w, d.h, detailOptions(d)); ctx.save(); ctx.globalAlpha = (d.opacity ?? 100) / 100; transformBox(ctx, d); ctx.fillStyle = d.backingColor || '#fff'; ctx.fillRect(-3, -3, d.w + 6, d.h + 6); ctx.drawImage(cut, 0, 0, d.w, d.h); ctx.strokeStyle = d.color; ctx.lineWidth = d.lineWidth; ctx.strokeRect(0, 0, d.w, d.h); ctx.restore(); }
+  function drawDetail(d) {
+    const f = frameById(d.frameId); if (!f || !state.image) return;
+    const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'detail' && state.selected.id === d.id;
+    const opts = isTargetBefore ? { bw:0, brightness:0, contrast:0, saturation:100, grain:0, rough:0, outline:0, invert:0, posterize:0, compression:0, scan:0, paper:0, dirty:0, halftone:0 } : detailOptions(d);
+    const cut = filteredImage(state.image, sourceRect(f), d.w, d.h, opts);
+    ctx.save(); ctx.globalAlpha = (d.opacity ?? 100) / 100; transformBox(ctx, d); ctx.fillStyle = d.backingColor || '#fff'; ctx.fillRect(-3, -3, d.w + 6, d.h + 6); ctx.drawImage(cut, 0, 0, d.w, d.h); ctx.strokeStyle = d.color; ctx.lineWidth = d.lineWidth; ctx.strokeRect(0, 0, d.w, d.h); ctx.restore();
+  }
   function fragmentSourceRect(fragment) { const s = fragment.source; return { sx:s.x * state.image.naturalWidth, sy:s.y * state.image.naturalHeight, sw:s.w * state.image.naturalWidth, sh:s.h * state.image.naturalHeight }; }
-  function drawFragment(fragment) { if (!state.image) return; const cut = filteredImage(state.image, fragmentSourceRect(fragment), fragment.w, fragment.h, detailOptions(fragment)); ctx.save(); ctx.globalAlpha = (fragment.opacity ?? 100) / 100; transformBox(ctx, fragment); ctx.fillStyle = fragment.backingColor || '#fff'; ctx.fillRect(-2, -2, fragment.w + 4, fragment.h + 4); ctx.drawImage(cut, 0, 0, fragment.w, fragment.h); if (fragment.lineWidth) { ctx.strokeStyle = fragment.color || '#fff'; ctx.lineWidth = fragment.lineWidth; ctx.strokeRect(0, 0, fragment.w, fragment.h); } ctx.restore(); }
+  function drawFragment(fragment) {
+    if (!state.image) return;
+    const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'fragment' && state.selected.id === fragment.id;
+    const opts = isTargetBefore ? { bw:0, brightness:0, contrast:0, saturation:100, grain:0, rough:0, outline:0, invert:0, posterize:0, compression:0, scan:0, paper:0, dirty:0, halftone:0 } : detailOptions(fragment);
+    const cut = filteredImage(state.image, fragmentSourceRect(fragment), fragment.w, fragment.h, opts);
+    ctx.save(); ctx.globalAlpha = (fragment.opacity ?? 100) / 100; transformBox(ctx, fragment); ctx.fillStyle = fragment.backingColor || '#fff'; ctx.fillRect(-2, -2, fragment.w + 4, fragment.h + 4); ctx.drawImage(cut, 0, 0, fragment.w, fragment.h); if (fragment.lineWidth) { ctx.strokeStyle = fragment.color || '#fff'; ctx.lineWidth = fragment.lineWidth; ctx.strokeRect(0, 0, fragment.w, fragment.h); } ctx.restore();
+  }
 
   function measureLine(line, spacing) { return ctx.measureText(line).width + Math.max(0, line.length - 1) * spacing; }
   function spacedLine(line, spacing, x, y, align = 'left') { const width = measureLine(line, spacing); let cursor = x - (align === 'center' ? width / 2 : align === 'right' ? width : 0); if (!spacing) return ctx.fillText(line, cursor, y); for (const ch of line) { ctx.fillText(ch, cursor, y); cursor += ctx.measureText(ch).width + spacing; } }
@@ -252,21 +456,34 @@
   function textBounds(t) { ctx.save(); ctx.font = `${t.weight} ${t.size}px ${t.font}`; const lines = t.content.split('\n'); let w = Math.max(...lines.map((line) => measureLine(line, t.letterSpacing || 0)), 10), h = t.size * lines.length * t.lineHeight, minX = 0, minY = 0; if (t.writingMode === 'vertical' && t.kind !== 'repeat') { w = t.size; h = Math.max(1, t.content.replace(/\n/g, '').length) * t.size * t.lineHeight; } if (t.kind === 'repeat') { const lw = measureLine(t.content, t.letterSpacing || 0), count = Math.max(1, t.repeat); const dx = (t.direction === 'horizontal' ? lw + (t.repeatSpacing || 0) : 0) + (t.repeatOffsetX || 0), dy = (t.direction === 'vertical' ? t.size * t.lineHeight + (t.repeatSpacing || 0) : 0) + (t.repeatOffsetY || 0); minX = Math.min(0, dx * (count - 1)); minY = Math.min(0, dy * (count - 1)); w = lw + Math.abs(dx) * (count - 1); h = t.size * t.lineHeight + Math.abs(dy) * (count - 1); } const alignShift = t.align === 'center' ? -w / 2 : t.align === 'right' ? -w : 0; ctx.restore(); return { x: t.x + (minX + alignShift) * (t.scaleX || 1), y: t.y + minY * (t.scaleY || 1), w: w * (t.scaleX || 1), h: h * (t.scaleY || 1), rotation: t.rotation || 0 }; }
   function boundsOf(item, type) { return type === 'text' ? textBounds(item) : { x: item.x, y: item.y, w: item.w, h: item.h, rotation: item.rotation || 0 }; }
   function drawSelection() { const item = selectedObject(); if (!item || state.selected.type === 'connector') return; const b = boundsOf(item, state.selected.type); ctx.save(); transformBox(ctx, b); ctx.strokeStyle = '#151515'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); ctx.strokeRect(-4, -4, b.w + 8, b.h + 8); if (state.selected.type !== 'text') { ctx.setLineDash([]); ctx.fillStyle = '#151515'; ctx.fillRect(b.w - 7, b.h - 7, 14, 14); } ctx.restore(); }
-  function drawMainImage() { if (!state.image) return; const box = state.main || makeMain(), main = filteredImage(state.image, null, box.w, box.h, state.filters); ctx.save(); transformBox(ctx, box); if (box.fragmented) { const bandH = box.h / 3, shifts = [-14,18,-9]; for (let i = 0; i < 3; i++) { ctx.save(); ctx.beginPath(); ctx.rect(0, i * bandH + 3, box.w, bandH - 6); ctx.clip(); ctx.drawImage(main, shifts[i], 0, box.w, box.h); ctx.restore(); } } else ctx.drawImage(main, 0, 0, box.w, box.h); ctx.strokeStyle = 'rgba(20,20,20,.18)'; ctx.strokeRect(0, 0, box.w, box.h); ctx.restore(); }
+  function drawMainImage() {
+    if (!state.image) return;
+    const box = state.main || makeMain();
+    const isTargetBefore = isBeforePreviewActive && (!state.selected || state.selected.type === 'main');
+    const main = filteredImage(state.image, null, box.w, box.h, isTargetBefore ? cleanFilters() : state.filters);
+    ctx.save(); transformBox(ctx, box);
+    if (box.fragmented && !isTargetBefore) {
+      const bandH = box.h / 3, shifts = [-14,18,-9];
+      for (let i = 0; i < 3; i++) {
+        ctx.save(); ctx.beginPath(); ctx.rect(0, i * bandH + 3, box.w, bandH - 6); ctx.clip(); ctx.drawImage(main, shifts[i], 0, box.w, box.h); ctx.restore();
+      }
+    } else ctx.drawImage(main, 0, 0, box.w, box.h);
+    ctx.strokeStyle = 'rgba(20,20,20,.18)'; ctx.strokeRect(0, 0, box.w, box.h); ctx.restore();
+  }
   function drawLayer(layer) { if (layer.type === 'main') drawMainImage(); if (layer.type === 'fragment') { const f = state.fragments.find((v) => v.id === layer.id); if (f) drawFragment(f); } if (layer.type === 'connector') { const d = state.details.find((v) => v.id === layer.id); if (d) drawConnector(d); } if (layer.type === 'frame') { const f = state.frames.find((v) => v.id === layer.id); if (f) drawFrame(f); } if (layer.type === 'detail') { const d = state.details.find((v) => v.id === layer.id); if (d) drawDetail(d); } if (layer.type === 'text') { const t = state.texts.find((v) => v.id === layer.id); if (t) drawText(t); } }
   function ensureMainLayer() { if (state.image && !state.layers.some((v) => v.type === 'main')) state.layers.unshift({ type: 'main', id: 'main-image' }); }
   function render(showSelection = true) { ctx.clearRect(0, 0, W, H); drawPosterBackground(); if (!state.image) { ctx.strokeStyle = 'rgba(20,20,20,.08)'; for (let n = 25; n < W; n += 50) { ctx.beginPath(); ctx.moveTo(n, 0); ctx.lineTo(n, H); ctx.stroke(); } for (let n = 25; n < H; n += 50) { ctx.beginPath(); ctx.moveTo(0, n); ctx.lineTo(W, n); ctx.stroke(); } } ensureMainLayer(); state.layers.forEach(drawLayer); if (state.border) { ctx.strokeStyle = state.borderColor; ctx.lineWidth = state.borderWidth; ctx.strokeRect(18, 18, W - 36, H - 36); } if (showSelection) drawSelection(); }
 
   function makeFrame(index, extra = {}) { return { id: makeId(), x: 230 + index * 37, y: 350 + index * 43, w: 175, h: 215, rotation: index % 2 ? -3 : 2, color: '#bd2e35', lineWidth: 4, strokeOpacity: 100, strokeStyle: 'solid', frameStyle: 'full', label: `ITEM / ${String(index).padStart(2, '0')}`, labelPrefix: 'ITEM', labelNumber: index, autoNumber: true, labelSize: 14, showLabel: true, tagStyle: 'solid', tagBackground: '#bd2e35', tagTextColor: '#fff', ...extra }; }
-  function addFrame() { if (!state.image) return toast('请先上传一张主图。'); const f = makeFrame(state.frames.length + 1); state.frames.push(f); addLayer('frame', f.id); setSelected('frame', f); render(); commit(); }
+  function addFrame() { if (!state.image) return toast('请先上传一张主图。'); const f = makeFrame(state.frames.length + 1); state.frames.push(f); addLayer('frame', f.id); setSelected('frame', f); render(); commit(); markManuallyEdited(); }
   function makeDetail(frame, count, extra = {}) { const pos = [{ x: 548, y: 155 }, { x: 35, y: 690 }, { x: 625, y: 800 }, { x: -20, y: 210 }][count % 4], size = [{ w: 235, h: 270 }, { w: 205, h: 245 }, { w: 250, h: 190 }, { w: 190, h: 235 }][count % 4]; return { id: makeId(), frameId: frame.id, ...pos, ...size, rotation: [-4, 3, 6, -7][count % 4], color: frame.color, lineWidth: 3, backingColor: '#fff', opacity: 100, filterType: ['halftone','highbw','outline','rough'][count % 4], contrast: 12, brightness: 0, saturation: 100, grain: 12, halftoneSize: 10, halftoneDensity: 62, halftoneAngle: 15, halftoneStrength: 82, connectorType: count % 2 ? 'elbow' : 'straight', connectorWidth: 2, lineColor: frame.color, lineOpacity: 88, connectorDash: true, endpointStyle: 'dot', ...extra }; }
-  function addDetail(frame = selectedObject()) { if (!state.image) return toast('请先上传主图。'); if (!frame || state.selected?.type !== 'frame') return toast('请先选中索引框。'); const d = makeDetail(frame, state.details.length); state.details.push(d); addLayer('connector', d.id); addLayer('detail', d.id); setSelected('detail', d); render(); commit(); }
-  function addText(kind) { const defaults = { hero: { content: 'NOTICE', x: -35, y: 46, size: 112, weight: 800, font: 'Arial Black, Impact, sans-serif', color: '#171717', scaleX: 1.35, scaleY: .82 }, subtitle: { content: 'COLLAGE INDEX / EDITION 01', x: 70, y: 1085, size: 22, weight: 700, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, caption: { content: 'A visual record of detail, texture and presence.', x: 68, y: 1122, size: 15, weight: 500, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, micro: { content: 'FILE 0021 / DATA UPDATED', x: 742, y: 245, size: 10, weight: 700, font: 'ui-monospace, Consolas, monospace', color: '#171717', scaleX: 1, scaleY: 1.08, letterSpacing: 3, writingMode: 'vertical' }, repeat: { content: 'IM RICH MAN', x: 78, y: 760, size: 20, weight: 800, font: 'Arial Black, Arial, sans-serif', color: '#bd2e35', repeat: 5, direction: 'vertical', repeatSpacing: 3, repeatOffsetX: 7, repeatOffsetY: 0, rotationStep: 0, scaleX: 1, scaleY: 1 } }; const t = { id: makeId(), kind, rotation: kind === 'hero' ? -2 : 0, opacity: 100, lineHeight: 1.15, letterSpacing: kind === 'hero' ? -2 : 0, align: 'left', writingMode: 'horizontal', ...defaults[kind] }; state.texts.push(t); addLayer('text', t.id); setSelected('text', t); render(); commit(); }
+  function addDetail(frame = selectedObject()) { if (!state.image) return toast('请先上传主图。'); if (!frame || state.selected?.type !== 'frame') return toast('请先选中索引框。'); const d = makeDetail(frame, state.details.length); state.details.push(d); addLayer('connector', d.id); addLayer('detail', d.id); setSelected('detail', d); render(); commit(); markManuallyEdited(); }
+  function addText(kind) { const defaults = { hero: { content: 'NOTICE', x: -35, y: 46, size: 112, weight: 800, font: 'Arial Black, Impact, sans-serif', color: '#171717', scaleX: 1.35, scaleY: .82 }, subtitle: { content: 'COLLAGE INDEX / EDITION 01', x: 70, y: 1085, size: 22, weight: 700, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, caption: { content: 'A visual record of detail, texture and presence.', x: 68, y: 1122, size: 15, weight: 500, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, micro: { content: 'FILE 0021 / DATA UPDATED', x: 742, y: 245, size: 10, weight: 700, font: 'ui-monospace, Consolas, monospace', color: '#171717', scaleX: 1, scaleY: 1.08, letterSpacing: 3, writingMode: 'vertical' }, repeat: { content: 'IM RICH MAN', x: 78, y: 760, size: 20, weight: 800, font: 'Arial Black, Arial, sans-serif', color: '#bd2e35', repeat: 5, direction: 'vertical', repeatSpacing: 3, repeatOffsetX: 7, repeatOffsetY: 0, rotationStep: 0, scaleX: 1, scaleY: 1 } }; const t = { id: makeId(), kind, rotation: kind === 'hero' ? -2 : 0, opacity: 100, lineHeight: 1.15, letterSpacing: kind === 'hero' ? -2 : 0, align: 'left', writingMode: 'horizontal', ...defaults[kind] }; state.texts.push(t); addLayer('text', t.id); setSelected('text', t); render(); commit(); markManuallyEdited(); }
 
   function layerControls() { return `<p class="poster-section-label">LAYER ORDER</p><div class="poster-layer-order"><button data-layer-action="front">置于顶层</button><button data-layer-action="forward">上移一层</button><button data-layer-action="backward">下移一层</button><button data-layer-action="back">置于底层</button></div>`; }
-  function changeLayer(action) { if (!state.selected) return; const index = layerIndex(state.selected.type, state.selected.id); if (index < 0) return; const [layer] = state.layers.splice(index, 1); if (action === 'front') state.layers.push(layer); if (action === 'back') state.layers.unshift(layer); if (action === 'forward') state.layers.splice(Math.min(state.layers.length, index + 1), 0, layer); if (action === 'backward') state.layers.splice(Math.max(0, index - 1), 0, layer); render(); commit(); }
-  function duplicateSelected() { const item = selectedObject(); if (!item) return toast('请先选中对象。'); const type = state.selected.type; if (type === 'main') return toast('主图可通过 REMIX 生成衍生碎片。'); if (type === 'frame') { const c = { ...clone(item), id: makeId(), x: item.x + 10, y: item.y + 10, labelNumber: state.frames.length + 1 }; state.frames.push(c); addLayer('frame', c.id, layerIndex('frame', item.id)); setSelected('frame', c); } else if (type === 'text') { const c = { ...clone(item), id: makeId(), x: item.x + 10, y: item.y + 10 }; state.texts.push(c); addLayer('text', c.id, layerIndex('text', item.id)); setSelected('text', c); } else if (type === 'fragment') { const c = { ...clone(item), id: makeId(), x: item.x + 12, y: item.y + 12, rotation: (item.rotation || 0) + 2 }; state.fragments.push(c); addLayer('fragment', c.id, layerIndex('fragment', item.id)); setSelected('fragment', c); } else { const c = { ...clone(item), id: makeId(), x: item.x + 10, y: item.y + 10, rotation: (item.rotation || 0) + 2 }; state.details.push(c); const at = layerIndex('detail', item.id); addLayer('connector', c.id, Math.max(-1, at - 1)); addLayer('detail', c.id, at + 1); setSelected('detail', c); } render(); commit(); }
-  function deleteSelected() { if (!state.selected) return; const { type, id } = state.selected; if (type === 'main') return toast('主图不能删除。'); if (type === 'frame') { const ids = state.details.filter((d) => d.frameId === id).map((d) => d.id); state.frames = state.frames.filter((v) => v.id !== id); state.details = state.details.filter((v) => v.frameId !== id); state.layers = state.layers.filter((v) => !(v.type === 'frame' && v.id === id) && !ids.includes(v.id)); } else if (type === 'detail' || type === 'connector') { state.details = state.details.filter((v) => v.id !== id); state.layers = state.layers.filter((v) => v.id !== id); } else if (type === 'fragment') { state.fragments = state.fragments.filter((v) => v.id !== id); state.layers = state.layers.filter((v) => !(v.type === 'fragment' && v.id === id)); } else { state.texts = state.texts.filter((v) => v.id !== id); state.layers = state.layers.filter((v) => !(v.type === 'text' && v.id === id)); } setSelected(null, null); render(); commit(); }
+  function changeLayer(action) { if (!state.selected) return; const index = layerIndex(state.selected.type, state.selected.id); if (index < 0) return; const [layer] = state.layers.splice(index, 1); if (action === 'front') state.layers.push(layer); if (action === 'back') state.layers.unshift(layer); if (action === 'forward') state.layers.splice(Math.min(state.layers.length, index + 1), 0, layer); if (action === 'backward') state.layers.splice(Math.max(0, index - 1), 0, layer); render(); commit(); markManuallyEdited(); }
+  function duplicateSelected() { const item = selectedObject(); if (!item) return toast('请先选中对象。'); const type = state.selected.type; if (type === 'main') return toast('主图可通过 REMIX 生成衍生碎片。'); if (type === 'frame') { const c = { ...clone(item), id: makeId(), x: item.x + 10, y: item.y + 10, labelNumber: state.frames.length + 1 }; state.frames.push(c); addLayer('frame', c.id, layerIndex('frame', item.id)); setSelected('frame', c); } else if (type === 'text') { const c = { ...clone(item), id: makeId(), x: item.x + 10, y: item.y + 10 }; state.texts.push(c); addLayer('text', c.id, layerIndex('text', item.id)); setSelected('text', c); } else if (type === 'fragment') { const c = { ...clone(item), id: makeId(), x: item.x + 12, y: item.y + 12, rotation: (item.rotation || 0) + 2 }; state.fragments.push(c); addLayer('fragment', c.id, layerIndex('fragment', item.id)); setSelected('fragment', c); } else { const c = { ...clone(item), id: makeId(), x: item.x + 10, y: item.y + 10, rotation: (item.rotation || 0) + 2 }; state.details.push(c); const at = layerIndex('detail', item.id); addLayer('connector', c.id, Math.max(-1, at - 1)); addLayer('detail', c.id, at + 1); setSelected('detail', c); } render(); commit(); markManuallyEdited(); }
+  function deleteSelected() { if (!state.selected) return; const { type, id } = state.selected; if (type === 'main') return toast('主图不能删除。'); if (type === 'frame') { const ids = state.details.filter((d) => d.frameId === id).map((d) => d.id); state.frames = state.frames.filter((v) => v.id !== id); state.details = state.details.filter((v) => v.frameId !== id); state.layers = state.layers.filter((v) => !(v.type === 'frame' && v.id === id) && !ids.includes(v.id)); } else if (type === 'detail' || type === 'connector') { state.details = state.details.filter((v) => v.id !== id); state.layers = state.layers.filter((v) => v.id !== id); } else if (type === 'fragment') { state.fragments = state.fragments.filter((v) => v.id !== id); state.layers = state.layers.filter((v) => !(v.type === 'fragment' && v.id === id)); } else { state.texts = state.texts.filter((v) => v.id !== id); state.layers = state.layers.filter((v) => !(v.type === 'text' && v.id === id)); } setSelected(null, null); render(); commit(); markManuallyEdited(); }
 
   function hitBox(x, y, b) { const p = rotatePoint(x, y, b.x + b.w / 2, b.y + b.h / 2, -(b.rotation || 0)); return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; }
   function segmentDistance(p, a, b) { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; if (!l) return Math.hypot(p.x - a.x, p.y - a.y); const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)); return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)); }
@@ -275,65 +492,106 @@
   function eventPoint(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
   canvas.addEventListener('pointerdown', (e) => { const p = eventPoint(e), hit = hitAt(p.x, p.y); if (!hit) { setSelected(null, null); render(); return; } setSelected(hit.type, hit.item); drag = { ...hit, startX: p.x, startY: p.y, x: hit.item.x, y: hit.item.y, w: hit.item.w, h: hit.item.h }; canvas.setPointerCapture(e.pointerId); render(); });
   canvas.addEventListener('pointermove', (e) => { if (!drag || drag.type === 'connector') return; const p = eventPoint(e), dx = p.x - drag.startX, dy = p.y - drag.startY, item = drag.item; if (drag.handle === 'resize') { item.w = Math.max(32, drag.w + dx); item.h = Math.max(32, drag.h + dy); } else { item.x = drag.x + dx; item.y = drag.y + dy; } render(); });
-  canvas.addEventListener('pointerup', () => { if (drag && drag.type !== 'connector') commit(); drag = null; renderInspector(); });
+  canvas.addEventListener('pointerup', () => { if (drag && drag.type !== 'connector') { commit(); markManuallyEdited(); } drag = null; renderInspector(); });
   canvas.addEventListener('pointercancel', () => { drag = null; });
 
-  const range = (label, key, value, min, max, step = 1, global = false) => `<div class="poster-field"><span class="range-title">${label}<output>${value}</output></span><input type="range" data-${global ? 'global' : 'prop'}="${key}" min="${min}" max="${max}" step="${step}" value="${value}"></div>`;
-  const field = (label, key, value, type = 'text', global = false) => type === 'textarea' ? `<div class="poster-field"><label>${label}</label><textarea data-${global ? 'global' : 'prop'}="${key}">${value}</textarea></div>` : `<div class="poster-field"><label>${label}</label><input type="${type}" data-${global ? 'global' : 'prop'}="${key}" value="${value}"></div>`;
-  const toggle = (label, key, value, global = false) => `<div class="poster-field"><label class="poster-toggle">${label}<input type="checkbox" data-${global ? 'global' : 'prop'}="${key}" ${value ? 'checked' : ''}></label></div>`;
-  const select = (label, key, value, options, global = false) => `<div class="poster-field"><label>${label}</label><select data-${global ? 'global' : 'prop'}="${key}">${options.map(([v, n]) => `<option value="${v}" ${String(v) === String(value) ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`;
-  const accordion = (title, content, open = false) => `<details class="poster-accordion" ${open ? 'open' : ''}><summary>${title}</summary><div class="poster-accordion-body">${content}</div></details>`;
+  const range = (zh, en, key, value, min, max, step = 1, global = false, hint = '') =>
+    `<div class="poster-field"><div class="range-title"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div><output>${value}</output></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<input type="range" data-${global ? 'global' : 'prop'}="${key}" min="${min}" max="${max}" step="${step}" value="${value}"></div>`;
+
+  const segmented = (zh, en, key, value, options, global = false, hint = '') =>
+    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<div class="poster-segmented" data-segmented-for="${key}">${options.map(([v, optZh, optEn]) => `<button type="button" class="${String(v) === String(value) ? 'is-active' : ''}" data-${global ? 'global' : 'prop'}="${key}" data-val="${v}"><span>${optZh}</span> <small>${optEn}</small></button>`).join('')}</div></div>`;
+
+  const field = (zh, en, key, value, type = 'text', global = false, hint = '') =>
+    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}${type === 'textarea' ? `<textarea data-${global ? 'global' : 'prop'}="${key}">${value}</textarea>` : `<input type="${type}" data-${global ? 'global' : 'prop'}="${key}" value="${value}">`}</div>`;
+
+  const toggle = (zh, en, key, value, global = false, hint = '') =>
+    `<div class="poster-field"><label class="poster-toggle"><div class="poster-toggle-title"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div><input type="checkbox" data-${global ? 'global' : 'prop'}="${key}" ${value ? 'checked' : ''}></label>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}</div>`;
+
+  const select = (zh, en, key, value, options, global = false, hint = '') =>
+    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<select data-${global ? 'global' : 'prop'}="${key}">${options.map(([v, optZh, optEn]) => `<option value="${v}" ${String(v) === String(value) ? 'selected' : ''}>${optZh} · ${optEn || v}</option>`).join('')}</select></div>`;
+
+  const accordion = (zh, en, content, open = false) =>
+    `<details class="poster-accordion" ${open ? 'open' : ''}><summary><span class="acc-zh">${zh}</span><span class="acc-en">${en}</span></summary><div class="poster-accordion-body">${content}</div></details>`;
+
   const objectActions = () => `${layerControls()}<div class="poster-object-actions"><button class="poster-action" data-poster-action="duplicate">复制对象</button><button class="poster-delete" data-poster-action="delete">删除对象</button></div>`;
 
   function renderInspector() {
     const o = selectedObject();
     if (!o) {
-      inspectorSelection.textContent = 'SELECTED · POSTER / MAIN IMAGE'; inspectorTitle.textContent = 'IMAGE';
-      inspector.innerHTML = accordion('CANVAS', `${field('画布底色','background',state.background,'color',true)}${select('背景样式','backgroundStyle',state.backgroundStyle||'solid',[['solid','Solid'],['grid','Index Grid'],['chrome','Chrome Gradient'],['scan','Scan Paper'],['dots','Dot Matrix'],['soft-y2k','Soft Y2K'],['blueprint','Blue Print']],true)}${range('背景图透明度','backgroundImageOpacity',state.backgroundImageOpacity??38,0,100,1,true)}${select('背景图填充','backgroundImageFit',state.backgroundImageFit||'cover',[['cover','Cover 铺满'],['contain','Contain 完整'],['stretch','Stretch 拉伸']],true)}${toggle('显示海报外框','border',state.border,true)}${field('外框颜色','borderColor',state.borderColor,'color',true)}${range('外框线宽','borderWidth',state.borderWidth,1,18,1,true)}`, true)
-        + accordion('IMAGE', `${range('黑白','bw',state.filters.bw,0,100,1,true)}${range('Brightness','brightness',state.filters.brightness,-70,80,1,true)}${range('Contrast','contrast',state.filters.contrast,-50,120,1,true)}${range('Saturation','saturation',state.filters.saturation??100,0,200,1,true)}`, true)
-        + accordion('PRINT / SCAN', `${range('Halftone Strength','halftone',state.filters.halftone,0,100,1,true)}${range('Dot Size','halftoneSize',state.filters.halftoneSize,1,42,1,true)}${range('Dot Density','halftoneDensity',state.filters.halftoneDensity,1,100,1,true)}${range('Dot Angle','halftoneAngle',state.filters.halftoneAngle,-90,90,1,true)}${range('Scanline','scan',state.filters.scan,0,100,1,true)}${range('Scan Direction','scanAngle',state.filters.scanAngle,0,90,90,true)}`)
-        + accordion('TEXTURE', `${range('Grain','grain',state.filters.grain,0,100,1,true)}${range('Roughness','rough',state.filters.rough,0,100,1,true)}${range('Paper Texture','paper',state.filters.paper,0,100,1,true)}${range('Dirty Print','dirty',state.filters.dirty,0,100,1,true)}${range('Compression','compression',state.filters.compression,0,100,1,true)}`)
-        + accordion('STYLIZE', `${range('Outline','outline',state.filters.outline,0,100,1,true)}${range('Invert','invert',state.filters.invert,0,100,1,true)}${range('Color Compression','posterize',state.filters.posterize,0,100,1,true)}<p class="poster-help">所有质感均可从 Clean 的 0 推到 Destroyed。</p>`); return;
+      if (holdBeforeButton) holdBeforeButton.style.display = 'flex';
+      inspectorSelection.textContent = 'SELECTED · POSTER / MAIN IMAGE';
+      inspectorTitle.innerHTML = '海报全局 <small>POSTER BASE</small>';
+      inspector.innerHTML = accordion('画布', 'CANVAS', `${field('画布底色','Background Color','background',state.background,'color',true)}${select('背景样式','Background Style','backgroundStyle',state.backgroundStyle||'solid',[['solid','纯色基底','Solid'],['grid','坐标网格','Index Grid'],['chrome','金属渐变','Chrome Gradient'],['scan','复印扫描纸','Scan Paper'],['dots','点阵印刷','Dot Matrix'],['soft-y2k','柔和 Y2K','Soft Y2K'],['blueprint','工程蓝图','Blue Print']],true)}${range('背景图透明度','Image Opacity','backgroundImageOpacity',state.backgroundImageOpacity??38,0,100,1,true)}${select('背景图填充','Image Fit','backgroundImageFit',state.backgroundImageFit||'cover',[['cover','铺满','Cover'],['contain','完整适应','Contain'],['stretch','拉伸拉满','Stretch']],true)}${toggle('海报外框','Poster Border','border',state.border,true)}${field('外框颜色','Border Color','borderColor',state.borderColor,'color',true)}${range('外框线宽','Border Width','borderWidth',state.borderWidth,1,18,1,true)}`, true)
+        + accordion('图像', 'IMAGE', `${range('黑白','B&W','bw',state.filters.bw,0,100,1,true,'将彩色转换为黑白基调')}${range('亮度','Brightness','brightness',state.filters.brightness,-70,80,1,true,'调节画面整体明暗曝光')}${range('对比度','Contrast','contrast',state.filters.contrast,-50,120,1,true,'拉开明暗反差与视觉冲击')}${range('饱和度','Saturation','saturation',state.filters.saturation??100,0,200,1,true,'控制色彩纯度与鲜艳度')}`, true)
+        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftone',state.filters.halftone,0,100,1,true,'控制印刷网点效果的明显程度')}${range('网点大小','Dot Size','halftoneSize',state.filters.halftoneSize,1,42,1,true,'控制半调颗粒尺寸')}${range('网点密度','Dot Density','halftoneDensity',state.filters.halftoneDensity,1,100,1,true,'控制网点之间的疏密')}${range('网点角度','Dot Angle','halftoneAngle',state.filters.halftoneAngle,-90,90,1,true,'旋转半调网点排列角度')}${range('扫描线','Scanline','scan',state.filters.scan,0,100,1,true,'模拟复印或显像管扫描条纹')}${segmented('扫描方向','Scan Direction','scanAngle',state.filters.scanAngle||0,[[0,'横向','Horizontal'],[90,'纵向','Vertical']],true,'切换横向或纵向扫描条纹')}`)
+        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',state.filters.grain,0,100,1,true,'添加胶片噪点与印刷颗粒')}${range('粗糙度','Roughness','rough',state.filters.rough,0,100,1,true,'增加复印 / 阈值化的粗粝感')}${range('纸张纹理','Paper Texture','paper',state.filters.paper,0,100,1,true,'模拟旧报纸与复印纸纤维杂质')}${range('脏版印刷','Dirty Print','dirty',state.filters.dirty,0,100,1,true,'增加墨点、污渍和印刷缺陷')}${range('压缩损坏','Compression','compression',state.filters.compression,0,100,1,true,'模拟低质量数字图片的块状损坏')}`)
+        + accordion('风格化', 'STYLIZE', `${range('轮廓','Outline','outline',state.filters.outline,0,100,1,true,'提取高对比边缘描边线条')}${range('反相','Invert','invert',state.filters.invert,0,100,1,true,'翻转明暗与底片反色')}${range('色阶压缩','Color Compression / Posterize','posterize',state.filters.posterize,0,100,1,true,'减少颜色层级，形成块面效果')}<p class="poster-help">所有质感均可从 Clean 的 0% 推到 Destroyed 的 100%。</p>`);
+      return;
     }
     if (state.selected.type === 'main') {
-      inspectorSelection.textContent = `SELECTED · MAIN IMAGE / ${o.layoutMode || 'CUSTOM'}`; inspectorTitle.textContent = 'MAIN IMAGE';
-      inspector.innerHTML = accordion('TRANSFORM', `${field('X','x',Math.round(o.x),'number')}${field('Y','y',Math.round(o.y),'number')}${field('Width','w',Math.round(o.w),'number')}${field('Height','h',Math.round(o.h),'number')}${range('Rotation','rotation',o.rotation||0,-12,12,.5)}`, true)
-        + accordion('CROP', `${range('Image Zoom','zoom',o.zoom||1,.7,2.4,.02)}${range('Crop X','panX',o.panX||0,-350,350,1)}${range('Crop Y','panY',o.panY||0,-450,450,1)}`, true)
-        + layerControls(); return;
+      if (holdBeforeButton) holdBeforeButton.style.display = 'flex';
+      inspectorSelection.textContent = `SELECTED · MAIN IMAGE / ${o.layoutMode || 'CUSTOM'}`;
+      inspectorTitle.innerHTML = '主图 <small>MAIN IMAGE</small>';
+      inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-12,12,.5)}`, true)
+        + accordion('裁切', 'CROP', `${range('画面缩放','Image Zoom','zoom',o.zoom||1,.7,2.4,.02)}${range('裁切水平偏移','Crop X','panX',o.panX||0,-350,350,1)}${range('裁切垂直偏移','Crop Y','panY',o.panY||0,-450,450,1)}`, true)
+        + layerControls();
+      return;
     }
     if (state.selected.type === 'fragment') {
-      const number = state.fragments.findIndex((v) => v.id === o.id) + 1; inspectorSelection.textContent = `SELECTED · ${o.fragmentType || 'MAIN FRAGMENT'} / ${String(number).padStart(2,'0')}`; inspectorTitle.textContent = 'FRAGMENT';
-      inspector.innerHTML = accordion('TRANSFORM', `${field('X','x',Math.round(o.x),'number')}${field('Y','y',Math.round(o.y),'number')}${field('Width','w',Math.round(o.w),'number')}${field('Height','h',Math.round(o.h),'number')}${range('Rotation','rotation',o.rotation||0,-180,180)}${range('Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('IMAGE', `${range('Brightness','brightness',o.brightness||0,-80,100)}${range('Contrast','contrast',o.contrast||0,-60,120)}${range('Saturation','saturation',o.saturation??100,0,200)}${field('Fragment Border','color',o.color||'#fff','color')}${range('Border Width','lineWidth',o.lineWidth||0,0,12)}`, true)
-        + accordion('PRINT / SCAN', `${range('Halftone Strength','halftoneStrength',o.halftoneStrength||75,0,100)}${range('Dot Size','halftoneSize',o.halftoneSize||8,1,42)}${range('Dot Density','halftoneDensity',o.halftoneDensity||55,1,100)}${range('Dot Angle','halftoneAngle',o.halftoneAngle||0,-90,90)}`)
-        + accordion('TEXTURE', `${range('Grain','grain',o.grain||0,0,100)}`)
-        + accordion('STYLIZE', `${select('Filter Type','filterType',o.filterType,[['original','Original'],['bw','Black & White'],['highbw','High Contrast B&W'],['halftone','Halftone'],['rough','Rough / Grain'],['outline','Outline / Edge'],['invert','Invert'],['posterize','Posterize']])}`)
-        + objectActions(); return;
+      if (holdBeforeButton) holdBeforeButton.style.display = 'flex';
+      const number = state.fragments.findIndex((v) => v.id === o.id) + 1;
+      inspectorSelection.textContent = `SELECTED · ${o.fragmentType || 'MAIN FRAGMENT'} / ${String(number).padStart(2,'0')}`;
+      inspectorTitle.innerHTML = `图像碎片 <small>FRAGMENT / ${String(number).padStart(2,'0')}</small>`;
+      inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
+        + accordion('图像', 'IMAGE', `${range('亮度','Brightness','brightness',o.brightness||0,-80,100)}${range('对比度','Contrast','contrast',o.contrast||0,-60,120)}${range('饱和度','Saturation','saturation',o.saturation??100,0,200)}${field('碎片边框','Border Color','color',o.color||'#fff','color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth||0,0,12)}`, true)
+        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftoneStrength',o.halftoneStrength||75,0,100,false,'控制碎片半调网点强度')}${range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,1,42)}${range('网点密度','Dot Density','halftoneDensity',o.halftoneDensity||55,1,100)}${range('网点角度','Dot Angle','halftoneAngle',o.halftoneAngle||0,-90,90)}`)
+        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',o.grain||0,0,100,false,'给碎片添加噪点颗粒')}`)
+        + accordion('风格化', 'STYLIZE', `${select('滤镜类型','Filter Type','filterType',o.filterType,[['original','原图','Original'],['bw','黑白','B&W'],['highbw','高对比黑白','High Contrast B&W'],['halftone','半调网点','Halftone'],['rough','粗糙颗粒','Rough / Grain'],['outline','轮廓描边','Outline / Edge'],['invert','反相','Invert'],['posterize','色阶压缩','Posterize']])}`)
+        + objectActions();
+      return;
     }
     if (state.selected.type === 'frame') {
-      const number = state.frames.findIndex((v) => v.id === o.id) + 1; inspectorSelection.textContent = `SELECTED · INDEX FRAME / ${labelText(o) || number}`; inspectorTitle.textContent = 'FRAME';
-      inspector.innerHTML = accordion('TRANSFORM', `${field('X','x',Math.round(o.x),'number')}${field('Y','y',Math.round(o.y),'number')}${field('Width','w',Math.round(o.w),'number')}${field('Height','h',Math.round(o.h),'number')}${range('Rotation','rotation',o.rotation||0,-180,180)}`, true)
-        + accordion('FRAME', `${field('Stroke Color','color',o.color,'color')}${range('Stroke Width','lineWidth',o.lineWidth,1,12)}${range('Stroke Opacity','strokeOpacity',o.strokeOpacity??100,0,100)}${select('Stroke Style','strokeStyle',o.strokeStyle||'solid',[['solid','Solid'],['dashed','Dashed']])}${select('Frame Style','frameStyle',o.frameStyle||'full',[['full','Full Frame'],['corner','Corner Frame']])}`, true)
-        + accordion('LABEL', `${toggle('自动编号','autoNumber',o.autoNumber)}${field('标签前缀','labelPrefix',o.labelPrefix||'ITEM')}${range('编号','labelNumber',o.labelNumber||1,1,999)}${field('自定义标签','label',o.label||'')}${field('标签底色','tagBackground',o.tagBackground,'color')}${field('标签文字颜色','tagTextColor',o.tagTextColor,'color')}${range('标签字号','labelSize',o.labelSize,8,32)}${toggle('显示标签','showLabel',o.showLabel)}${select('标签样式','tagStyle',o.tagStyle,[['solid','Solid 色块'],['plain','Plain 纯文字'],['outline','Outline 描边']])}`)
+      if (holdBeforeButton) holdBeforeButton.style.display = 'none';
+      const number = state.frames.findIndex((v) => v.id === o.id) + 1;
+      inspectorSelection.textContent = `SELECTED · INDEX FRAME / ${labelText(o) || number}`;
+      inspectorTitle.innerHTML = `索引框 <small>INDEX FRAME</small>`;
+      inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}`, true)
+        + accordion('框线', 'FRAME', `${field('框线颜色','Stroke Color','color',o.color,'color')}${range('框线粗细','Stroke Width','lineWidth',o.lineWidth,1,12)}${range('框线透明度','Stroke Opacity','strokeOpacity',o.strokeOpacity??100,0,100)}${select('线条样式','Stroke Style','strokeStyle',o.strokeStyle||'solid',[['solid','实线','Solid'],['dashed','虚线','Dashed']])}${select('边框样式','Frame Style','frameStyle',o.frameStyle||'full',[['full','完整框','Full Frame'],['corner','角标框','Corner Frame']])}`, true)
+        + accordion('标签', 'LABEL', `${toggle('自动编号','Auto Number','autoNumber',o.autoNumber)}${field('标签前缀','Label Prefix','labelPrefix',o.labelPrefix||'ITEM')}${range('编号数值','Label Number','labelNumber',o.labelNumber||1,1,999)}${field('自定义标签','Custom Label','label',o.label||'')}${field('标签底色','Tag Background','tagBackground',o.tagBackground,'color')}${field('标签文字颜色','Tag Text Color','tagTextColor',o.tagTextColor,'color')}${range('标签字号','Font Size','labelSize',o.labelSize,8,32)}${toggle('显示标签','Show Label','showLabel',o.showLabel)}${select('标签样式','Tag Style','tagStyle',o.tagStyle,[['solid','实心色块','Solid'],['plain','纯文字底','Plain'],['outline','描边线框','Outline']])}`)
         + `<button class="poster-action poster-action-primary" data-poster-action="detail">由此框生成局部放大</button>${objectActions()}`;
-    } else if (state.selected.type === 'detail') {
-      const number = state.details.findIndex((v) => v.id === o.id) + 1; inspectorSelection.textContent = `SELECTED · DETAIL CROP / ${String(number).padStart(2,'0')}`; inspectorTitle.textContent = 'IMAGE';
-      inspector.innerHTML = accordion('TRANSFORM', `${field('X','x',Math.round(o.x),'number')}${field('Y','y',Math.round(o.y),'number')}${field('Width','w',Math.round(o.w),'number')}${field('Height','h',Math.round(o.h),'number')}${range('Rotation','rotation',o.rotation||0,-180,180)}${range('Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('IMAGE', `${range('Brightness','brightness',o.brightness||0,-80,100)}${range('Contrast','contrast',o.contrast||0,-60,120)}${range('Saturation','saturation',o.saturation??100,0,200)}${field('Crop Border','color',o.color,'color')}${range('Border Width','lineWidth',o.lineWidth,0,12)}`, true)
-        + accordion('PRINT / SCAN', `${range('Halftone Strength','halftoneStrength',o.halftoneStrength||75,0,100)}${range('Dot Size','halftoneSize',o.halftoneSize||8,1,42)}${range('Dot Density','halftoneDensity',o.halftoneDensity||55,1,100)}${range('Dot Angle','halftoneAngle',o.halftoneAngle||0,-90,90)}`)
-        + accordion('TEXTURE', `${range('Grain','grain',o.grain||0,0,100)}`)
-        + accordion('STYLIZE', `${select('Filter Type','filterType',o.filterType,[['original','Original'],['bw','Black & White'],['highbw','High Contrast B&W'],['halftone','Halftone'],['rough','Rough / Grain'],['outline','Outline / Edge'],['invert','Invert'],['posterize','Posterize']])}`)
-        + objectActions();
-    } else if (state.selected.type === 'connector') {
-      inspectorSelection.textContent = 'SELECTED · CONNECTOR'; inspectorTitle.textContent = 'LINE';
-      inspector.innerHTML = accordion('CONNECTOR', `${select('连接类型','connectorType',o.connectorType,[['straight','Straight 直线'],['elbow','Elbow 折线']])}${field('颜色','lineColor',o.lineColor,'color')}${range('线宽','connectorWidth',o.connectorWidth||2,1,12)}${range('透明度','lineOpacity',o.lineOpacity??100,0,100)}${toggle('虚线','connectorDash',o.connectorDash)}${select('端点','endpointStyle',o.endpointStyle,[['none','无'],['dot','圆点'],['cross','十字']])}`, true) + layerControls() + `<button class="poster-delete" data-poster-action="delete">删除连接线与局部图</button>`;
-    } else {
-      const names = { hero:'HERO TITLE', subtitle:'SUBTITLE', caption:'CAPTION', micro:'MICRO TEXT', repeat:'REPEAT TEXT' }; inspectorSelection.textContent = `SELECTED · ${names[o.kind] || 'TEXT'}`; inspectorTitle.textContent = 'TYPOGRAPHY';
-      const repeatControls = o.kind === 'repeat' ? accordion('REPEAT', `${range('Repeat','repeat',o.repeat,2,24)}${select('Direction','direction',o.direction,[['vertical','Vertical'],['horizontal','Horizontal']])}${range('Spacing','repeatSpacing',o.repeatSpacing||0,-20,100)}${range('X Offset','repeatOffsetX',o.repeatOffsetX||0,-100,100)}${range('Y Offset','repeatOffsetY',o.repeatOffsetY||0,-100,100)}${range('Rotation Step','rotationStep',o.rotationStep||0,-20,20,.5)}`, true) : '';
-      inspector.innerHTML = accordion('TRANSFORM', `${field('X','x',Math.round(o.x),'number')}${field('Y','y',Math.round(o.y),'number')}${range('Horizontal Scale','scaleX',o.scaleX||1,.2,3,.05)}${range('Vertical Scale','scaleY',o.scaleY||1,.2,3,.05)}${range('Rotation','rotation',o.rotation||0,-180,180)}${range('Opacity','opacity',o.opacity,0,100)}`, true)
-        + accordion('TYPOGRAPHY', `${field('文字内容','content',o.content,'textarea')}${select('字体','font',o.font,[['Arial, sans-serif','Arial'],['Arial Black, Impact, sans-serif','Arial Black'],['Georgia, serif','Georgia'],['ui-monospace, Consolas, monospace','Mono']])}${range('Size','size',o.size,6,240)}${select('Weight','weight',o.weight,[['400','Regular'],['500','Medium'],['700','Bold'],['800','Black']])}${range('Tracking','letterSpacing',o.letterSpacing||0,-20,100,.5)}${range('Line Height','lineHeight',o.lineHeight,.35,4,.05)}${select('Alignment','align',o.align||'left',[['left','Left'],['center','Center'],['right','Right']])}${o.kind !== 'repeat' ? select('Text Direction','writingMode',o.writingMode||'horizontal',[['horizontal','Horizontal'],['vertical','Vertical']]) : ''}${field('Color','color',o.color,'color')}`, true)
-        + repeatControls + objectActions();
+      return;
     }
+    if (state.selected.type === 'detail') {
+      if (holdBeforeButton) holdBeforeButton.style.display = 'flex';
+      const number = state.details.findIndex((v) => v.id === o.id) + 1;
+      inspectorSelection.textContent = `SELECTED · DETAIL CROP / ${String(number).padStart(2,'0')}`;
+      inspectorTitle.innerHTML = `局部放大 <small>DETAIL CROP / ${String(number).padStart(2,'0')}</small>`;
+      inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
+        + accordion('图像', 'IMAGE', `${range('亮度','Brightness','brightness',o.brightness||0,-80,100)}${range('对比度','Contrast','contrast',o.contrast||0,-60,120)}${range('饱和度','Saturation','saturation',o.saturation??100,0,200)}${field('局部边框','Border Color','color',o.color,'color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth,0,12)}`, true)
+        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftoneStrength',o.halftoneStrength||75,0,100,false,'控制局部半调网点强度')}${range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,1,42)}${range('网点密度','Dot Density','halftoneDensity',o.halftoneDensity||55,1,100)}${range('网点角度','Dot Angle','halftoneAngle',o.halftoneAngle||0,-90,90)}`)
+        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',o.grain||0,0,100,false,'给局部图添加噪点颗粒')}`)
+        + accordion('风格化', 'STYLIZE', `${select('滤镜类型','Filter Type','filterType',o.filterType,[['original','原图','Original'],['bw','黑白','B&W'],['highbw','高对比黑白','High Contrast B&W'],['halftone','半调网点','Halftone'],['rough','粗糙颗粒','Rough / Grain'],['outline','轮廓描边','Outline / Edge'],['invert','反相','Invert'],['posterize','色阶压缩','Posterize']])}`)
+        + objectActions();
+      return;
+    }
+    if (state.selected.type === 'connector') {
+      if (holdBeforeButton) holdBeforeButton.style.display = 'none';
+      inspectorSelection.textContent = 'SELECTED · CONNECTOR';
+      inspectorTitle.innerHTML = '连接线 <small>CONNECTOR</small>';
+      inspector.innerHTML = accordion('连接线', 'CONNECTOR', `${select('连接类型','Connector Type','connectorType',o.connectorType,[['straight','直线','Straight'],['elbow','折线','Elbow']])}${field('线条颜色','Line Color','lineColor',o.lineColor,'color')}${range('线条粗细','Line Width','connectorWidth',o.connectorWidth||2,1,12)}${range('透明度','Opacity','lineOpacity',o.lineOpacity??100,0,100)}${toggle('虚线','Dashed Line','connectorDash',o.connectorDash)}${select('端点样式','Endpoint Style','endpointStyle',o.endpointStyle,[['none','无端点','None'],['dot','圆点','Dot'],['cross','十字','Cross']])}`, true)
+        + layerControls()
+        + `<button class="poster-delete" data-poster-action="delete">删除连接线与局部图</button>`;
+      return;
+    }
+    if (holdBeforeButton) holdBeforeButton.style.display = 'none';
+    const names = { hero:'HERO TITLE', subtitle:'SUBTITLE', caption:'CAPTION', micro:'MICRO TEXT', repeat:'REPEAT TEXT' };
+    const titlesZh = { hero:'主标题', subtitle:'副标题', caption:'小字说明', micro:'微型信息', repeat:'重复文字' };
+    inspectorSelection.textContent = `SELECTED · ${names[o.kind] || 'TEXT'}`;
+    inspectorTitle.innerHTML = `${titlesZh[o.kind] || '排版文字'} <small>${names[o.kind] || 'TYPOGRAPHY'}</small>`;
+    const repeatControls = o.kind === 'repeat' ? accordion('重复文字', 'REPEAT', `${range('重复次数','Repeat Count','repeat',o.repeat,2,24)}${segmented('排列方向','Direction','direction',o.direction,[['vertical','纵向','Vertical'],['horizontal','横向','Horizontal']])}${range('间距','Spacing','repeatSpacing',o.repeatSpacing||0,-20,100)}${range('水平错位','X Offset','repeatOffsetX',o.repeatOffsetX||0,-100,100)}${range('垂直错位','Y Offset','repeatOffsetY',o.repeatOffsetY||0,-100,100)}${range('逐次旋转步长','Rotation Step','rotationStep',o.rotationStep||0,-20,20,.5)}`, true) : '';
+    inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${range('水平缩放','Horizontal Scale','scaleX',o.scaleX||1,.2,3,.05)}${range('垂直缩放','Vertical Scale','scaleY',o.scaleY||1,.2,3,.05)}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity,0,100)}`, true)
+      + accordion('排版文字', 'TYPOGRAPHY', `${field('文字内容','Text Content','content',o.content,'textarea')}${select('字体','Font Family','font',o.font,[['Arial, sans-serif','Arial','Sans-Serif'],['Arial Black, Impact, sans-serif','Arial Black','Display'],['Georgia, serif','Georgia','Serif'],['ui-monospace, Consolas, monospace','Monospace','Technical']])}${range('字号','Font Size','size',o.size,6,240)}${select('字重','Weight','weight',o.weight,[['400','常规','Regular'],['500','中等','Medium'],['700','加粗','Bold'],['800','超重','Black']])}${range('字距','Tracking','letterSpacing',o.letterSpacing||0,-20,100,.5)}${range('行距','Line Height','lineHeight',o.lineHeight,.35,4,.05)}${select('对齐方式','Alignment','align',o.align||'left',[['left','左对齐','Left'],['center','居中','Center'],['right','右对齐','Right']])}${o.kind !== 'repeat' ? segmented('排版方向','Text Direction','writingMode',o.writingMode||'horizontal',[['horizontal','横排','Horizontal'],['vertical','竖排','Vertical']]) : ''}${field('文字颜色','Color','color',o.color,'color')}`, true)
+      + repeatControls + objectActions();
   }
 
   function applyDemo(image) {
@@ -344,7 +602,16 @@
     state.details = [makeDetail(state.frames[0],0,{id:'demo-detail-face',x:24,y:260,w:225,h:252,rotation:-6,filterType:'halftone',halftoneSize:11,halftoneDensity:67,halftoneAngle:18,halftoneStrength:88,connectorType:'elbow'}),makeDetail(state.frames[1],1,{id:'demo-detail-hand',x:655,y:745,w:220,h:285,rotation:5,filterType:'highbw',contrast:30,grain:24}),makeDetail(state.frames[2],2,{id:'demo-detail-flower',x:36,y:830,w:196,h:188,rotation:8,filterType:'outline',contrast:28,connectorType:'elbow',endpointStyle:'cross'})];
     state.texts = [{id:'demo-title',kind:'hero',content:'WILD SIGNAL',x:-34,y:45,size:90,weight:800,font:'Arial Black, Impact, sans-serif',color:'#161616',rotation:-2,opacity:100,lineHeight:.82,letterSpacing:-4,scaleX:1.35,scaleY:.76,align:'left',writingMode:'horizontal'},{id:'demo-subtitle',kind:'subtitle',content:'SPRING INDEX / 01',x:626,y:108,size:18,weight:700,font:'Arial, sans-serif',color:'#c52f39',rotation:2,opacity:100,lineHeight:1.2,letterSpacing:1.5,scaleX:1,scaleY:1,align:'left',writingMode:'horizontal'},{id:'demo-caption',kind:'caption',content:'FACE · HAND · FLOWER\nA STUDY OF SOFT GESTURES',x:485,y:1092,size:14,weight:700,font:'ui-monospace, Consolas, monospace',color:'#161616',rotation:0,opacity:100,lineHeight:1.45,letterSpacing:.4,scaleX:1,scaleY:1,align:'left',writingMode:'horizontal'},{id:'demo-micro',kind:'micro',content:'FILE 0021 / CAMERA 01 / DATA UPDATED',x:846,y:270,size:9,weight:700,font:'ui-monospace, Consolas, monospace',color:'#161616',rotation:0,opacity:88,lineHeight:1.12,letterSpacing:2.5,scaleX:1,scaleY:1,align:'left',writingMode:'vertical'},{id:'demo-repeat',kind:'repeat',content:'FIELD NOTE',x:805,y:160,size:13,weight:800,font:'Arial, sans-serif',color:'#c52f39',repeat:8,direction:'vertical',repeatSpacing:1,repeatOffsetX:-3,repeatOffsetY:0,rotationStep:.7,rotation:3,opacity:100,lineHeight:1.25,letterSpacing:1,scaleX:1,scaleY:1,align:'left',writingMode:'horizontal'}];
     state.layers = [{type:'text',id:'demo-title'},{type:'main',id:'main-image'},{type:'connector',id:'demo-detail-face'},{type:'frame',id:'demo-face'},{type:'detail',id:'demo-detail-face'},{type:'connector',id:'demo-detail-hand'},{type:'frame',id:'demo-hand'},{type:'text',id:'demo-repeat'},{type:'detail',id:'demo-detail-hand'},{type:'connector',id:'demo-detail-flower'},{type:'frame',id:'demo-flower'},{type:'text',id:'demo-caption'},{type:'detail',id:'demo-detail-flower'},{type:'text',id:'demo-subtitle'},{type:'text',id:'demo-micro'}];
-    state.selected = null; emptyState.classList.add('is-hidden'); status.textContent = 'DEMO 01 / WILD SIGNAL'; renderInspector(); render(); if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace); history = []; historyIndex = -1; commit();
+    state.selected = null; emptyState.classList.add('is-hidden'); status.textContent = 'DEMO 01 / WILD SIGNAL';
+    state.remixInfo = {
+      anchorZh: '示范模板', anchorEn: 'Demo Template',
+      mainLayoutZh: '完整底图', mainLayoutEn: 'Full Base',
+      typographyZh: '编辑排版', typographyEn: 'Editorial Stack',
+      backgroundZh: '纯色', backgroundEn: 'Solid',
+      strengthZh: '标准 · 平衡', strengthEn: 'Standard · Balanced',
+      isManuallyEdited: false,
+    };
+    renderInspector(); render(); if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace); history = []; historyIndex = -1; commit(); updateRemixCard();
   }
   function loadDemo(show = true) { const image = new Image(); image.onload = () => { applyDemo(image); if (show) toast('示范模板已恢复。'); }; image.onerror = () => toast('示范图片未能载入。'); image.src = 'assets/demo-collage.jpg'; }
 
@@ -356,13 +623,13 @@
       y2k:{background:'#e5e2ef',accent:'#765fc2',border:'#fff',filters:{bw:8,brightness:13,contrast:-12,halftone:0,halftoneSize:5,halftoneDensity:65,halftoneAngle:0,grain:5,rough:0,outline:0,scan:0,scanAngle:0,paper:6,dirty:0,compression:4,invert:0,posterize:0},crop:['original','bw','posterize']},
       xerox:{background:'#d8d5cc',accent:'#111',border:'#111',filters:{bw:100,brightness:2,contrast:118,halftone:90,halftoneSize:17,halftoneDensity:48,halftoneAngle:-18,grain:82,rough:76,outline:0,scan:72,scanAngle:0,paper:80,dirty:88,compression:38,invert:0,posterize:62},crop:['highbw','halftone','invert']},
     };
-    const p = all[name]; if (!p) return; state.background = p.background; state.borderColor = p.border; state.filters = {...p.filters}; state.frames.forEach((f) => {f.color=p.accent;f.tagBackground=p.accent;}); state.details.forEach((d,i)=>{d.color=p.accent;d.lineColor=p.accent;d.filterType=p.crop[i%p.crop.length];if(name==='xerox')d.rotation=[-8,6,11][i%3];}); state.fragments.forEach((f,i)=>{f.color=p.accent;f.filterType=p.crop[(i+1)%p.crop.length];}); state.texts.forEach((t)=>{if(t.kind==='repeat')t.color=p.accent;}); setSelected(null,null); render(); commit(); toast(`已应用 ${name==='xerox'?'XEROX / PUNK':name.toUpperCase()} 视觉系统。`);
+    const p = all[name]; if (!p) return; state.background = p.background; state.borderColor = p.border; state.filters = {...p.filters}; state.frames.forEach((f) => {f.color=p.accent;f.tagBackground=p.accent;}); state.details.forEach((d,i)=>{d.color=p.accent;d.lineColor=p.accent;d.filterType=p.crop[i%p.crop.length];if(name==='xerox')d.rotation=[-8,6,11][i%3];}); state.fragments.forEach((f,i)=>{f.color=p.accent;f.filterType=p.crop[(i+1)%p.crop.length];}); state.texts.forEach((t)=>{if(t.kind==='repeat')t.color=p.accent;}); setSelected(null,null); render(); commit(); markManuallyEdited(); toast(`已应用 ${name==='xerox'?'XEROX / PUNK':name.toUpperCase()} 视觉系统。`);
   }
 
   function applyPosterBackground(style) {
     const colors = { solid:'#efeee8', grid:'#e5e9e8', chrome:'#dbe7f4', scan:'#e5dfd2', dots:'#e9e6df', 'soft-y2k':'#e5e2ef', blueprint:'#b9cbed' };
     state.backgroundStyle = style; state.background = colors[style] || state.background;
-    setSelected(null,null); renderInspector(); render(); commit(); toast(`背景已切换 · ${style.toUpperCase()}`);
+    setSelected(null,null); renderInspector(); render(); commit(); markManuallyEdited(); toast(`背景已切换 · ${style.toUpperCase()}`);
   }
 
   // REMIX keeps every object, then recomposes it inside a family of editorial
@@ -827,6 +1094,80 @@
     const secondaryDetailLayers = detailLayers.filter((layer) => !anchorDetailLayers.some((anchor) => anchor.id === layer.id));
     const primaryLayers = anchorMode.id === 'detail' ? [...heroLayers, ...anchorDetailLayers] : [...anchorDetailLayers, ...heroLayers];
     state.layers = [...tertiaryLayers, ...companionFragmentLayers, main, ...fragmentLayers, ...connectorLayers, ...frameLayers, ...secondaryDetailLayers, ...secondaryTextLayers, ...primaryLayers];
+    const anchorZhMap = {
+      'MAIN IMAGE STABLE': '主图锁定',
+      'HERO TITLE STABLE': '主标题锁定',
+      'DETAIL CROP STABLE': '局部特写锁定',
+      'QUIET SPACE STABLE': '留白空间锁定',
+    };
+    const anchorEnMap = {
+      'MAIN IMAGE STABLE': 'Main Stable',
+      'HERO TITLE STABLE': 'Hero Stable',
+      'DETAIL CROP STABLE': 'Detail Stable',
+      'QUIET SPACE STABLE': 'Quiet Space',
+    };
+    const typographyZhMap = {
+      'BOTTOM LOCK': '底部沉底',
+      'TOP EDITORIAL': '顶部报刊',
+      'SIDE SPINE': '侧边书脊',
+      'SPLIT AXIS': '双轴对齐',
+      'IMAGE OVERLAP': '图文穿插',
+      'QUIET CORNER': '角隅留白',
+    };
+    const bgZhMap = {
+      solid: '纯色基底',
+      grid: '坐标网格',
+      chrome: '金属渐变',
+      scan: '复印扫描纸',
+      dots: '点阵印刷',
+      'soft-y2k': '柔和 Y2K',
+      blueprint: '工程蓝图',
+    };
+    const bgEnMap = {
+      solid: 'Solid',
+      grid: 'Index Grid',
+      chrome: 'Chrome',
+      scan: 'Scan Paper',
+      dots: 'Dot Matrix',
+      'soft-y2k': 'Soft Y2K',
+      blueprint: 'Blueprint',
+    };
+    const strengthZhMap = {
+      light: '克制微调',
+      medium: '标准平衡',
+      wild: '大胆实验',
+    };
+    const strengthEnMap = {
+      light: 'Light Drift',
+      medium: 'Balanced',
+      wild: 'Wild Expressive',
+    };
+
+    let mainZh = state.main.layoutMode || '完整底图';
+    if (mainZh.includes('FULL BASE')) mainZh = '完整底图';
+    else if (mainZh.includes('TIGHT CROP')) mainZh = '特写裁切';
+    else if (mainZh.includes('OFFSET BASE')) mainZh = '偏心底图';
+    else if (mainZh.includes('FRAGMENTED BASE')) mainZh = '解构底图';
+    if (state.main.layoutMode.includes('LEFT')) mainZh += ' · 偏左';
+    if (state.main.layoutMode.includes('RIGHT')) mainZh += ' · 偏右';
+    if (state.main.layoutMode.includes('LOW')) mainZh += ' · 偏下';
+    if (state.main.layoutMode.includes('OVERLAP')) mainZh += ' · 重叠层';
+
+    state.remixInfo = {
+      anchorZh: anchorZhMap[anchorMode.name] || anchorMode.name,
+      anchorEn: anchorEnMap[anchorMode.name] || anchorMode.name,
+      mainLayoutZh: mainZh,
+      mainLayoutEn: state.main.layoutMode,
+      typographyZh: typographyZhMap[typographyMode.name] || typographyMode.name,
+      typographyEn: typographyMode.name,
+      backgroundZh: bgZhMap[state.backgroundStyle] || '纸张',
+      backgroundEn: bgEnMap[state.backgroundStyle] || 'Paper',
+      strengthZh: strengthZhMap[strength] || strength,
+      strengthEn: strengthEnMap[strength] || strength,
+      isManuallyEdited: false,
+    };
+    updateRemixCard();
+
     state.selected = null;
     renderInspector(); render(); commit(); remixLastResultSnapshot = snapshot();
     const button = $('#posterRemixButton'); button?.classList.remove('is-remixing'); canvasWrap.classList.remove('is-remixing'); void canvasWrap.offsetWidth; button?.classList.add('is-remixing'); canvasWrap.classList.add('is-remixing');
@@ -841,13 +1182,59 @@
   $('.poster-tools').addEventListener('click',(e)=>{const a=e.target.closest('[data-poster-action]')?.dataset.posterAction;if(!a)return;if(a==='demo')loadDemo();if(a==='frame')addFrame();if(a==='detail')addDetail();if(a==='connector')toast('每张局部图已自动拥有连接线。');if(a==='undo')undo();if(a==='redo')redo();if(a==='duplicate')duplicateSelected();if(a==='remix')remixLayout($('#posterRemixStrength')?.value||'medium');if(['hero','subtitle','caption','micro','repeat'].includes(a))addText(a);});
   document.querySelectorAll('[data-poster-preset]').forEach((b)=>b.addEventListener('click',()=>preset(b.dataset.posterPreset)));
   document.querySelectorAll('[data-poster-background]').forEach((b)=>b.addEventListener('click',()=>applyPosterBackground(b.dataset.posterBackground)));
-  $('#posterBackgroundClear')?.addEventListener('click',()=>{state.backgroundImageId=null;renderInspector();render();commit();toast('自定义背景图已移除。');});
+  $('#posterBackgroundClear')?.addEventListener('click',()=>{state.backgroundImageId=null;renderInspector();render();commit();markManuallyEdited();toast('自定义背景图已移除。');});
   $('#posterExportButton').addEventListener('click',exportPoster);
-  inspector.addEventListener('input',(e)=>{const c=e.target,p=c.dataset.prop||c.dataset.global;if(!p)return;const root=c.dataset.global?(p in state.filters?state.filters:state):selectedObject();if(!root)return;root[p]=c.type==='checkbox'?c.checked:(c.type==='range'||c.type==='number'?Number(c.value):c.value);render();const out=c.closest('.poster-field')?.querySelector('output');if(out)out.textContent=c.value;commit(false);});
+  inspector.addEventListener('input',(e)=>{const c=e.target,p=c.dataset.prop||c.dataset.global;if(!p)return;const root=c.dataset.global?(p in state.filters?state.filters:state):selectedObject();if(!root)return;root[p]=c.type==='checkbox'?c.checked:(c.type==='range'||c.type==='number'?Number(c.value):c.value);render();const out=c.closest('.poster-field')?.querySelector('output');if(out)out.textContent=c.value;commit(false);markManuallyEdited();});
   inspector.addEventListener('change',(e)=>{if(e.target.matches('select'))e.target.dispatchEvent(new Event('input',{bubbles:true}));});
-  inspector.addEventListener('click',(e)=>{const a=e.target.closest('[data-poster-action]')?.dataset.posterAction,l=e.target.closest('[data-layer-action]')?.dataset.layerAction;if(a==='delete')deleteSelected();if(a==='detail')addDetail();if(a==='duplicate')duplicateSelected();if(l)changeLayer(l);});
-  input.addEventListener('change',()=>{const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{state.image=image;state.imageName=file.name;ensureMainLayer();emptyState.classList.add('is-hidden');status.textContent=`MAIN IMAGE / ${file.name}`;render();toast('主图已载入；现有拼贴元素已保留。');};image.src=reader.result;};reader.readAsDataURL(file);});
-  backgroundInput?.addEventListener('change',()=>{const file=backgroundInput.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const id=makeId();backgroundAssets.set(id,image);state.backgroundImageId=id;state.backgroundImageOpacity=48;renderInspector();render();commit();toast(`背景图已载入 · ${file.name}`);backgroundInput.value='';};image.onerror=()=>toast('背景图未能载入。');image.src=reader.result;};reader.readAsDataURL(file);});
+  inspector.addEventListener('click',(e)=>{
+    const segBtn = e.target.closest('.poster-segmented button');
+    if (segBtn) {
+      const p = segBtn.dataset.prop || segBtn.dataset.global;
+      const root = segBtn.dataset.global ? (p in state.filters ? state.filters : state) : selectedObject();
+      if (root && p) {
+        let rawVal = segBtn.dataset.val;
+        let parsedVal = rawVal;
+        if (!isNaN(Number(rawVal)) && rawVal.trim() !== '') parsedVal = Number(rawVal);
+        root[p] = parsedVal;
+        const parentSeg = segBtn.closest('.poster-segmented');
+        if (parentSeg) {
+          parentSeg.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b === segBtn));
+        }
+        render();
+        commit(false);
+        markManuallyEdited();
+      }
+      return;
+    }
+    const a=e.target.closest('[data-poster-action]')?.dataset.posterAction,l=e.target.closest('[data-layer-action]')?.dataset.layerAction;
+    if(a==='delete')deleteSelected();
+    if(a==='detail')addDetail();
+    if(a==='duplicate')duplicateSelected();
+    if(l)changeLayer(l);
+  });
+  input.addEventListener('change',()=>{const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{state.image=image;state.imageName=file.name;ensureMainLayer();emptyState.classList.add('is-hidden');status.textContent=`MAIN IMAGE / ${file.name}`;render();markManuallyEdited();toast('主图已载入；现有拼贴元素已保留。');};image.src=reader.result;};reader.readAsDataURL(file);});
+  backgroundInput?.addEventListener('change',()=>{const file=backgroundInput.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const id=makeId();backgroundAssets.set(id,image);state.backgroundImageId=id;state.backgroundImageOpacity=48;renderInspector();render();commit();markManuallyEdited();toast(`背景图已载入 · ${file.name}`);backgroundInput.value='';};image.onerror=()=>toast('背景图未能载入。');image.src=reader.result;};reader.readAsDataURL(file);});
+  if (holdBeforeButton) {
+    const startBefore = (e) => {
+      e.preventDefault();
+      if (isBeforePreviewActive) return;
+      isBeforePreviewActive = true;
+      holdBeforeButton.classList.add('is-active');
+      render(false);
+    };
+    const endBefore = (e) => {
+      e.preventDefault();
+      if (!isBeforePreviewActive) return;
+      isBeforePreviewActive = false;
+      holdBeforeButton.classList.remove('is-active');
+      render();
+    };
+    holdBeforeButton.addEventListener('pointerdown', startBefore);
+    holdBeforeButton.addEventListener('pointerup', endBefore);
+    holdBeforeButton.addEventListener('pointercancel', endBefore);
+    holdBeforeButton.addEventListener('pointerleave', endBefore);
+    holdBeforeButton.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
   $('.poster-zoom-controls').addEventListener('click',(e)=>{const action=e.target.closest('[data-zoom-action]')?.dataset.zoomAction;if(action==='in')zoomBy(.1);if(action==='out')zoomBy(-.1);if(action==='actual')applyZoom(1,'manual');if(action==='fit')fitWorkspace();});
   viewport.addEventListener('wheel',(e)=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const r=viewport.getBoundingClientRect();zoomBy(e.deltaY < 0 ? .08 : -.08,{x:e.clientX-r.left,y:e.clientY-r.top});},{passive:false});
   viewport.addEventListener('pointerdown',(e)=>{if(!spaceDown)return;e.preventDefault();e.stopPropagation();pan={x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.classList.add('is-panning');viewport.setPointerCapture(e.pointerId);},true);
@@ -858,5 +1245,5 @@
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
   window.addEventListener('visual-lab-mode-change',(e)=>{if(e.detail.mode==='poster'){render();requestAnimationFrame(()=>{if(zoomMode==='fit')fitWorkspace();});}});
-  renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);
+  renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();
 })();

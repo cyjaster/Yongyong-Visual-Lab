@@ -288,6 +288,7 @@
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">IMAGE / FRAMES</span>
+            <small class="poster-tool-desc">上传图片并建立索引</small>
             <label class="poster-action poster-action-primary" for="posterImageInput">上传主图 <small>JPG / PNG / WEBP</small></label>
             <button class="poster-action" type="button" data-poster-action="demo">恢复示范模板 <kbd>DEMO 01</kbd></button>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
@@ -297,6 +298,7 @@
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">TYPE HIERARCHY</span>
+            <small class="poster-tool-desc">添加标题与信息文字</small>
             <button class="poster-action" type="button" data-poster-action="hero">+ 主标题</button>
             <button class="poster-action" type="button" data-poster-action="subtitle">+ 副标题</button>
             <button class="poster-action" type="button" data-poster-action="caption">+ 小字说明</button>
@@ -306,6 +308,7 @@
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">STYLE PRESETS</span>
+            <small class="poster-tool-desc">改变整体视觉质感</small>
             <div class="poster-presets">
               <button type="button" data-poster-preset="red">CCTV<br /><b>RED</b></button>
               <button type="button" data-poster-preset="blue">CCTV<br /><b>BLUE</b></button>
@@ -317,6 +320,7 @@
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">BACKGROUND / PAPER</span>
+            <small class="poster-tool-desc">改变海报底层与纸张</small>
             <div class="poster-background-presets">
               <button type="button" data-poster-background="solid"><b>SOLID</b><small>clean base</small></button>
               <button type="button" data-poster-background="grid"><b>INDEX GRID</b><small>technical</small></button>
@@ -332,6 +336,7 @@
 
           <section class="poster-tool-group poster-remix-group">
             <span class="poster-tool-label">LAYOUT REMIX</span>
+            <small class="poster-tool-desc">重新组织版式与视觉层级</small>
             <label class="poster-remix-strength" for="posterRemixStrength">
               <span>REMIX Strength</span>
               <select id="posterRemixStrength" aria-label="随机排版强度">
@@ -355,10 +360,12 @@
               <span>随机排版</span><b>REMIX ↻</b>
             </button>
             <small>4 种视觉锚点 · 70/30 混乱预算</small>
+            <div class="poster-remix-status" id="posterRemixStatus" aria-live="polite"></div>
           </section>
 
           <section class="poster-tool-group poster-export-group">
             <span class="poster-tool-label">OUTPUT</span>
+            <small class="poster-tool-desc">历史记录与高清导出</small>
             <div class="poster-history-actions" role="group" aria-label="编辑历史">
               <button type="button" data-poster-action="undo" title="撤销 Ctrl+Z">↶ 撤销</button>
               <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
@@ -393,6 +400,10 @@
             <p class="eyebrow">03 / INSPECTOR</p>
             <span class="poster-selected-label" id="posterInspectorSelection">SELECTED · POSTER</span>
             <h2 id="posterInspectorTitle">海报全局</h2>
+            <button class="poster-hold-before" id="posterHoldBeforeButton" type="button" aria-label="按住查看原图" style="display:none;">
+              <span>按住查看原图</span>
+              <small>HOLD FOR BEFORE</small>
+            </button>
           </div>
           <div id="posterInspectorContent"></div>
         </aside>
