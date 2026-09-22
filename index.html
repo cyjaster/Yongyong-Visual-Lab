@@ -2,19 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-446JS4JFY7"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-446JS4JFY7');
-</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f3f0ea" />
     <title>Yongyong Visual Lab — Filter Recipe Studio</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="poster.css?v=20260921-5" />
   </head>
   <body>
     <div class="app-shell">
@@ -26,6 +18,11 @@
             <small>Filter Recipe Studio · Demo 01</small>
           </span>
         </a>
+
+        <nav class="mode-switcher" aria-label="工作模式">
+          <button class="mode-tab is-active" type="button" data-mode="filter" aria-pressed="true"><span>01</span> Filter Lab</button>
+          <button class="mode-tab" type="button" data-mode="poster" aria-pressed="false"><span>02</span> Collage Poster</button>
+        </nav>
 
         <div class="top-actions">
           <button class="text-button" id="importRecipeButton" type="button">导入配方</button>
@@ -280,13 +277,137 @@
           <p class="privacy-note">LOCAL ONLY<br />图片不会离开这台电脑。</p>
         </aside>
       </main>
+
+      <main class="poster-workspace" id="posterWorkspace" hidden aria-label="Collage Poster 编辑器">
+        <aside class="poster-tools" aria-label="拼贴海报工具栏">
+          <div class="poster-panel-heading">
+            <p class="eyebrow">02 / COLLAGE POSTER</p>
+            <h1>索引拼贴</h1>
+            <p>框选细节、拉出局部，再把信息排成一张海报。</p>
+          </div>
+
+          <section class="poster-tool-group">
+            <span class="poster-tool-label">IMAGE / FRAMES</span>
+            <label class="poster-action poster-action-primary" for="posterImageInput">上传主图 <small>JPG / PNG / WEBP</small></label>
+            <button class="poster-action" type="button" data-poster-action="demo">恢复示范模板 <kbd>DEMO 01</kbd></button>
+            <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
+            <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
+            <button class="poster-action" type="button" data-poster-action="connector">自动连接线</button>
+          </section>
+
+          <section class="poster-tool-group">
+            <span class="poster-tool-label">TYPE HIERARCHY</span>
+            <button class="poster-action" type="button" data-poster-action="hero">+ 主标题</button>
+            <button class="poster-action" type="button" data-poster-action="subtitle">+ 副标题</button>
+            <button class="poster-action" type="button" data-poster-action="caption">+ 小字说明</button>
+            <button class="poster-action" type="button" data-poster-action="micro">+ 微型信息</button>
+            <button class="poster-action" type="button" data-poster-action="repeat">+ 重复文字</button>
+          </section>
+
+          <section class="poster-tool-group">
+            <span class="poster-tool-label">STYLE PRESETS</span>
+            <div class="poster-presets">
+              <button type="button" data-poster-preset="red">CCTV<br /><b>RED</b></button>
+              <button type="button" data-poster-preset="blue">CCTV<br /><b>BLUE</b></button>
+              <button type="button" data-poster-preset="editorial">HALFTONE<br /><b>EDITORIAL</b></button>
+              <button type="button" data-poster-preset="y2k">SOFT<br /><b>Y2K</b></button>
+              <button class="poster-preset-xerox" type="button" data-poster-preset="xerox">XEROX<br /><b>/ PUNK</b></button>
+            </div>
+          </section>
+
+          <section class="poster-tool-group">
+            <span class="poster-tool-label">BACKGROUND / PAPER</span>
+            <div class="poster-background-presets">
+              <button type="button" data-poster-background="solid"><b>SOLID</b><small>clean base</small></button>
+              <button type="button" data-poster-background="grid"><b>INDEX GRID</b><small>technical</small></button>
+              <button type="button" data-poster-background="chrome"><b>CHROME</b><small>gradient</small></button>
+              <button type="button" data-poster-background="scan"><b>SCAN PAPER</b><small>rough copy</small></button>
+              <button type="button" data-poster-background="dots"><b>DOT MATRIX</b><small>printed</small></button>
+              <button type="button" data-poster-background="soft-y2k"><b>SOFT Y2K</b><small>blue / pink</small></button>
+              <button type="button" data-poster-background="blueprint"><b>BLUE PRINT</b><small>data grid</small></button>
+            </div>
+            <label class="poster-action poster-background-upload" for="posterBackgroundImageInput">上传背景图 <small>LOCAL IMAGE</small></label>
+            <button class="poster-action" id="posterBackgroundClear" type="button">移除背景图 <small>KEEP PRESET</small></button>
+          </section>
+
+          <section class="poster-tool-group poster-remix-group">
+            <span class="poster-tool-label">LAYOUT REMIX</span>
+            <label class="poster-remix-strength" for="posterRemixStrength">
+              <span>REMIX Strength</span>
+              <select id="posterRemixStrength" aria-label="随机排版强度">
+                <option value="light">Light</option>
+                <option value="medium" selected>Medium</option>
+                <option value="wild">Wild</option>
+              </select>
+            </label>
+            <label class="poster-remix-strength" for="posterCompositionMode">
+              <span>Composition</span>
+              <select id="posterCompositionMode" aria-label="构图模式">
+                <option value="balanced" selected>Balanced</option>
+                <option value="experimental">Experimental</option>
+              </select>
+            </label>
+            <label class="poster-remix-copy" for="posterRemixCopy">
+              <input id="posterRemixCopy" type="checkbox" checked />
+              <span><b>Shuffle Copy</b><small>标题与信息文案一起变化</small></span>
+            </label>
+            <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix">
+              <span>随机排版</span><b>REMIX ↻</b>
+            </button>
+            <small>4 种视觉锚点 · 70/30 混乱预算</small>
+          </section>
+
+          <section class="poster-tool-group poster-export-group">
+            <span class="poster-tool-label">OUTPUT</span>
+            <div class="poster-history-actions" role="group" aria-label="编辑历史">
+              <button type="button" data-poster-action="undo" title="撤销 Ctrl+Z">↶ 撤销</button>
+              <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
+              <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
+            </div>
+            <button class="poster-action poster-action-primary" id="posterExportButton" type="button">导出海报 PNG ↘</button>
+            <small>所有处理均在浏览器本地完成</small>
+          </section>
+        </aside>
+
+        <section class="poster-stage" aria-label="海报编辑画布">
+          <div class="poster-stage-topline"><span id="posterStatus">上传主图后开始索引</span><span>900 × 1200 / PNG</span></div>
+          <div class="poster-viewport" id="posterViewport">
+            <div class="poster-canvas-wrap" id="posterCanvasWrap">
+              <canvas id="posterCanvas" width="900" height="1200" tabindex="0" aria-label="可编辑的拼贴海报画布"></canvas>
+              <div class="poster-empty-state" id="posterEmptyState"><b>IMAGE INDEX / 00</b><span>上传一张照片，开始建立局部索引。</span></div>
+            </div>
+          </div>
+          <div class="poster-stage-footer">
+            <p class="poster-stage-note">拖动元素调整位置；按住 Space 拖动画布；Ctrl / Cmd + 滚轮缩放。</p>
+            <div class="poster-zoom-controls" role="group" aria-label="画布缩放">
+              <button type="button" data-zoom-action="out" aria-label="缩小">−</button>
+              <button class="poster-zoom-value" type="button" data-zoom-action="actual" id="posterZoomValue" aria-label="恢复百分之百">100%</button>
+              <button type="button" data-zoom-action="in" aria-label="放大">+</button>
+              <button class="poster-zoom-fit" type="button" data-zoom-action="fit">FIT</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="poster-inspector" aria-label="拼贴海报属性面板">
+          <div class="poster-inspector-heading">
+            <p class="eyebrow">03 / INSPECTOR</p>
+            <span class="poster-selected-label" id="posterInspectorSelection">SELECTED · POSTER</span>
+            <h2 id="posterInspectorTitle">海报全局</h2>
+          </div>
+          <div id="posterInspectorContent"></div>
+        </aside>
+      </main>
     </div>
 
     <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <input id="backgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <input id="recipeInput" type="file" accept="application/json,.json" hidden />
+    <input id="posterImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input id="posterBackgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
+    <script src="mode-switcher.js?v=20260921-2"></script>
+  <script src="poster.js?v=20260922-10"></script>
   </body>
 </html>

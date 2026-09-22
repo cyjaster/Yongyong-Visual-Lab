@@ -11,6 +11,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { min-width: 320px; background: var(--paper); }
 body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--paper); }
 button, input, select { font: inherit; }
@@ -27,6 +28,12 @@ button { color: inherit; }
 .brand strong { font-size: 13px; letter-spacing: -.02em; }
 .brand small { margin-top: 1px; color: var(--muted); font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
 .top-actions { display: flex; align-items: center; gap: 6px; }
+.mode-switcher { margin-left: auto; margin-right: 18px; display: flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.mode-tab { padding: 7px 11px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 700; letter-spacing: .01em; cursor: pointer; transition: color 160ms ease, background 160ms ease; }
+.mode-tab span { margin-right: 5px; color: inherit; font: 700 8px ui-monospace, Consolas, monospace; }
+.mode-tab:hover { color: var(--ink); }
+.mode-tab.is-active { color: var(--white); background: var(--ink); }
+.app-shell.poster-active .top-actions { display: none; }
 .top-actions button, .upload-button, .download-link, .round-button { cursor: pointer; }
 .text-button, .primary-button { min-height: 38px; padding: 0 14px; border: 0; background: transparent; font-size: 12px; }
 .text-button { color: var(--muted); }
@@ -218,6 +225,9 @@ h1 { margin: 0; font-size: clamp(24px, 2.5vw, 36px); line-height: 1; letter-spac
   .topbar { padding: 12px 14px; }
   .brand small, .text-button { display: none; }
   .primary-button { padding: 0 11px; font-size: 11px; }
+  .mode-switcher { margin-right: 0; }
+  .mode-tab { padding: 7px 8px; font-size: 9px; }
+  .mode-tab span { display: none; }
   .stage-column { padding: 22px 14px 18px; }
   .stage-caption, .upload-button small { display: none; }
   .upload-button { padding: 9px 11px; }
