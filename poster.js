@@ -135,6 +135,12 @@
     document.querySelectorAll('[data-poster-mode]').forEach((b) => {
       b.classList.toggle('is-active', b.dataset.posterMode === nextMode);
     });
+    if (nextMode === 'multi' && (!state.secondaries || state.secondaries.length === 0)) {
+      const secAsset = state.assets?.find((a) => a.id !== state.mainImageId) || (imageAssets.has('asset-demo-sec') ? { id: 'asset-demo-sec', name: 'demo-karina.jpg' } : null);
+      if (secAsset && imageAssets.has(secAsset.id)) {
+        addSecondaryImage(secAsset.id);
+      }
+    }
     renderImageTray();
     renderInspector();
     render();
@@ -222,7 +228,8 @@
       ...extra,
     };
     state.secondaries.push(s);
-    addLayer('secondary', s.id);
+    const mainIdx = layerIndex('main', 'main-image');
+    addLayer('secondary', s.id, mainIdx >= 0 ? mainIdx : state.layers.length - 1);
     setSelected('secondary', s);
     renderImageTray();
     render();
@@ -674,6 +681,16 @@
   }
   function ensureMainLayer() { if (state.image && !state.layers.some((v) => v.type === 'main')) state.layers.unshift({ type: 'main', id: 'main-image' }); }
   function render(showSelection = true) { ctx.clearRect(0, 0, W, H); drawPosterBackground(); if (!state.image) { ctx.strokeStyle = 'rgba(20,20,20,.08)'; for (let n = 25; n < W; n += 50) { ctx.beginPath(); ctx.moveTo(n, 0); ctx.lineTo(n, H); ctx.stroke(); } for (let n = 25; n < H; n += 50) { ctx.beginPath(); ctx.moveTo(0, n); ctx.lineTo(W, n); ctx.stroke(); } } ensureMainLayer(); state.layers.forEach(drawLayer); if (state.border) { ctx.strokeStyle = state.borderColor; ctx.lineWidth = state.borderWidth; ctx.strokeRect(18, 18, W - 36, H - 36); } if (showSelection) drawSelection(); }
+  let renderFrameRequested = false;
+  function scheduleRender(showSelection = true) {
+    if (!renderFrameRequested) {
+      renderFrameRequested = true;
+      requestAnimationFrame(() => {
+        renderFrameRequested = false;
+        render(showSelection);
+      });
+    }
+  }
 
   function makeFrame(index, extra = {}) { return { id: makeId(), sourceId: 'main', x: 230 + index * 37, y: 350 + index * 43, w: 175, h: 215, rotation: index % 2 ? -3 : 2, color: '#bd2e35', lineWidth: 4, strokeOpacity: 100, strokeStyle: 'solid', frameStyle: 'full', label: `ITEM / ${String(index).padStart(2, '0')}`, labelPrefix: 'ITEM', labelNumber: index, autoNumber: true, labelSize: 14, showLabel: true, tagStyle: 'solid', tagBackground: '#bd2e35', tagTextColor: '#fff', ...extra }; }
   function addFrame(target = null) {
@@ -819,7 +836,7 @@
   }
   function eventPoint(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
   canvas.addEventListener('pointerdown', (e) => { const p = eventPoint(e), hit = hitAt(p.x, p.y); if (!hit) { setSelected(null, null); render(); return; } setSelected(hit.type, hit.item); drag = { ...hit, startX: p.x, startY: p.y, x: hit.item.x, y: hit.item.y, w: hit.item.w, h: hit.item.h }; canvas.setPointerCapture(e.pointerId); render(); });
-  canvas.addEventListener('pointermove', (e) => { if (!drag || drag.type === 'connector') return; const p = eventPoint(e), dx = p.x - drag.startX, dy = p.y - drag.startY, item = drag.item; if (drag.handle === 'resize') { item.w = Math.max(32, drag.w + dx); item.h = Math.max(32, drag.h + dy); } else { item.x = drag.x + dx; item.y = drag.y + dy; } render(); });
+  canvas.addEventListener('pointermove', (e) => { if (!drag || drag.type === 'connector') return; const p = eventPoint(e), dx = p.x - drag.startX, dy = p.y - drag.startY, item = drag.item; if (drag.handle === 'resize') { item.w = Math.max(32, drag.w + dx); item.h = Math.max(32, drag.h + dy); } else { item.x = drag.x + dx; item.y = drag.y + dy; } scheduleRender(); });
   canvas.addEventListener('pointerup', () => { if (drag && drag.type !== 'connector') { commit(); markManuallyEdited(); } drag = null; renderInspector(); });
   canvas.addEventListener('pointercancel', () => { drag = null; });
 
@@ -1289,6 +1306,27 @@
       moveOutOfQuietZone(detail, quietZone);
     });
 
+    if (state.secondaries && state.secondaries.length) {
+      const secondarySlots = [
+        { x: 45, y: 680, rot: -4 },
+        { x: 590, y: 190, rot: 3 },
+        { x: 570, y: 740, rot: -2 },
+        { x: 55, y: 180, rot: 4 },
+      ];
+      state.secondaries.forEach((sec, idx) => {
+        const slot = secondarySlots[idx % secondarySlots.length];
+        const chaos = budgetScale('medium');
+        sec.x = remixClamp(slot.x + remixBetween(-30, 30) * chaos, 10, W - sec.w - 10);
+        sec.y = remixClamp(slot.y + remixBetween(-35, 35) * chaos, 10, H - sec.h - 10);
+        sec.rotation = remixClamp(slot.rot + remixBetween(-4, 4) * chaos, -12, 12);
+        if (strength !== 'light') {
+          sec.color = palette.border;
+          sec.backingColor = palette.border;
+        }
+        moveOutOfQuietZone(sec, quietZone);
+      });
+    }
+
     // Keep strong treatments scarce: one loud crop in Balanced, two in Experimental.
     const strongCropFilters = new Set(['highbw','halftone','rough','outline','posterize','invert']);
     const mainIsLoud = (state.filters.halftone || 0) > 55 || (state.filters.outline || 0) > 45 || (state.filters.posterize || 0) > 55;
@@ -1458,6 +1496,7 @@
     const heroLayers = state.texts.filter((t) => heroIds.has(t.id)).map((t) => ({type:'text',id:t.id}));
     const anchorDetailLayers = anchorDetail ? detailLayers.filter((layer) => layer.id === anchorDetail.id) : [];
     const secondaryDetailLayers = detailLayers.filter((layer) => !anchorDetailLayers.some((anchor) => anchor.id === layer.id));
+    const primaryLayers = anchorMode.id === 'detail' ? [...heroLayers, ...anchorDetailLayers] : [...anchorDetailLayers, ...heroLayers];
     const secondaryCardLayers = (state.secondaries || []).map((s) => ({ type:'secondary', id: s.id }));
     state.layers = [...tertiaryLayers, ...companionFragmentLayers, main, ...secondaryCardLayers, ...fragmentLayers, ...connectorLayers, ...frameLayers, ...secondaryDetailLayers, ...secondaryTextLayers, ...primaryLayers];
     const anchorZhMap = {
@@ -1562,7 +1601,7 @@
       }
     }
     root[p]=c.type==='checkbox'?c.checked:(c.type==='range'||c.type==='number'?Number(c.value):c.value);
-    render();
+    scheduleRender();
     const out=c.closest('.poster-field')?.querySelector('output');
     if(out)out.textContent=c.value;
     commit(false);
@@ -1629,7 +1668,49 @@
   multiInput?.addEventListener('change', () => {
     const files = Array.from(multiInput.files || []);
     if (!files.length) return;
+    toast(`正在读取 ${files.length} 张图片素材...`);
     let loadedCount = 0;
+    const newlyLoaded = [];
+    const stepDone = () => {
+      loadedCount++;
+      if (loadedCount === files.length) {
+        if (!newlyLoaded.length) {
+          toast('未能载入图片，请检查图片格式。');
+          multiInput.value = '';
+          return;
+        }
+        const isDemoOrEmpty = !state.image || state.mainImageId === 'asset-demo-main' || (state.imageName && state.imageName.startsWith('demo-'));
+        let startIndex = 0;
+        if (isDemoOrEmpty && newlyLoaded.length > 0) {
+          const first = newlyLoaded[0];
+          state.image = first.image;
+          state.imageName = first.name;
+          state.mainImageId = first.id;
+          ensureMainLayer();
+          emptyState.classList.add('is-hidden');
+          status.textContent = `MAIN IMAGE / ${first.name}`;
+          startIndex = 1;
+        }
+        for (let i = startIndex; i < newlyLoaded.length; i++) {
+          addSecondaryImage(newlyLoaded[i].id);
+        }
+        if (state.mode !== 'multi') {
+          state.mode = 'multi';
+          $('#posterWorkspace')?.classList.add('is-multi-mode');
+          document.querySelectorAll('[data-poster-mode]').forEach((b) => {
+            b.classList.toggle('is-active', b.dataset.posterMode === 'multi');
+          });
+        }
+        renderImageTray();
+        renderInspector();
+        render();
+        commit();
+        markManuallyEdited();
+        toast(`已导入 ${newlyLoaded.length} 张图片并加入多图拼贴。`);
+        multiInput.value = '';
+      }
+    };
+
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -1639,54 +1720,49 @@
           imageAssets.set(id, { id, name: file.name, image, src: reader.result });
           if (!state.assets) state.assets = [];
           state.assets.push({ id, name: file.name });
-          if (!state.image) {
-            state.image = image;
-            state.imageName = file.name;
-            state.mainImageId = id;
-            ensureMainLayer();
-            emptyState.classList.add('is-hidden');
-            status.textContent = `MAIN IMAGE / ${file.name}`;
-          }
-          loadedCount++;
-          if (loadedCount === files.length) {
-            renderImageTray();
-            render();
-            commit();
-            markManuallyEdited();
-            toast(`已导入 ${files.length} 张图片素材。`);
-            multiInput.value = '';
-          }
+          newlyLoaded.push({ id, name: file.name, image });
+          stepDone();
+        };
+        image.onerror = () => {
+          console.error('Image decode failed:', file.name);
+          stepDone();
         };
         image.src = reader.result;
+      };
+      reader.onerror = () => {
+        console.error('File read failed:', file.name);
+        stepDone();
       };
       reader.readAsDataURL(file);
     });
   });
-  input.addEventListener('change',()=>{
-    const file=input.files[0];
-    if(!file)return;
-    const reader=new FileReader();
-    reader.onload=()=>{
-      const image=new Image();
-      image.onload=()=>{
-        const id=makeId();
-        imageAssets.set(id,{id,name:file.name,image,src:reader.result});
-        if(!state.assets)state.assets=[];
-        state.assets.unshift({id,name:file.name});
-        state.image=image;
-        state.imageName=file.name;
-        state.mainImageId=id;
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const id = makeId();
+        imageAssets.set(id, { id, name: file.name, image, src: reader.result });
+        if (!state.assets) state.assets = [];
+        state.assets.unshift({ id, name: file.name });
+        state.image = image;
+        state.imageName = file.name;
+        state.mainImageId = id;
         ensureMainLayer();
         emptyState.classList.add('is-hidden');
-        status.textContent=`MAIN IMAGE / ${file.name}`;
+        status.textContent = `MAIN IMAGE / ${file.name}`;
         renderImageTray();
         render();
         commit();
         markManuallyEdited();
         toast('主图已载入；现有拼贴元素已保留。');
       };
-      image.src=reader.result;
+      image.onerror = () => toast('图片未能载入。');
+      image.src = reader.result;
     };
+    reader.onerror = () => toast('读取文件失败。');
     reader.readAsDataURL(file);
   });
   backgroundInput?.addEventListener('change',()=>{const file=backgroundInput.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const id=makeId();backgroundAssets.set(id,image);state.backgroundImageId=id;state.backgroundImageOpacity=48;renderInspector();render();commit();markManuallyEdited();toast(`背景图已载入 · ${file.name}`);backgroundInput.value='';};image.onerror=()=>toast('背景图未能载入。');image.src=reader.result;};reader.readAsDataURL(file);});
