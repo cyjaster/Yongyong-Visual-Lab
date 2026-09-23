@@ -283,7 +283,7 @@
           <div class="poster-panel-heading">
             <p class="eyebrow">02 / COLLAGE POSTER</p>
             <h1>索引拼贴</h1>
-            <p>框选细节、拉出局部，再把信息排成一张海报。</p>
+            <p id="posterPanelDesc">从一张图里拆细节，生成索引海报。</p>
             <div class="poster-mode-switcher" role="radiogroup" aria-label="拼贴模式">
               <button type="button" class="is-active" data-poster-mode="single">单图索引 <small>SINGLE</small></button>
               <button type="button" data-poster-mode="multi">多图拼贴 <small>MULTI</small></button>
@@ -295,7 +295,7 @@
               <span class="poster-tool-label">IMAGE TRAY</span>
               <span class="poster-tray-count" id="posterTrayCount">0 IMAGES</span>
             </div>
-            <small class="poster-tool-desc">管理主图与拼贴辅图素材</small>
+            <small class="poster-tool-desc">主图定位核心，辅图与证据图构建叙事</small>
             <label class="poster-action poster-action-primary" for="posterMultiImageInput">+ 上传图片素材 <small>BATCH / MULTI</small></label>
             <div class="poster-image-tray" id="posterImageTray"></div>
           </section>
@@ -306,7 +306,7 @@
             <label class="poster-action poster-action-primary poster-single-upload" for="posterImageInput">上传主图 <small>JPG / PNG / WEBP</small></label>
             <button class="poster-action" type="button" data-poster-action="demo">恢复示范模板 <kbd>DEMO 01</kbd></button>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
-            <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
+            <button class="poster-action" type="button" data-poster-action="detail"><span id="posterActionDetailText">生成局部放大</span> <kbd>D</kbd></button>
             <button class="poster-action" type="button" data-poster-action="connector">自动连接线</button>
           </section>
 
@@ -434,6 +434,6 @@
 
     <script src="app.js"></script>
     <script src="mode-switcher.js?v=20260921-2"></script>
-  <script src="poster.js?v=20260923-1"></script>
+  <script src="poster.js?v=20260923-2"></script>
   </body>
 </html>
