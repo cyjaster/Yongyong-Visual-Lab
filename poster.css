@@ -14,10 +14,11 @@
 #posterImageTrayGroup { display: none; }
 .poster-workspace.is-multi-mode #posterImageTrayGroup { display: block; }
 .poster-workspace.is-multi-mode .poster-single-upload { display: none; }
+.poster-workspace.is-multi-mode .poster-demo-button { display: none; }
 .poster-tray-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2px; }
 .poster-tray-count { font: 700 8px ui-monospace, Consolas, monospace; color: var(--muted); letter-spacing: .08em; }
 .poster-image-tray { display: grid; gap: 6px; margin-top: 8px; max-height: 260px; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; }
-.poster-tray-item { display: flex; gap: 8px; padding: 7px; border: 1px solid var(--line); border-radius: 4px; background: #e8e5de; align-items: flex-start; transition: border-color 120ms ease; }
+.poster-tray-item { display: flex; gap: 8px; padding: 7px; border: 1px solid var(--line); border-radius: 4px; background: #e8e5de; align-items: flex-start; cursor: pointer; transition: border-color 120ms ease; }
 .poster-tray-item:hover { border-color: var(--ink); }
 .poster-tray-item.is-main { border-color: #171717; background: #dedad0; }
 .poster-tray-thumb { position: relative; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 2px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; }
@@ -159,6 +160,7 @@
 .poster-toggle { display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-size: 10px; }
 .poster-toggle-title { display: flex; align-items: baseline; gap: 5px; }
 .poster-toggle input { accent-color: var(--accent); }
+.poster-readonly-badge { display: inline-flex; align-items: center; padding: 4px 8px; border: 1px solid var(--line); border-radius: 3px; font: 700 8.5px ui-monospace, Consolas, monospace; background: #e8e5de; color: var(--ink); margin-top: 4px; letter-spacing: .03em; }
 .poster-help { margin: 12px 0 6px; color: var(--muted); font-size: 8.5px; line-height: 1.5; }
 .poster-delete { width: 100%; margin-top: 14px; padding: 8px; border: 1px solid #b6272d; color: #b6272d; background: transparent; font-size: 10px; cursor: pointer; }
 .poster-delete:hover { color: #fff; background: #b6272d; }

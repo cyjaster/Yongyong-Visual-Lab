@@ -216,6 +216,48 @@
     toast(`已切换至 ${nextMode === 'multi' ? '多图拼贴模式 MULTI' : '单图索引模式 SINGLE'}`);
   }
 
+  function syncFrameRelativeToParent(frame) {
+    if (!frame) return;
+    const parentId = frame.sourceId || 'main';
+    frame.parentObjectId = parentId;
+    const parent = parentId === 'main' ? state.main : state.secondaries?.find((s) => s.id === parentId);
+    if (!parent || !parent.w || !parent.h) return;
+    frame.relX = (frame.x - parent.x) / parent.w;
+    frame.relY = (frame.y - parent.y) / parent.h;
+    frame.relW = frame.w / parent.w;
+    frame.relH = frame.h / parent.h;
+    if (parent.rotation !== undefined) {
+      frame.relRotation = (frame.rotation || 0) - (parent.rotation || 0);
+    }
+  }
+
+  function syncFrameAbsoluteFromParent(frame) {
+    if (!frame) return;
+    const parentId = frame.sourceId || 'main';
+    frame.parentObjectId = parentId;
+    const parent = parentId === 'main' ? state.main : state.secondaries?.find((s) => s.id === parentId);
+    if (!parent || !parent.w || !parent.h) return;
+    if (frame.relX === undefined || frame.relY === undefined || frame.relW === undefined || frame.relH === undefined) {
+      syncFrameRelativeToParent(frame);
+      return;
+    }
+    frame.x = parent.x + frame.relX * parent.w;
+    frame.y = parent.y + frame.relY * parent.h;
+    frame.w = Math.max(20, frame.relW * parent.w);
+    frame.h = Math.max(20, frame.relH * parent.h);
+    if (parent.rotation !== undefined) {
+      frame.rotation = (parent.rotation || 0) + (frame.relRotation || 0);
+    }
+  }
+
+  function syncAllChildFramesOf(parentId) {
+    (state.frames || []).forEach((f) => {
+      if ((f.sourceId || 'main') === parentId) {
+        syncFrameAbsoluteFromParent(f);
+      }
+    });
+  }
+
   function renderImageTray() {
     if (!imageTray) return;
     if (trayCount) trayCount.textContent = `${state.assets?.length || 0} IMAGES`;
@@ -227,7 +269,6 @@
       const asset = imageAssets.get(assetMeta.id);
       const src = asset?.src || (asset?.image ? asset.image.src : '');
       const isMain = state.mainImageId === assetMeta.id || (!state.mainImageId && state.imageName === assetMeta.name);
-      const cardCount = isMain ? (state.main ? 1 : 0) : (state.secondaries || []).filter((s) => s.imageId === assetMeta.id).length;
       
       let evidenceCount = 0;
       if (isMain) {
@@ -244,22 +285,20 @@
       }
 
       return `
-        <div class="poster-tray-item ${isMain ? 'is-main' : ''}" data-asset-id="${assetMeta.id}">
+        <div class="poster-tray-item ${isMain ? 'is-main' : ''}" data-asset-id="${assetMeta.id}" title="点击在画布中选中">
           <div class="poster-tray-thumb">
             ${src ? `<img src="${src}" alt="${assetMeta.name}">` : ''}
             <span class="poster-tray-badge ${isMain ? 'is-primary' : 'is-secondary'}">
-              ${isMain ? '主图 PRIMARY' : '辅图 SECONDARY'}
+              ${isMain ? '★ PRIMARY' : 'SECONDARY'}
             </span>
           </div>
           <div class="poster-tray-info">
             <span class="poster-tray-name" title="${assetMeta.name}">${assetMeta.name}</span>
             <span class="poster-tray-stats">
-              ${isMain ? `主图画框 · 证据图 ${evidenceCount}` : `卡片 ${cardCount} · 证据图 ${evidenceCount}`}
+              ${isMain ? `主图 · 特写 ${evidenceCount}` : `辅图 · 特写 ${evidenceCount}`}
             </span>
             <div class="poster-tray-actions">
               ${!isMain ? `<button type="button" class="poster-tray-btn" data-tray-action="set-main" title="设为主视觉核心">设为主图</button>` : ''}
-              ${!isMain ? `<button type="button" class="poster-tray-btn" data-tray-action="add-card" title="在画布上添加独立辅图卡片">+ 添加卡片 ${cardCount > 0 ? `(${cardCount})` : ''}</button>` : ''}
-              <button type="button" class="poster-tray-btn poster-tray-btn-evidence" data-tray-action="add-evidence" title="从该图抽取细节并生成证据特写">+ 证据图 ${evidenceCount > 0 ? `(${evidenceCount})` : ''}</button>
               ${!isMain ? `<button type="button" class="poster-tray-btn poster-tray-btn-del" data-tray-action="delete" title="删除素材">×</button>` : ''}
             </div>
           </div>
@@ -268,69 +307,66 @@
     }).join('');
   }
 
-  function addEvidenceCropForAsset(assetId) {
-    const asset = imageAssets.get(assetId);
-    if (!asset) return toast('未找到对应素材。');
-    const isMain = state.mainImageId === assetId;
-    let targetCard = isMain ? null : state.secondaries?.find((s) => s.imageId === assetId);
-    if (!isMain && !targetCard) {
-      addSecondaryImage(assetId);
-      targetCard = state.secondaries[state.secondaries.length - 1];
-    }
-    const count = state.frames.length + 1;
-    let frameExtra = {};
-    if (isMain) {
-      frameExtra = {
-        sourceId: 'main',
-        labelPrefix: 'EVID',
-        x: Math.round(state.main.x + state.main.w * 0.28),
-        y: Math.round(state.main.y + state.main.h * 0.22),
-        w: Math.round(Math.min(185, state.main.w * 0.28)),
-        h: Math.round(Math.min(210, state.main.h * 0.28)),
-      };
-    } else {
-      frameExtra = {
-        sourceId: targetCard.id,
-        labelPrefix: 'EVID',
-        x: Math.round(targetCard.x + targetCard.w * 0.18),
-        y: Math.round(targetCard.y + targetCard.h * 0.18),
-        w: Math.round(Math.min(170, targetCard.w * 0.62)),
-        h: Math.round(Math.min(195, targetCard.h * 0.62)),
-        rotation: targetCard.rotation || 0,
-      };
-    }
-    const f = makeFrame(count, frameExtra);
-    state.frames.push(f);
-    addLayer('frame', f.id);
-    const cropX = isMain ? (state.main.x > 300 ? 50 : 620) : (targetCard.x > 450 ? targetCard.x - 260 : targetCard.x + targetCard.w + 30);
-    const cropY = isMain ? 700 : Math.max(80, Math.min(850, targetCard.y + 40));
-    const d = makeDetail(f, state.details.length, {
-      x: remixClamp(cropX, 20, W - 260),
-      y: remixClamp(cropY, 50, H - 280),
-      w: 220,
-      h: 245,
-    });
-    state.details.push(d);
-    addLayer('connector', d.id);
-    addLayer('detail', d.id);
-    setSelected('detail', d);
-    renderImageTray();
-    renderInspector();
-    render();
-    commit();
-    markManuallyEdited();
-    toast(`已从「${asset.name}」生成证据图。`);
-  }
-
   function setMainImage(assetId) {
     const asset = imageAssets.get(assetId);
     if (!asset) return;
+    const oldMainId = state.mainImageId;
+    if (oldMainId === assetId) return;
+
+    const existingSecIdx = (state.secondaries || []).findIndex((s) => s.imageId === assetId);
+    let secIdBeingPromoted = null;
+    if (existingSecIdx >= 0) {
+      secIdBeingPromoted = state.secondaries[existingSecIdx].id;
+      state.secondaries.splice(existingSecIdx, 1);
+      state.layers = state.layers.filter((l) => !(l.type === 'secondary' && l.id === secIdBeingPromoted));
+    }
+
+    if (oldMainId && oldMainId !== assetId && imageAssets.has(oldMainId)) {
+      const s = {
+        id: makeId(),
+        imageId: oldMainId,
+        x: 50,
+        y: 720,
+        w: 260,
+        h: 320,
+        rotation: -2,
+        opacity: 100,
+        color: '#ffffff',
+        lineWidth: 3,
+        backingColor: '#ffffff',
+        filters: cleanFilters(),
+      };
+      state.secondaries.push(s);
+      addLayer('secondary', s.id);
+      state.frames.forEach((f) => {
+        if (!f.sourceId || f.sourceId === 'main') {
+          f.sourceId = s.id;
+          f.parentObjectId = s.id;
+          syncFrameRelativeToParent(f);
+        }
+      });
+    }
+
+    if (secIdBeingPromoted) {
+      state.frames.forEach((f) => {
+        if (f.sourceId === secIdBeingPromoted) {
+          f.sourceId = 'main';
+          f.parentObjectId = 'main';
+          syncFrameRelativeToParent(f);
+        }
+      });
+    }
+
     state.image = asset.image;
     state.imageName = asset.name;
     state.mainImageId = asset.id;
     ensureMainLayer();
     emptyState.classList.add('is-hidden');
     status.textContent = `MAIN IMAGE / ${asset.name}`;
+
+    syncAllChildFramesOf('main');
+    (state.secondaries || []).forEach((s) => syncAllChildFramesOf(s.id));
+
     renderImageTray();
     render();
     commit();
@@ -389,9 +425,14 @@
     imageAssets.delete(assetId);
     const deadSecondaryIds = state.secondaries.filter((s) => s.imageId === assetId).map((s) => s.id);
     state.secondaries = state.secondaries.filter((s) => s.imageId !== assetId);
-    state.layers = state.layers.filter((l) => !(l.type === 'secondary' && deadSecondaryIds.includes(l.id)));
-    state.frames.forEach((f) => { if (deadSecondaryIds.includes(f.sourceId)) f.sourceId = 'main'; });
-    if (state.selected && deadSecondaryIds.includes(state.selected.id)) setSelected(null, null);
+    const deadFrameIds = new Set(state.frames.filter((f) => deadSecondaryIds.includes(f.sourceId)).map((f) => f.id));
+    const deadDetailIds = new Set(state.details.filter((d) => deadFrameIds.has(d.frameId)).map((d) => d.id));
+    state.frames = state.frames.filter((f) => !deadFrameIds.has(f.id));
+    state.details = state.details.filter((d) => !deadDetailIds.has(d.id));
+    state.layers = state.layers.filter((l) => !(l.type === 'secondary' && deadSecondaryIds.includes(l.id)) && !deadFrameIds.has(l.id) && !deadDetailIds.has(l.id));
+    if (state.selected && (deadSecondaryIds.includes(state.selected.id) || deadFrameIds.has(state.selected.id) || deadDetailIds.has(state.selected.id))) {
+      setSelected(null, null);
+    }
     renderImageTray();
     render();
     commit();
@@ -753,9 +794,80 @@
   }
   function connectorPoints(d) { const f = frameById(d.frameId); return f ? { start: { x: f.x + f.w / 2, y: f.y + f.h / 2 }, end: { x: d.x + d.w / 2, y: d.y + d.h / 2 } } : null; }
   function endpoint(p, style, width) { if (style === 'dot') { ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(3, width * 1.7), 0, Math.PI * 2); ctx.fill(); } if (style === 'cross') { const s = Math.max(5, width * 2.2); ctx.beginPath(); ctx.moveTo(p.x - s, p.y); ctx.lineTo(p.x + s, p.y); ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x, p.y + s); ctx.stroke(); } }
+  function segmentIntersectsRect(x1, y1, x2, y2, rect) {
+    const minRx = rect.x, maxRx = rect.x + rect.w, minRy = rect.y, maxRy = rect.y + rect.h;
+    if ((x1 >= minRx && x1 <= maxRx && y1 >= minRy && y1 <= maxRy) ||
+        (x2 >= minRx && x2 <= maxRx && y2 >= minRy && y2 <= maxRy)) return true;
+    const lineIntersects = (ax, ay, bx, by, cx, cy, dx, dy) => {
+      const denom = (dy - cy) * (bx - ax) - (dx - cx) * (by - ay);
+      if (denom === 0) return false;
+      const ua = ((dx - cx) * (ay - cy) - (dy - cy) * (ax - cx)) / denom;
+      const ub = ((bx - ax) * (ay - cy) - (by - ay) * (ax - cx)) / denom;
+      return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+    };
+    return lineIntersects(x1, y1, x2, y2, minRx, minRy, maxRx, minRy) ||
+           lineIntersects(x1, y1, x2, y2, maxRx, minRy, maxRx, maxRy) ||
+           lineIntersects(x1, y1, x2, y2, maxRx, maxRy, minRx, maxRy) ||
+           lineIntersects(x1, y1, x2, y2, minRx, maxRy, minRx, minRy);
+  }
+
+  function getElbowRoute(start, end, detail) {
+    const midX = start.x + (end.x - start.x) * 0.52;
+    const midY = start.y + (end.y - start.y) * 0.52;
+    const routeH = [
+      { x1: start.x, y1: start.y, x2: midX, y2: start.y },
+      { x1: midX, y1: start.y, x2: midX, y2: end.y },
+      { x1: midX, y1: end.y, x2: end.x, y2: end.y },
+    ];
+    const routeV = [
+      { x1: start.x, y1: start.y, x2: start.x, y2: midY },
+      { x1: start.x, y1: midY, x2: end.x, y2: midY },
+      { x1: end.x, y1: midY, x2: end.x, y2: end.y },
+    ];
+
+    const obstacles = [];
+    const f = frameById(detail?.frameId);
+    const parentId = f?.sourceId || 'main';
+
+    if (parentId !== 'main' && state.main) {
+      obstacles.push({ x: state.main.x + 10, y: state.main.y + 10, w: Math.max(10, state.main.w - 20), h: Math.max(10, state.main.h - 20) });
+    }
+    (state.secondaries || []).forEach((s) => {
+      if (s.id !== parentId) {
+        obstacles.push({ x: s.x + 8, y: s.y + 8, w: Math.max(10, s.w - 16), h: Math.max(10, s.h - 16) });
+      }
+    });
+    state.texts.filter((t) => t.kind === 'hero').forEach((h) => {
+      const b = textBounds(h);
+      obstacles.push({ x: b.x, y: b.y, w: b.w, h: b.h });
+    });
+    (state.details || []).forEach((other) => {
+      if (other.id !== detail?.id) {
+        obstacles.push({ x: other.x, y: other.y, w: other.w, h: other.h });
+      }
+    });
+
+    let countH = 0, countV = 0;
+    for (const seg of routeH) for (const obs of obstacles) if (segmentIntersectsRect(seg.x1, seg.y1, seg.x2, seg.y2, obs)) countH++;
+    for (const seg of routeV) for (const obs of obstacles) if (segmentIntersectsRect(seg.x1, seg.y1, seg.x2, seg.y2, obs)) countV++;
+
+    return countV < countH ? 'vertical' : 'horizontal';
+  }
+
   function drawConnector(d) {
-    const p = connectorPoints(d); if (!p) return; ctx.save(); ctx.globalAlpha = (d.lineOpacity ?? 100) / 100; ctx.strokeStyle = d.lineColor; ctx.fillStyle = d.lineColor; ctx.lineWidth = d.connectorWidth || 2; ctx.setLineDash(d.connectorDash ? [7, 6] : []); ctx.beginPath(); ctx.moveTo(p.start.x, p.start.y);
-    if (d.connectorType === 'elbow') { const bx = p.start.x + (p.end.x - p.start.x) * .55; ctx.lineTo(bx, p.start.y); ctx.lineTo(bx, p.end.y); }
+    const p = connectorPoints(d); if (!p) return; ctx.save(); ctx.globalAlpha = (d.lineOpacity ?? 100) / 100; ctx.strokeStyle = d.lineColor || d.color || '#bd2e35'; ctx.fillStyle = d.lineColor || d.color || '#bd2e35'; ctx.lineWidth = d.connectorWidth || 2; ctx.setLineDash(d.connectorDash ? [7, 6] : []); ctx.beginPath(); ctx.moveTo(p.start.x, p.start.y);
+    if (d.connectorType === 'elbow') {
+      const mode = getElbowRoute(p.start, p.end, d);
+      if (mode === 'vertical') {
+        const by = p.start.y + (p.end.y - p.start.y) * 0.52;
+        ctx.lineTo(p.start.x, by);
+        ctx.lineTo(p.end.x, by);
+      } else {
+        const bx = p.start.x + (p.end.x - p.start.x) * 0.52;
+        ctx.lineTo(bx, p.start.y);
+        ctx.lineTo(bx, p.end.y);
+      }
+    }
     ctx.lineTo(p.end.x, p.end.y); ctx.stroke(); endpoint(p.start, d.endpointStyle, ctx.lineWidth); endpoint(p.end, d.endpointStyle, ctx.lineWidth); ctx.restore();
   }
   function drawDetail(d) {
@@ -836,7 +948,43 @@
     }
   }
 
-  function makeFrame(index, extra = {}) { return { id: makeId(), sourceId: 'main', x: 230 + index * 37, y: 350 + index * 43, w: 175, h: 215, rotation: index % 2 ? -3 : 2, color: '#bd2e35', lineWidth: 4, strokeOpacity: 100, strokeStyle: 'solid', frameStyle: 'full', label: `ITEM / ${String(index).padStart(2, '0')}`, labelPrefix: 'ITEM', labelNumber: index, autoNumber: true, labelSize: 14, showLabel: true, tagStyle: 'solid', tagBackground: '#bd2e35', tagTextColor: '#fff', ...extra }; }
+  function makeFrame(index, extra = {}) {
+    const parentObjectId = extra.sourceId || 'main';
+    const f = {
+      id: makeId(),
+      sourceId: parentObjectId,
+      parentObjectId,
+      x: 230 + index * 37,
+      y: 350 + index * 43,
+      w: 175,
+      h: 215,
+      rotation: index % 2 ? -3 : 2,
+      color: '#bd2e35',
+      lineWidth: 4,
+      strokeOpacity: 100,
+      strokeStyle: 'solid',
+      frameStyle: 'full',
+      label: `ITEM / ${String(index).padStart(2, '0')}`,
+      labelPrefix: 'ITEM',
+      labelNumber: index,
+      autoNumber: true,
+      labelSize: 14,
+      showLabel: true,
+      tagStyle: 'solid',
+      tagBackground: '#bd2e35',
+      tagTextColor: '#fff',
+      relX: undefined,
+      relY: undefined,
+      relW: undefined,
+      relH: undefined,
+      relRotation: 0,
+      ...extra,
+    };
+    if (f.relX === undefined) {
+      syncFrameRelativeToParent(f);
+    }
+    return f;
+  }
   function addFrame(target = null) {
     if (!state.image && (!state.assets || !state.assets.length)) return toast('请先上传图片。');
     const selected = selectedObject();
@@ -845,21 +993,33 @@
     if (secTarget) {
       extra = {
         sourceId: secTarget.id,
+        parentObjectId: secTarget.id,
         x: Math.round(secTarget.x + secTarget.w * 0.15),
         y: Math.round(secTarget.y + secTarget.h * 0.15),
         w: Math.round(Math.min(180, secTarget.w * 0.7)),
         h: Math.round(Math.min(220, secTarget.h * 0.7)),
         rotation: secTarget.rotation || 0,
       };
+    } else {
+      extra = {
+        sourceId: 'main',
+        parentObjectId: 'main',
+        x: Math.round(state.main.x + state.main.w * 0.22 + (state.frames.length % 3) * 35),
+        y: Math.round(state.main.y + state.main.h * 0.22 + (state.frames.length % 3) * 40),
+        w: Math.round(Math.min(185, state.main.w * 0.3)),
+        h: Math.round(Math.min(215, state.main.h * 0.3)),
+        rotation: state.main.rotation || 0,
+      };
     }
     const f = makeFrame(state.frames.length + 1, extra);
+    syncFrameRelativeToParent(f);
     state.frames.push(f);
     addLayer('frame', f.id);
     setSelected('frame', f);
     render();
     commit();
     markManuallyEdited();
-    if (secTarget) toast('已在辅图卡片上创建索引框。');
+    toast(secTarget ? '已在辅图卡片上创建索引框。' : '已在主图上创建索引框。');
   }
   function makeDetail(frame, count, extra = {}) {
     const srcInfo = getImageSourceInfo(frame?.sourceId);
@@ -869,6 +1029,9 @@
       id: makeId(),
       frameId: frame.id,
       sourceId: frame.sourceId || 'main',
+      derivedFromObjectId: frame.sourceId || 'main',
+      sourceImageId: srcInfo.assetId,
+      sourceFrameId: frame.id,
       derivedFromImageId: srcInfo.assetId,
       sourceImageName: srcInfo.name,
       evidenceRole: 'evidence',
@@ -907,6 +1070,7 @@
         const sec = selectedObject();
         targetFrame = makeFrame(state.frames.length + 1, {
           sourceId: sec.id,
+          parentObjectId: sec.id,
           labelPrefix: 'EVID',
           x: Math.round(sec.x + sec.w * 0.15),
           y: Math.round(sec.y + sec.h * 0.15),
@@ -914,11 +1078,26 @@
           h: Math.round(Math.min(220, sec.h * 0.7)),
           rotation: sec.rotation || 0,
         });
+        syncFrameRelativeToParent(targetFrame);
+        state.frames.push(targetFrame);
+        addLayer('frame', targetFrame.id);
+      } else if (state.selected?.type === 'main') {
+        targetFrame = makeFrame(state.frames.length + 1, {
+          sourceId: 'main',
+          parentObjectId: 'main',
+          labelPrefix: 'EVID',
+          x: Math.round(state.main.x + state.main.w * 0.25),
+          y: Math.round(state.main.y + state.main.h * 0.2),
+          w: Math.round(Math.min(180, state.main.w * 0.3)),
+          h: Math.round(Math.min(200, state.main.h * 0.3)),
+          rotation: state.main.rotation || 0,
+        });
+        syncFrameRelativeToParent(targetFrame);
         state.frames.push(targetFrame);
         addLayer('frame', targetFrame.id);
       }
     }
-    if (!targetFrame) return toast('请先选中索引框或辅图卡片。');
+    if (!targetFrame) return toast('请先选中索引框或图片。');
     const d = makeDetail(targetFrame, state.details.length);
     state.details.push(d);
     addLayer('connector', d.id);
@@ -929,7 +1108,7 @@
     render();
     commit();
     markManuallyEdited();
-    toast(state.mode === 'multi' ? '证据图已生成。' : '局部放大已生成。');
+    toast(state.mode === 'multi' ? '特写证据图已生成。' : '局部放大已生成。');
   }
   function addText(kind) { const defaults = { hero: { content: 'NOTICE', x: -35, y: 46, size: 112, weight: 800, font: 'Arial Black, Impact, sans-serif', color: '#171717', scaleX: 1.35, scaleY: .82 }, subtitle: { content: 'COLLAGE INDEX / EDITION 01', x: 70, y: 1085, size: 22, weight: 700, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, caption: { content: 'A visual record of detail, texture and presence.', x: 68, y: 1122, size: 15, weight: 500, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, micro: { content: 'FILE 0021 / DATA UPDATED', x: 742, y: 245, size: 10, weight: 700, font: 'ui-monospace, Consolas, monospace', color: '#171717', scaleX: 1, scaleY: 1.08, letterSpacing: 3, writingMode: 'vertical' }, repeat: { content: 'IM RICH MAN', x: 78, y: 760, size: 20, weight: 800, font: 'Arial Black, Arial, sans-serif', color: '#bd2e35', repeat: 5, direction: 'vertical', repeatSpacing: 3, repeatOffsetX: 7, repeatOffsetY: 0, rotationStep: 0, scaleX: 1, scaleY: 1 } }; const t = { id: makeId(), kind, rotation: kind === 'hero' ? -2 : 0, opacity: 100, lineHeight: 1.15, letterSpacing: kind === 'hero' ? -2 : 0, align: 'left', writingMode: 'horizontal', ...defaults[kind] }; state.texts.push(t); addLayer('text', t.id); setSelected('text', t); render(); commit(); markManuallyEdited(); }
 
@@ -975,18 +1154,24 @@
     const { type, id } = state.selected;
     if (type === 'main') return toast('主图不能删除。');
     if (type === 'secondary') {
+      const childFrames = state.frames.filter((f) => f.sourceId === id);
+      const childFrameIds = new Set(childFrames.map((f) => f.id));
+      const childDetailIds = new Set(state.details.filter((d) => childFrameIds.has(d.frameId)).map((d) => d.id));
       state.secondaries = state.secondaries.filter((v) => v.id !== id);
-      state.layers = state.layers.filter((v) => !(v.type === 'secondary' && v.id === id));
-      state.frames.forEach((f) => { if (f.sourceId === id) f.sourceId = 'main'; });
+      state.frames = state.frames.filter((v) => !childFrameIds.has(v.id));
+      state.details = state.details.filter((v) => !childDetailIds.has(v.id));
+      state.layers = state.layers.filter((v) => v.id !== id && !childFrameIds.has(v.id) && !childDetailIds.has(v.id));
       renderImageTray();
     } else if (type === 'frame') {
       const ids = state.details.filter((d) => d.frameId === id).map((d) => d.id);
       state.frames = state.frames.filter((v) => v.id !== id);
       state.details = state.details.filter((v) => v.frameId !== id);
       state.layers = state.layers.filter((v) => !(v.type === 'frame' && v.id === id) && !ids.includes(v.id));
+      renderImageTray();
     } else if (type === 'detail' || type === 'connector') {
       state.details = state.details.filter((v) => v.id !== id);
       state.layers = state.layers.filter((v) => v.id !== id);
+      renderImageTray();
     } else if (type === 'fragment') {
       state.fragments = state.fragments.filter((v) => v.id !== id);
       state.layers = state.layers.filter((v) => !(v.type === 'fragment' && v.id === id));
@@ -999,7 +1184,21 @@
 
   function hitBox(x, y, b) { const p = rotatePoint(x, y, b.x + b.w / 2, b.y + b.h / 2, -(b.rotation || 0)); return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; }
   function segmentDistance(p, a, b) { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; if (!l) return Math.hypot(p.x - a.x, p.y - a.y); const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)); return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)); }
-  function hitConnector(d, p) { const c = connectorPoints(d); if (!c) return false; if (d.connectorType !== 'elbow') return segmentDistance(p, c.start, c.end) < 10; const x = c.start.x + (c.end.x - c.start.x) * .55, a = { x, y: c.start.y }, b = { x, y: c.end.y }; return Math.min(segmentDistance(p, c.start, a), segmentDistance(p, a, b), segmentDistance(p, b, c.end)) < 10; }
+  function hitConnector(d, p) {
+    const c = connectorPoints(d);
+    if (!c) return false;
+    if (d.connectorType !== 'elbow') return segmentDistance(p, c.start, c.end) < 10;
+    const mode = getElbowRoute(c.start, c.end, d);
+    if (mode === 'vertical') {
+      const y = c.start.y + (c.end.y - c.start.y) * 0.52;
+      const a = { x: c.start.x, y }, b = { x: c.end.x, y };
+      return Math.min(segmentDistance(p, c.start, a), segmentDistance(p, a, b), segmentDistance(p, b, c.end)) < 10;
+    } else {
+      const x = c.start.x + (c.end.x - c.start.x) * 0.52;
+      const a = { x, y: c.start.y }, b = { x, y: c.end.y };
+      return Math.min(segmentDistance(p, c.start, a), segmentDistance(p, a, b), segmentDistance(p, b, c.end)) < 10;
+    }
+  }
   function hitAt(x, y) {
     const selected = selectedObject();
     if (selected && !['text','connector'].includes(state.selected.type)) {
@@ -1018,9 +1217,51 @@
     return null;
   }
   function eventPoint(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
-  canvas.addEventListener('pointerdown', (e) => { const p = eventPoint(e), hit = hitAt(p.x, p.y); if (!hit) { setSelected(null, null); render(); return; } setSelected(hit.type, hit.item); drag = { ...hit, startX: p.x, startY: p.y, x: hit.item.x, y: hit.item.y, w: hit.item.w, h: hit.item.h }; canvas.setPointerCapture(e.pointerId); render(); });
-  canvas.addEventListener('pointermove', (e) => { if (!drag || drag.type === 'connector') return; const p = eventPoint(e), dx = p.x - drag.startX, dy = p.y - drag.startY, item = drag.item; if (drag.handle === 'resize') { item.w = Math.max(32, drag.w + dx); item.h = Math.max(32, drag.h + dy); } else { item.x = drag.x + dx; item.y = drag.y + dy; } scheduleRender(); });
-  canvas.addEventListener('pointerup', () => { if (drag && drag.type !== 'connector') { commit(); markManuallyEdited(); } drag = null; renderInspector(); });
+  canvas.addEventListener('pointerdown', (e) => {
+    const p = eventPoint(e), hit = hitAt(p.x, p.y);
+    if (!hit) { setSelected(null, null); render(); return; }
+    setSelected(hit.type, hit.item);
+    if (hit.type === 'secondary' || hit.type === 'main') {
+      (state.frames || []).forEach((f) => {
+        if ((f.sourceId || 'main') === hit.item.id) {
+          syncFrameRelativeToParent(f);
+        }
+      });
+    }
+    drag = { ...hit, startX: p.x, startY: p.y, x: hit.item.x, y: hit.item.y, w: hit.item.w, h: hit.item.h };
+    canvas.setPointerCapture(e.pointerId);
+    render();
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drag || drag.type === 'connector') return;
+    const p = eventPoint(e), dx = p.x - drag.startX, dy = p.y - drag.startY, item = drag.item;
+    if (drag.handle === 'resize') {
+      item.w = Math.max(32, drag.w + dx);
+      item.h = Math.max(32, drag.h + dy);
+    } else {
+      item.x = drag.x + dx;
+      item.y = drag.y + dy;
+    }
+    if (drag.type === 'secondary' || drag.type === 'main') {
+      syncAllChildFramesOf(item.id);
+    } else if (drag.type === 'frame') {
+      syncFrameRelativeToParent(item);
+    }
+    scheduleRender();
+  });
+  canvas.addEventListener('pointerup', () => {
+    if (drag && drag.type !== 'connector') {
+      if (drag.type === 'secondary' || drag.type === 'main') {
+        syncAllChildFramesOf(drag.item.id);
+      } else if (drag.type === 'frame') {
+        syncFrameRelativeToParent(drag.item);
+      }
+      commit();
+      markManuallyEdited();
+    }
+    drag = null;
+    renderInspector();
+  });
   canvas.addEventListener('pointercancel', () => { drag = null; });
 
   const range = (zh, en, key, value, min, max, step = 1, global = false, hint = '') =>
@@ -1085,34 +1326,32 @@
       inspectorSelection.textContent = `SELECTED · SECONDARY IMAGE / 辅图 · ${srcInfo.name || `CARD ${String(number).padStart(2,'0')}`}`;
       inspectorTitle.innerHTML = `辅图卡片 <small>SECONDARY · ${srcInfo.name || String(number).padStart(2,'0')}</small>`;
       if (!o.filters) o.filters = cleanFilters();
+      const currentAppearance = o.appearance || (o.filters.bw > 0 ? (o.filters.contrast > 40 ? 'highbw' : 'bw') : 'original');
+      let currentFramePreset = 'thin';
+      if (o.lineWidth === 0) currentFramePreset = 'none';
+      else if (o.lineWidth === 1) currentFramePreset = 'thin';
+      else if (o.lineWidth === 4 && o.backingColor === '#ffffff') currentFramePreset = 'white-border';
+      else if (o.lineWidth >= 8 && o.backingColor === '#ffffff') currentFramePreset = 'editorial';
+
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('边框与衬底', 'BORDER & BACKING', `${field('卡片边框','Border Color','color',o.color||'#ffffff','color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth??3,0,16)}${field('衬底颜色','Backing Color','backingColor',o.backingColor||'#ffffff','color')}`, true)
-        + accordion('图像', 'IMAGE', `${range('黑白','B&W','bw',o.filters.bw,0,100,1,false,'将彩色转换为黑白基调')}${range('亮度','Brightness','brightness',o.filters.brightness,-70,80,1,false,'调节画面整体明暗曝光')}${range('对比度','Contrast','contrast',o.filters.contrast,-50,120,1,false,'拉开明暗反差与视觉冲击')}${range('饱和度','Saturation','saturation',o.filters.saturation??100,0,200,1,false,'控制色彩纯度与鲜艳度')}`)
-        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftone',o.filters.halftone,0,100,1,false,'控制印刷网点效果的明显程度')}${range('网点大小','Dot Size','halftoneSize',o.filters.halftoneSize,1,42,1,false,'控制半调颗粒尺寸')}${range('网点密度','Dot Density','halftoneDensity',o.filters.halftoneDensity,1,100,1,false,'控制网点之间的疏密')}${range('网点角度','Dot Angle','halftoneAngle',o.filters.halftoneAngle,-90,90,1,false,'旋转半调网点排列角度')}${range('扫描线','Scanline','scan',o.filters.scan,0,100,1,false,'模拟复印或显像管扫描条纹')}${segmented('扫描方向','Scan Direction','scanAngle',o.filters.scanAngle||0,[[0,'横向','Horizontal'],[90,'纵向','Vertical']],false,'切换横向或纵向扫描条纹')}`)
-        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',o.filters.grain,0,100,1,false,'添加胶片噪点与印刷颗粒')}${range('粗糙度','Roughness','rough',o.filters.rough,0,100,1,false,'增加复印 / 阈值化的粗粝感')}${range('纸张纹理','Paper Texture','paper',o.filters.paper,0,100,1,false,'模拟旧报纸与复印纸纤维杂质')}${range('脏版印刷','Dirty Print','dirty',o.filters.dirty,0,100,1,false,'增加墨点、污渍和印刷缺陷')}${range('压缩损坏','Compression','compression',o.filters.compression,0,100,1,false,'模拟低质量数字图片的块状损坏')}`)
-        + accordion('风格化', 'STYLIZE', `${range('轮廓','Outline','outline',o.filters.outline,0,100,1,false,'提取高对比边缘描边线条')}${range('反相','Invert','invert',o.filters.invert,0,100,1,false,'翻转明暗与底片反色')}${range('色阶压缩','Color Compression / Posterize','posterize',o.filters.posterize,0,100,1,false,'减少颜色层级，形成块面效果')}`)
-        + `<button class="poster-action poster-action-primary" data-poster-action="add-evidence-for-card" style="margin-bottom:6px;">在此辅图上创建证据图</button>`
-        + `<button class="poster-action" data-poster-action="frame-for-secondary">在此卡片上添加索引框</button>${objectActions()}`;
+        + accordion('外观', 'APPEARANCE', `${select('风格预设','Appearance','secAppearance',currentAppearance,[['original','原图色彩','Original'],['bw','黑白基调','B&W'],['highbw','高对比黑白','High Contrast B&W']])}${range('胶片颗粒','Grain','secGrain',o.filters.grain||0,0,100,1,false,'轻度噪点质感')}`, true)
+        + accordion('边框', 'FRAME', `${select('边框样式','Frame Style','secFramePreset',currentFramePreset,[['thin','细线框 (1px)','Thin Border'],['white-border','拍立得白边 (4px)','White Border'],['editorial','编辑宽衬底 (8px)','Editorial Border'],['none','无边框','None']])}${field('边框颜色','Border Color','color',o.color||'#ffffff','color')}${range('边框粗细','Border Width','lineWidth',o.lineWidth??3,0,16)}`, true)
+        + objectActions();
       return;
     }
     if (state.selected.type === 'frame') {
       if (holdBeforeButton) holdBeforeButton.style.display = 'none';
       const number = state.frames.findIndex((v) => v.id === o.id) + 1;
       const targetInfo = getImageSourceInfo(o.sourceId);
-      inspectorSelection.textContent = `SELECTED · INDEX FRAME / ${labelText(o) || number} · 目标：${targetInfo.displayName}`;
-      inspectorTitle.innerHTML = `索引框 <small>INDEX FRAME · 目标：${targetInfo.displayName}</small>`;
-      const sourceOptions = [
-        ['main', '主图 (默认)', 'Main Image'],
-        ...(state.secondaries || []).map((s, idx) => {
-          const asset = imageAssets.get(s.imageId);
-          return [s.id, `辅图卡片 ${String(idx + 1).padStart(2, '0')} (${asset?.name || 'Card'})`, `Secondary Card ${idx + 1}`];
-        })
-      ];
+      inspectorSelection.textContent = `SELECTED · INDEX FRAME / ON ${targetInfo.name || targetInfo.displayName}`;
+      inspectorTitle.innerHTML = `索引框 <small>INDEX FRAME · ON ${targetInfo.name || targetInfo.displayName}</small>`;
+
+      const advancedLabelContent = `${toggle('自动编号','Auto Number','autoNumber',o.autoNumber)}${field('标签前缀','Label Prefix','labelPrefix',o.labelPrefix||'ITEM')}${range('编号数值','Label Number','labelNumber',o.labelNumber||1,1,999)}${field('自定义标签','Custom Label','label',o.label||'')}${field('标签底色','Tag Background','tagBackground',o.tagBackground,'color')}${field('标签文字颜色','Tag Text Color','tagTextColor',o.tagTextColor,'color')}${range('标签字号','Font Size','labelSize',o.labelSize,8,32)}${select('标签样式','Tag Style','tagStyle',o.tagStyle,[['solid','实心色块','Solid'],['plain','纯文字底','Plain'],['outline','描边线框','Outline']])}`;
+
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}`, true)
-        + accordion('图源绑定', 'IMAGE SOURCE', select('绑定图源', 'Target Image Source', 'sourceId', o.sourceId || 'main', sourceOptions), true)
         + accordion('框线', 'FRAME', `${field('框线颜色','Stroke Color','color',o.color,'color')}${range('框线粗细','Stroke Width','lineWidth',o.lineWidth,1,12)}${range('框线透明度','Stroke Opacity','strokeOpacity',o.strokeOpacity??100,0,100)}${select('线条样式','Stroke Style','strokeStyle',o.strokeStyle||'solid',[['solid','实线','Solid'],['dashed','虚线','Dashed']])}${select('边框样式','Frame Style','frameStyle',o.frameStyle||'full',[['full','完整框','Full Frame'],['corner','角标框','Corner Frame']])}`, true)
-        + accordion('标签', 'LABEL', `${toggle('自动编号','Auto Number','autoNumber',o.autoNumber)}${field('标签前缀','Label Prefix','labelPrefix',o.labelPrefix||'ITEM')}${range('编号数值','Label Number','labelNumber',o.labelNumber||1,1,999)}${field('自定义标签','Custom Label','label',o.label||'')}${field('标签底色','Tag Background','tagBackground',o.tagBackground,'color')}${field('标签文字颜色','Tag Text Color','tagTextColor',o.tagTextColor,'color')}${range('标签字号','Font Size','labelSize',o.labelSize,8,32)}${toggle('显示标签','Show Label','showLabel',o.showLabel)}${select('标签样式','Tag Style','tagStyle',o.tagStyle,[['solid','实心色块','Solid'],['plain','纯文字底','Plain'],['outline','描边线框','Outline']])}`)
-        + `<button class="poster-action poster-action-primary" data-poster-action="detail">${state.mode === 'multi' ? '由此框生成证据图' : '由此框生成局部放大'}</button>${objectActions()}`;
+        + accordion('标签', 'LABEL', `${toggle('显示标签','Show Label','showLabel',o.showLabel)}${accordion('高级标签设置','ADVANCED LABEL',advancedLabelContent,false)}`, true)
+        + `<button class="poster-action poster-action-primary" data-poster-action="detail">抽出特写 ↗ / EXTRACT EVIDENCE</button>${objectActions()}`;
       return;
     }
     if (state.selected.type === 'detail') {
@@ -1121,16 +1360,15 @@
       const targetFrame = frameById(o.frameId);
       const srcInfo = getImageSourceInfo(targetFrame?.sourceId || o.sourceId);
       inspectorSelection.textContent = state.mode === 'multi'
-        ? `SELECTED · EVIDENCE CROP / ${String(number).padStart(2,'0')} · 来源：${srcInfo.displayName}`
+        ? `SELECTED · EVIDENCE / FROM ${srcInfo.name}`
         : `SELECTED · DETAIL CROP / ${String(number).padStart(2,'0')}`;
       inspectorTitle.innerHTML = state.mode === 'multi'
-        ? `证据图 <small>EVIDENCE CROP · 来源：${srcInfo.displayName}</small>`
+        ? `证据图 <small>EVIDENCE · FROM ${srcInfo.name}</small>`
         : `局部放大 <small>DETAIL CROP / ${String(number).padStart(2,'0')}</small>`;
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('图像', 'IMAGE', `${range('亮度','Brightness','brightness',o.brightness||0,-80,100)}${range('对比度','Contrast','contrast',o.contrast||0,-60,120)}${range('饱和度','Saturation','saturation',o.saturation??100,0,200)}${field('局部边框','Border Color','color',o.color,'color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth,0,12)}`, true)
-        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftoneStrength',o.halftoneStrength||75,0,100,false,'控制局部半调网点强度')}${range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,1,42)}${range('网点密度','Dot Density','halftoneDensity',o.halftoneDensity||55,1,100)}${range('网点角度','Dot Angle','halftoneAngle',o.halftoneAngle||0,-90,90)}`)
-        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',o.grain||0,0,100,false,'给局部图添加噪点颗粒')}`)
-        + accordion('风格化', 'STYLIZE', `${select('滤镜类型','Filter Type','filterType',o.filterType,[['original','原图','Original'],['bw','黑白','B&W'],['highbw','高对比黑白','High Contrast B&W'],['halftone','半调网点','Halftone'],['rough','粗糙颗粒','Rough / Grain'],['outline','轮廓描边','Outline / Edge'],['invert','反相','Invert'],['posterize','色阶压缩','Posterize']])}`)
+        + accordion('风格滤镜', 'STYLE', `${select('滤镜类型','Filter Type','filterType',o.filterType,[['original','原图','Original'],['bw','黑白','B&W'],['highbw','高对比黑白','High Contrast B&W'],['halftone','半调网点','Halftone'],['outline','轮廓描边','Outline']])}${o.filterType === 'halftone' ? range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,2,30) : ''}${range('胶片颗粒','Grain','grain',o.grain||0,0,100)}`, true)
+        + accordion('边框与衬底', 'FRAME & BACKING', `${field('边框颜色','Border Color','color',o.color,'color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth,0,12)}${field('衬底颜色','Backing Color','backingColor',o.backingColor||'#fff','color')}`, true)
+        + accordion('图源信息', 'SOURCE', `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">来源图源</span><span class="poster-label-sub">SOURCE</span></div></div><div class="poster-readonly-badge">来源：${srcInfo.name} / SOURCE · ${srcInfo.name}</div></div>`, true)
         + objectActions();
       return;
     }
@@ -1140,12 +1378,12 @@
       const targetFrame = d ? frameById(d.frameId) : null;
       const srcInfo = getImageSourceInfo(targetFrame?.sourceId || d?.sourceId);
       inspectorSelection.textContent = state.mode === 'multi'
-        ? `SELECTED · CONNECTOR / 关系连线 · 归属：${srcInfo.displayName}`
+        ? `SELECTED · CONNECTOR / ${srcInfo.name} → EVIDENCE`
         : 'SELECTED · CONNECTOR';
       inspectorTitle.innerHTML = state.mode === 'multi'
-        ? `关系连线 <small>CONNECTOR · 归属：${srcInfo.displayName}</small>`
+        ? `关系连线 <small>CONNECTOR · ${srcInfo.name} → EVIDENCE</small>`
         : '连接线 <small>CONNECTOR</small>';
-      inspector.innerHTML = accordion('连接线', 'CONNECTOR', `${select('连接类型','Connector Type','connectorType',o.connectorType,[['straight','直线','Straight'],['elbow','折线','Elbow']])}${field('线条颜色','Line Color','lineColor',o.lineColor,'color')}${range('线条粗细','Line Width','connectorWidth',o.connectorWidth||2,1,12)}${range('透明度','Opacity','lineOpacity',o.lineOpacity??100,0,100)}${toggle('虚线','Dashed Line','connectorDash',o.connectorDash)}${select('端点样式','Endpoint Style','endpointStyle',o.endpointStyle,[['none','无端点','None'],['dot','圆点','Dot'],['cross','十字','Cross']])}`, true)
+      inspector.innerHTML = accordion('连接线', 'CONNECTOR', `${select('连接类型','Connector Type','connectorType',o.connectorType,[['straight','直线','Straight'],['elbow','折线 (智能避让)','Elbow (Avoidance)']])}${field('线条颜色','Line Color','lineColor',o.lineColor,'color')}${range('线条粗细','Line Width','connectorWidth',o.connectorWidth||2,1,12)}${range('透明度','Opacity','lineOpacity',o.lineOpacity??100,0,100)}${toggle('虚线','Dashed Line','connectorDash',o.connectorDash)}${select('端点样式','Endpoint Style','endpointStyle',o.endpointStyle,[['none','无端点','None'],['dot','圆点','Dot'],['cross','十字','Cross']])}`, true)
         + layerControls()
         + `<button class="poster-delete" data-poster-action="delete">删除连接线与局部图</button>`;
       return;
@@ -1195,7 +1433,16 @@
     secImg.src = 'assets/demo-karina.jpg';
     renderImageTray(); renderInspector(); render(); if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace); history = []; historyIndex = -1; commit(); updateRemixCard();
   }
-  function loadDemo(show = true) { const image = new Image(); image.onload = () => { applyDemo(image); if (show) toast('示范模板已恢复。'); }; image.onerror = () => toast('示范图片未能载入。'); image.src = 'assets/demo-collage.jpg'; }
+  function loadDemo(show = true) {
+    if (state.mode === 'multi') {
+      toast('多图模式下已隐藏单图示范模板。');
+      return;
+    }
+    const image = new Image();
+    image.onload = () => { applyDemo(image); if (show) toast('示范模板已恢复。'); };
+    image.onerror = () => toast('示范图片未能载入。');
+    image.src = 'assets/demo-collage.jpg';
+  }
 
   function preset(name) {
     const all = {
@@ -1370,31 +1617,31 @@
       id: 'pair-compare',
       zh: '双核对照',
       en: 'Pair Comparison',
-      descZh: '主图与主辅图左右对照，证据图穿插其间',
+      descZh: '主图与辅图左右分立对照，证据图置于底部安全区',
       descEn: 'Dual-image dialogue, comparative evidence',
       cropLimit: 2,
       apply(p, s) {
-        p.x = 40 + remixBetween(-15, 15);
-        p.y = 180 + remixBetween(-20, 20);
-        p.w = 420 + remixBetween(-20, 20);
-        p.h = 620 + remixBetween(-20, 20);
-        p.rotation = remixBetween(-1.5, 1.5);
+        p.x = 40 + remixBetween(-10, 10);
+        p.y = 180 + remixBetween(-15, 15);
+        p.w = 400 + remixBetween(-15, 15);
+        p.h = 620 + remixBetween(-15, 15);
+        p.rotation = remixBetween(-1, 1);
         p.layoutMode = 'LEFT COMPARISON';
         if (s.length) {
-          s[0].x = 450 + remixBetween(-15, 15);
-          s[0].y = 220 + remixBetween(-20, 20);
-          s[0].w = 410 + remixBetween(-20, 20);
-          s[0].h = 600 + remixBetween(-20, 20);
-          s[0].rotation = remixBetween(-2, 2);
+          s[0].x = 470 + remixBetween(-10, 10);
+          s[0].y = 200 + remixBetween(-15, 15);
+          s[0].w = 390 + remixBetween(-15, 15);
+          s[0].h = 600 + remixBetween(-15, 15);
+          s[0].rotation = remixBetween(-1.5, 1.5);
         }
         const otherSlots = [
-          { x: 40, y: 810, w: 230, h: 260, rot: -3 },
-          { x: 620, y: 820, w: 230, h: 260, rot: 2 },
+          { x: 40, y: 830, w: 210, h: 250, rot: -2 },
+          { x: 640, y: 830, w: 210, h: 250, rot: 2 },
         ];
         s.slice(1).forEach((sec, idx) => {
           const slot = otherSlots[idx % otherSlots.length];
-          sec.x = slot.x + remixBetween(-15, 15);
-          sec.y = slot.y + remixBetween(-15, 15);
+          sec.x = slot.x + remixBetween(-10, 10);
+          sec.y = slot.y + remixBetween(-10, 10);
           sec.w = slot.w; sec.h = slot.h;
           sec.rotation = slot.rot + remixBetween(-1.5, 1.5);
         });
@@ -1404,28 +1651,28 @@
       id: 'detail-chain',
       zh: '线索链条',
       en: 'Detail Chain',
-      descZh: '多图跨角分布，证据图跨图串联形成线索脉络',
+      descZh: '主辅图平衡分布，证据图左右交替串联形成清晰脉络',
       descEn: 'Cross-image evidence chain, linked narrative',
       cropLimit: 3,
       apply(p, s) {
-        p.x = 220 + remixBetween(-20, 20);
-        p.y = 140 + remixBetween(-20, 20);
-        p.w = 480 + remixBetween(-25, 25);
-        p.h = 580 + remixBetween(-25, 25);
-        p.rotation = remixBetween(-1.5, 1.5);
+        p.x = 220 + remixBetween(-15, 15);
+        p.y = 140 + remixBetween(-15, 15);
+        p.w = 480 + remixBetween(-20, 20);
+        p.h = 580 + remixBetween(-20, 20);
+        p.rotation = remixBetween(-1, 1);
         p.layoutMode = 'EVIDENCE HUB';
         const secSlots = [
-          { x: 35, y: 440, w: 240, h: 290, rot: 4 },
-          { x: 625, y: 460, w: 240, h: 300, rot: -3 },
-          { x: 350, y: 760, w: 260, h: 310, rot: 2 },
-          { x: 35, y: 130, w: 210, h: 250, rot: -3 },
+          { x: 35, y: 440, w: 230, h: 280, rot: 3 },
+          { x: 635, y: 440, w: 230, h: 280, rot: -3 },
+          { x: 340, y: 770, w: 250, h: 300, rot: 2 },
+          { x: 35, y: 130, w: 200, h: 240, rot: -2 },
         ];
         s.forEach((sec, idx) => {
           const slot = secSlots[idx % secSlots.length];
-          sec.x = slot.x + remixBetween(-15, 15);
-          sec.y = slot.y + remixBetween(-15, 15);
+          sec.x = slot.x + remixBetween(-10, 10);
+          sec.y = slot.y + remixBetween(-10, 10);
           sec.w = slot.w; sec.h = slot.h;
-          sec.rotation = slot.rot + remixBetween(-1.5, 1.5);
+          sec.rotation = slot.rot + remixBetween(-1, 1);
         });
       }
     }
@@ -1677,6 +1924,35 @@
     ]);
     const cropShapes = remixShuffle([{w:1.18,h:.82},{w:.82,h:1.2},{w:1.02,h:1.02},{w:1.25,h:.72}]);
 
+    // Protected Zones definition for REMIX collision avoidance
+    const primaryCoreZone = {
+      x: state.main.x + state.main.w * 0.2,
+      y: state.main.y + state.main.h * 0.2,
+      w: state.main.w * 0.6,
+      h: state.main.h * 0.6,
+    };
+    const secondaryCoreZones = (state.secondaries || []).map((sec) => ({
+      x: sec.x + sec.w * 0.2,
+      y: sec.y + sec.h * 0.2,
+      w: sec.w * 0.6,
+      h: sec.h * 0.6,
+    }));
+    const heroTitleObj = state.texts.find((t) => t.kind === 'hero');
+    const heroProtectedZone = heroTitleObj ? (() => {
+      const b = textBounds(heroTitleObj);
+      return { x: b.x - 15, y: b.y - 15, w: b.w + 30, h: b.h + 30 };
+    })() : null;
+    const coreProtectedZones = [primaryCoreZone, ...secondaryCoreZones, ...(heroProtectedZone ? [heroProtectedZone] : [])];
+
+    const safeMarginSlots = [
+      { x: 30, y: 740 },
+      { x: 625, y: 740 },
+      { x: 30, y: 210 },
+      { x: 625, y: 210 },
+      { x: 340, y: 820 },
+      { x: 340, y: 50 },
+    ];
+
     state.details.forEach((detail, index) => {
       const slot = layout.slots[index % layout.slots.length];
       const isAnchor = detail === anchorDetail;
@@ -1684,11 +1960,41 @@
       const ratio = Math.max(.45, detail.h / Math.max(1, detail.w));
       const slotScale = 1 + remixBetween(-power.scale, power.scale) * detailChaos;
       const cropShape = cropShapes[index % cropShapes.length];
-      detail.w = remixClamp(slot[2] * slotScale * cropShape.w, 120, strength === 'wild' ? 370 : 325);
-      detail.h = remixClamp((slot[3] || detail.w * ratio) * slotScale * cropShape.h, 105, 410);
+      detail.w = remixClamp(slot[2] * slotScale * cropShape.w, 130, strength === 'wild' ? 320 : 270);
+      detail.h = remixClamp((slot[3] || detail.w * ratio) * slotScale * cropShape.h, 115, 340);
       const bleedX = detail.w * power.bleed * detailChaos, bleedY = detail.h * power.bleed * detailChaos;
-      detail.x = remixClamp(slot[0] + remixBetween(-power.drift, power.drift) * detailChaos, -bleedX, W - detail.w + bleedX);
-      detail.y = remixClamp(slot[1] + remixBetween(-power.drift, power.drift) * detailChaos, -bleedY, H - detail.h + bleedY);
+      
+      let bestX = remixClamp(slot[0] + remixBetween(-power.drift, power.drift) * detailChaos, 15, W - detail.w - 15);
+      let bestY = remixClamp(slot[1] + remixBetween(-power.drift, power.drift) * detailChaos, 30, H - detail.h - 30);
+
+      // Check collision with core protected zones
+      let placedSafely = false;
+      for (let attempt = 0; attempt < 18; attempt++) {
+        let testX, testY;
+        if (attempt === 0) {
+          testX = bestX;
+          testY = bestY;
+        } else {
+          const fallback = safeMarginSlots[(index + attempt) % safeMarginSlots.length];
+          testX = remixClamp(fallback.x + remixBetween(-20, 20), 15, W - detail.w - 15);
+          testY = remixClamp(fallback.y + remixBetween(-20, 20), 30, H - detail.h - 30);
+        }
+        const candidateBox = { x: testX, y: testY, w: detail.w, h: detail.h };
+        const maxOverlap = Math.max(...coreProtectedZones.map((pz) => remixOverlap(candidateBox, pz)));
+        if (maxOverlap < 0.18) {
+          bestX = testX;
+          bestY = testY;
+          placedSafely = true;
+          break;
+        }
+      }
+      if (!placedSafely) {
+        const edge = safeMarginSlots[index % safeMarginSlots.length];
+        bestX = remixClamp(edge.x, 15, W - detail.w - 15);
+        bestY = remixClamp(edge.y, 30, H - detail.h - 30);
+      }
+      detail.x = bestX;
+      detail.y = bestY;
       detail.rotation = remixBetween(-power.turn, power.turn) * detailChaos;
       detail.connectorType = Math.random() < .52 ? 'elbow' : 'straight';
       detail.connectorWidth = remixClamp(remixNudge(detail.connectorWidth || 2, (strength === 'wild' ? 2 : 1) * detailChaos), 1, 6);
@@ -1708,8 +2014,10 @@
       if (strength !== 'light') { detail.color = palette.accent; detail.lineColor = palette.accent; }
       if (isAnchor) {
         detail.w = remixClamp(detail.w * 1.22, 245, 360); detail.h = remixClamp(detail.h * 1.2, 260, 410);
-        detail.x = remixClamp(quietZone?.side === 'right' ? 250 : quietZone?.side === 'left' ? 470 : 520, 18, W - detail.w - 18);
-        detail.y = remixClamp(quietZone?.side === 'bottom' ? 270 : 335, 18, H - detail.h - 18);
+        if (state.mode !== 'multi') {
+          detail.x = remixClamp(quietZone?.side === 'right' ? 250 : quietZone?.side === 'left' ? 470 : 520, 18, W - detail.w - 18);
+          detail.y = remixClamp(quietZone?.side === 'bottom' ? 270 : 335, 18, H - detail.h - 18);
+        }
         detail.rotation = remixBetween(-1.5,1.5); detail.opacity = 100; detail.filterType = remixPick(['original','bw']);
         detail.contrast = remixClamp(detail.contrast || 0, -10, 20); detail.grain = Math.min(detail.grain, 6); detail.halftoneStrength = Math.min(detail.halftoneStrength, 42);
       }
@@ -1922,7 +2230,7 @@
       });
     }
 
-    // Rebuild layers by role. Tertiary rhythm stays below primary objects.
+    // Rebuild layers by role.
     const main = { type:'main', id:'main-image' };
     const companionFragmentLayers = state.fragments.filter((f)=>f.fragmentRole==='companion').map((f)=>({type:'fragment',id:f.id}));
     const fragmentLayers = remixShuffle(state.fragments.filter((f)=>f.fragmentRole!=='companion').map((f) => ({ type:'fragment', id:f.id })));
@@ -1936,9 +2244,111 @@
     const heroLayers = state.texts.filter((t) => heroIds.has(t.id)).map((t) => ({type:'text',id:t.id}));
     const anchorDetailLayers = anchorDetail ? detailLayers.filter((layer) => layer.id === anchorDetail.id) : [];
     const secondaryDetailLayers = detailLayers.filter((layer) => !anchorDetailLayers.some((anchor) => anchor.id === layer.id));
-    const primaryLayers = anchorMode.id === 'detail' ? [...heroLayers, ...anchorDetailLayers] : [...anchorDetailLayers, ...heroLayers];
     const secondaryCardLayers = (state.secondaries || []).map((s) => ({ type:'secondary', id: s.id }));
-    state.layers = [...tertiaryLayers, ...companionFragmentLayers, main, ...secondaryCardLayers, ...fragmentLayers, ...connectorLayers, ...frameLayers, ...secondaryDetailLayers, ...secondaryTextLayers, ...primaryLayers];
+
+    // Strict Hero Layering: Foreground Hero (above photos, in margin banners) or Background Hero (watermark behind photos). Never sandwich!
+    const heroMode = (anchorMode.id === 'hero' || Math.random() < 0.7) ? 'foreground' : 'background';
+    if (heroMode === 'background') {
+      state.texts.filter((t) => t.kind === 'hero').forEach((h) => {
+        h.opacity = Math.round(remixBetween(42, 68));
+      });
+      state.layers = [
+        ...tertiaryLayers,
+        ...heroLayers,
+        main,
+        ...secondaryCardLayers,
+        ...companionFragmentLayers,
+        ...fragmentLayers,
+        ...connectorLayers,
+        ...frameLayers,
+        ...secondaryDetailLayers,
+        ...anchorDetailLayers,
+        ...secondaryTextLayers,
+      ];
+    } else {
+      state.texts.filter((t) => t.kind === 'hero').forEach((h) => {
+        h.opacity = 100;
+        if (h.y > 160 && h.y < 920) {
+          h.y = Math.random() < 0.5 ? 42 : 1010;
+        }
+      });
+      state.layers = [
+        ...tertiaryLayers,
+        main,
+        ...secondaryCardLayers,
+        ...companionFragmentLayers,
+        ...fragmentLayers,
+        ...connectorLayers,
+        ...frameLayers,
+        ...secondaryDetailLayers,
+        ...anchorDetailLayers,
+        ...secondaryTextLayers,
+        ...heroLayers,
+      ];
+    }
+
+    // Final Guaranteed Protected Zones Collision Avoidance Pass for Details/Evidence Crops
+    if (state.details.length) {
+      const finalPCore = {
+        x: state.main.x + state.main.w * 0.2,
+        y: state.main.y + state.main.h * 0.2,
+        w: state.main.w * 0.6,
+        h: state.main.h * 0.6,
+      };
+      const finalSCores = (state.secondaries || []).map((sec) => ({
+        x: sec.x + sec.w * 0.2,
+        y: sec.y + sec.h * 0.2,
+        w: sec.w * 0.6,
+        h: sec.h * 0.6,
+      }));
+      const allCores = [finalPCore, ...finalSCores];
+
+      const getCoreOverlapRatio = (box) => {
+        let maxO = 0;
+        for (const core of allCores) {
+          const ox = Math.max(0, Math.min(box.x + box.w, core.x + core.w) - Math.max(box.x, core.x));
+          const oy = Math.max(0, Math.min(box.y + box.h, core.y + core.h) - Math.max(box.y, core.y));
+          if (ox > 0 && oy > 0) {
+            const ratio = (ox * oy) / Math.min(box.w * box.h, core.w * core.h);
+            if (ratio > maxO) maxO = ratio;
+          }
+        }
+        return maxO;
+      };
+
+      const candidatePerimeterPoints = [
+        { x: 25, y: 780 },
+        { x: W - 25, y: 780, right: true },
+        { x: 25, y: 200 },
+        { x: W - 25, y: 200, right: true },
+        { x: 25, y: 480 },
+        { x: W - 25, y: 480, right: true },
+        { x: 25, y: 880 },
+        { x: W - 25, y: 880, right: true },
+        { x: 340, y: 920 },
+        { x: 340, y: 45 },
+        { x: 50, y: 50 },
+        { x: W - 50, y: 50, right: true }
+      ];
+
+      state.details.forEach((detail, idx) => {
+        const dBox = { x: detail.x, y: detail.y, w: detail.w, h: detail.h };
+        if (getCoreOverlapRatio(dBox) > 0.15) {
+          for (let p = 0; p < candidatePerimeterPoints.length; p++) {
+            const pt = candidatePerimeterPoints[(idx + p) % candidatePerimeterPoints.length];
+            const testX = pt.right ? (W - detail.w - 20) : pt.x;
+            const testY = pt.y;
+            const testBox = { x: testX, y: testY, w: detail.w, h: detail.h };
+            if (getCoreOverlapRatio(testBox) <= 0.15) {
+              detail.x = testX;
+              detail.y = testY;
+              break;
+            }
+          }
+        }
+      });
+    }
+
     const anchorZhMap = {
       'MAIN IMAGE STABLE': '主图锁定',
       'HERO TITLE STABLE': '主标题锁定',
@@ -2022,6 +2432,8 @@
     updateRemixCard();
 
     state.selected = null;
+    syncAllChildFramesOf('main');
+    (state.secondaries || []).forEach((s) => syncAllChildFramesOf(s.id));
     renderInspector(); render(); commit(); remixLastResultSnapshot = snapshot();
     const button = $('#posterRemixButton'); button?.classList.remove('is-remixing'); canvasWrap.classList.remove('is-remixing'); void canvasWrap.offsetWidth; button?.classList.add('is-remixing'); canvasWrap.classList.add('is-remixing');
     setTimeout(() => { button?.classList.remove('is-remixing'); canvasWrap.classList.remove('is-remixing'); }, 460);
@@ -2047,12 +2459,56 @@
     let root=c.dataset.global?(p in state.filters?state.filters:state):selectedObject();
     if(!root)return;
     if(state.selected?.type==='secondary'&&!c.dataset.global){
+      if(p === 'secAppearance'){
+        const v = c.value;
+        root.appearance = v;
+        if(!root.filters) root.filters = cleanFilters();
+        if(v === 'original'){ root.filters.bw = 0; root.filters.contrast = 0; }
+        else if(v === 'bw'){ root.filters.bw = 100; root.filters.contrast = 15; }
+        else if(v === 'highbw'){ root.filters.bw = 100; root.filters.contrast = 55; }
+        scheduleRender();
+        commit(false);
+        markManuallyEdited();
+        return;
+      }
+      if(p === 'secGrain'){
+        if(!root.filters) root.filters = cleanFilters();
+        root.filters.grain = Number(c.value);
+        scheduleRender();
+        const out = c.closest('.poster-field')?.querySelector('output');
+        if(out) out.textContent = c.value;
+        commit(false);
+        markManuallyEdited();
+        return;
+      }
+      if(p === 'secFramePreset'){
+        const v = c.value;
+        if(v === 'none'){ root.lineWidth = 0; }
+        else if(v === 'thin'){ root.lineWidth = 1; root.color = '#ffffff'; root.backingColor = '#ffffff'; }
+        else if(v === 'white-border'){ root.lineWidth = 4; root.color = '#ffffff'; root.backingColor = '#ffffff'; }
+        else if(v === 'editorial'){ root.lineWidth = 8; root.color = '#ffffff'; root.backingColor = '#ffffff'; }
+        renderInspector();
+        scheduleRender();
+        commit(false);
+        markManuallyEdited();
+        return;
+      }
       if(['bw','brightness','contrast','saturation','halftone','halftoneSize','halftoneDensity','halftoneAngle','scan','scanAngle','grain','rough','paper','dirty','compression','outline','invert','posterize'].includes(p)){
         if(!root.filters)root.filters=cleanFilters();
         root=root.filters;
       }
     }
     root[p]=c.type==='checkbox'?c.checked:(c.type==='range'||c.type==='number'?Number(c.value):c.value);
+    if(['x','y','w','h','rotation'].includes(p)){
+      if(state.selected?.type==='secondary'||state.selected?.type==='main'){
+        syncAllChildFramesOf(root.id);
+      } else if(state.selected?.type==='frame'){
+        syncFrameRelativeToParent(root);
+      }
+    }
+    if(p === 'filterType' && state.selected?.type === 'detail'){
+      renderInspector();
+    }
     scheduleRender();
     const out=c.closest('.poster-field')?.querySelector('output');
     if(out)out.textContent=c.value;
@@ -2139,6 +2595,12 @@
         const isDemoOrEmpty = !state.image || state.mainImageId === 'asset-demo-main' || (state.imageName && state.imageName.startsWith('demo-'));
         let startIndex = 0;
         if (isDemoOrEmpty && newlyLoaded.length > 0) {
+          // Clear demo artifacts
+          state.secondaries = [];
+          state.frames = [];
+          state.details = [];
+          state.fragments = [];
+          state.layers = [];
           const first = newlyLoaded[0];
           state.image = first.image;
           state.imageName = first.name;
@@ -2150,6 +2612,45 @@
         }
         for (let i = startIndex; i < newlyLoaded.length; i++) {
           addSecondaryImage(newlyLoaded[i].id);
+        }
+        // Auto-extract initial evidence for clarity if none exist
+        if (state.frames.length === 0 && newlyLoaded.length > 0) {
+          const f1 = makeFrame(1, {
+            sourceId: 'main',
+            parentObjectId: 'main',
+            labelPrefix: 'EVID',
+            x: Math.round(state.main.x + state.main.w * 0.25),
+            y: Math.round(state.main.y + state.main.h * 0.2),
+            w: Math.round(Math.min(180, state.main.w * 0.3)),
+            h: Math.round(Math.min(200, state.main.h * 0.3)),
+          });
+          syncFrameRelativeToParent(f1);
+          state.frames.push(f1);
+          addLayer('frame', f1.id);
+          const d1 = makeDetail(f1, 0, { x: 35, y: 720, w: 220, h: 250 });
+          state.details.push(d1);
+          addLayer('connector', d1.id);
+          addLayer('detail', d1.id);
+          if (state.secondaries && state.secondaries.length > 0) {
+            const s0 = state.secondaries[0];
+            const f2 = makeFrame(2, {
+              sourceId: s0.id,
+              parentObjectId: s0.id,
+              labelPrefix: 'EVID',
+              x: Math.round(s0.x + s0.w * 0.18),
+              y: Math.round(s0.y + s0.h * 0.18),
+              w: Math.round(Math.min(160, s0.w * 0.6)),
+              h: Math.round(Math.min(180, s0.h * 0.6)),
+              rotation: s0.rotation || 0,
+            });
+            syncFrameRelativeToParent(f2);
+            state.frames.push(f2);
+            addLayer('frame', f2.id);
+            const d2 = makeDetail(f2, 1, { x: 620, y: 720, w: 220, h: 250 });
+            state.details.push(d2);
+            addLayer('connector', d2.id);
+            addLayer('detail', d2.id);
+          }
         }
         if (state.mode !== 'multi') {
           state.mode = 'multi';
@@ -2253,7 +2754,19 @@
   document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
-  window.addEventListener('visual-lab-mode-change',(e)=>{if(e.detail.mode==='poster'){render();requestAnimationFrame(()=>{if(zoomMode==='fit')fitWorkspace();});}});
   window.posterState = state;
+  window.posterImageAssets = imageAssets;
+  window.posterSetMainImage = setMainImage;
+  window.posterAddSecondaryImage = addSecondaryImage;
+  window.posterAddFrame = addFrame;
+  window.posterAddDetail = addDetail;
+  window.posterSetSelected = setSelected;
+  window.posterDeleteSelected = deleteSelected;
+  window.posterUndo = undo;
+  window.posterRedo = redo;
+  window.posterRemixLayout = remixLayout;
+  window.posterFitWorkspace = fitWorkspace;
+  Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
+  window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
   renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();
 })();
