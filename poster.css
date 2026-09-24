@@ -15,6 +15,7 @@
 .poster-workspace.is-multi-mode #posterImageTrayGroup { display: block; }
 .poster-workspace.is-multi-mode .poster-single-upload { display: none; }
 .poster-workspace.is-multi-mode .poster-demo-button { display: none; }
+.poster-workspace.is-multi-mode .poster-single-detail-button { display: none; }
 .poster-tray-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2px; }
 .poster-tray-count { font: 700 8px ui-monospace, Consolas, monospace; color: var(--muted); letter-spacing: .08em; }
 .poster-image-tray { display: grid; gap: 6px; margin-top: 8px; max-height: 260px; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; }

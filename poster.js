@@ -1063,6 +1063,13 @@
   function addDetail(frame = null) {
     if (!state.image && (!state.assets || !state.assets.length)) return toast('请先上传图片。');
     let targetFrame = frame;
+    if (state.mode === 'multi' && !targetFrame) {
+      if (state.selected?.type === 'frame') {
+        targetFrame = selectedObject();
+      } else {
+        return;
+      }
+    }
     if (!targetFrame) {
       if (state.selected?.type === 'frame') {
         targetFrame = selectedObject();
@@ -2613,45 +2620,6 @@
         for (let i = startIndex; i < newlyLoaded.length; i++) {
           addSecondaryImage(newlyLoaded[i].id);
         }
-        // Auto-extract initial evidence for clarity if none exist
-        if (state.frames.length === 0 && newlyLoaded.length > 0) {
-          const f1 = makeFrame(1, {
-            sourceId: 'main',
-            parentObjectId: 'main',
-            labelPrefix: 'EVID',
-            x: Math.round(state.main.x + state.main.w * 0.25),
-            y: Math.round(state.main.y + state.main.h * 0.2),
-            w: Math.round(Math.min(180, state.main.w * 0.3)),
-            h: Math.round(Math.min(200, state.main.h * 0.3)),
-          });
-          syncFrameRelativeToParent(f1);
-          state.frames.push(f1);
-          addLayer('frame', f1.id);
-          const d1 = makeDetail(f1, 0, { x: 35, y: 720, w: 220, h: 250 });
-          state.details.push(d1);
-          addLayer('connector', d1.id);
-          addLayer('detail', d1.id);
-          if (state.secondaries && state.secondaries.length > 0) {
-            const s0 = state.secondaries[0];
-            const f2 = makeFrame(2, {
-              sourceId: s0.id,
-              parentObjectId: s0.id,
-              labelPrefix: 'EVID',
-              x: Math.round(s0.x + s0.w * 0.18),
-              y: Math.round(s0.y + s0.h * 0.18),
-              w: Math.round(Math.min(160, s0.w * 0.6)),
-              h: Math.round(Math.min(180, s0.h * 0.6)),
-              rotation: s0.rotation || 0,
-            });
-            syncFrameRelativeToParent(f2);
-            state.frames.push(f2);
-            addLayer('frame', f2.id);
-            const d2 = makeDetail(f2, 1, { x: 620, y: 720, w: 220, h: 250 });
-            state.details.push(d2);
-            addLayer('connector', d2.id);
-            addLayer('detail', d2.id);
-          }
-        }
         if (state.mode !== 'multi') {
           state.mode = 'multi';
           $('#posterWorkspace')?.classList.add('is-multi-mode');
@@ -2751,7 +2719,7 @@
   viewport.addEventListener('pointermove',(e)=>{if(!pan)return;viewport.scrollLeft=pan.left-(e.clientX-pan.x);viewport.scrollTop=pan.top-(e.clientY-pan.y);});
   viewport.addEventListener('pointerup',()=>{pan=null;viewport.classList.remove('is-panning');});
   viewport.addEventListener('pointercancel',()=>{pan=null;viewport.classList.remove('is-panning');});
-  document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
+  document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d'&&state.mode==='single')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
   window.posterState = state;
