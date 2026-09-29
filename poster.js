@@ -23,6 +23,7 @@
   const makeMain = () => ({ id:'main-image', x:imageBox.x, y:imageBox.y, w:imageBox.w, h:imageBox.h, rotation:0, zoom:1, panX:0, panY:0, layoutMode:'FULL BASE' });
   const makeId = () => `poster-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const clone = (v) => JSON.parse(JSON.stringify(v));
+  const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let isBeforePreviewActive = false;
   const cleanFilters = () => ({ bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 8, halftoneDensity: 50, halftoneAngle: 0, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 });
 
@@ -70,6 +71,7 @@
     });
   }
   function fitWorkspace() {
+    if ($('#posterWorkspace').hidden) return;
     const pad = 42;
     const availableW = Math.max(180, viewport.clientWidth - pad);
     const availableH = Math.max(240, viewport.clientHeight - pad);
@@ -79,7 +81,7 @@
   function zoomBy(delta, anchor = null) { applyZoom(zoom + delta, 'manual', anchor); }
   function snapshot() { const { image, ...rest } = state; return JSON.stringify(rest); }
   function commit(immediate = true) {
-    const save = () => { const value = snapshot(); if (history[historyIndex] === value) return; history = history.slice(0, historyIndex + 1); history.push(value); if (history.length > 60) history.shift(); historyIndex = history.length - 1; };
+    const save = () => { historyTimer = 0; const value = snapshot(); if (history[historyIndex] === value) return; history = history.slice(0, historyIndex + 1); history.push(value); if (history.length > 60) history.shift(); historyIndex = history.length - 1; };
     clearTimeout(historyTimer); if (immediate) save(); else historyTimer = setTimeout(save, 180);
   }
   function markManuallyEdited() {
@@ -251,6 +253,7 @@
   }
 
   function syncAllChildFramesOf(parentId) {
+    if (parentId === state.main.id) parentId = 'main';
     (state.frames || []).forEach((f) => {
       if ((f.sourceId || 'main') === parentId) {
         syncFrameAbsoluteFromParent(f);
@@ -287,13 +290,13 @@
       return `
         <div class="poster-tray-item ${isMain ? 'is-main' : ''}" data-asset-id="${assetMeta.id}" title="点击在画布中选中">
           <div class="poster-tray-thumb">
-            ${src ? `<img src="${src}" alt="${assetMeta.name}">` : ''}
+            ${src ? `<img src="${escapeHTML(src)}" alt="${escapeHTML(assetMeta.name)}">` : ''}
             <span class="poster-tray-badge ${isMain ? 'is-primary' : 'is-secondary'}">
               ${isMain ? '★ PRIMARY' : 'SECONDARY'}
             </span>
           </div>
           <div class="poster-tray-info">
-            <span class="poster-tray-name" title="${assetMeta.name}">${assetMeta.name}</span>
+            <span class="poster-tray-name" title="${escapeHTML(assetMeta.name)}">${escapeHTML(assetMeta.name)}</span>
             <span class="poster-tray-stats">
               ${isMain ? `主图 · 特写 ${evidenceCount}` : `辅图 · 特写 ${evidenceCount}`}
             </span>
@@ -442,6 +445,7 @@
 
   function restore(index) {
     if (index < 0 || index >= history.length) return;
+    clearTimeout(historyTimer); historyTimer = 0;
     const currentImage = state.image;
     Object.assign(state, JSON.parse(history[index]));
     if (state.mainImageId && imageAssets.has(state.mainImageId)) {
@@ -459,8 +463,8 @@
     render();
     updateRemixCard();
   }
-  function undo() { if (historyIndex > 0) restore(historyIndex - 1); else toast('已经是最早一步。'); }
-  function redo() { if (historyIndex < history.length - 1) restore(historyIndex + 1); else toast('没有可重做的操作。'); }
+  function undo() { if (historyTimer) commit(); if (historyIndex > 0) restore(historyIndex - 1); else toast('已经是最早一步。'); }
+  function redo() { if (historyTimer) commit(); if (historyIndex < history.length - 1) restore(historyIndex + 1); else toast('没有可重做的操作。'); }
 
   function getCover() {
     if (!state.image) return null;
@@ -1230,7 +1234,7 @@
     setSelected(hit.type, hit.item);
     if (hit.type === 'secondary' || hit.type === 'main') {
       (state.frames || []).forEach((f) => {
-        if ((f.sourceId || 'main') === hit.item.id) {
+        if ((f.sourceId || 'main') === (hit.type === 'main' ? 'main' : hit.item.id)) {
           syncFrameRelativeToParent(f);
         }
       });
@@ -1278,7 +1282,7 @@
     `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<div class="poster-segmented" data-segmented-for="${key}">${options.map(([v, optZh, optEn]) => `<button type="button" class="${String(v) === String(value) ? 'is-active' : ''}" data-${global ? 'global' : 'prop'}="${key}" data-val="${v}"><span>${optZh}</span> <small>${optEn}</small></button>`).join('')}</div></div>`;
 
   const field = (zh, en, key, value, type = 'text', global = false, hint = '') =>
-    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}${type === 'textarea' ? `<textarea data-${global ? 'global' : 'prop'}="${key}">${value}</textarea>` : `<input type="${type}" data-${global ? 'global' : 'prop'}="${key}" value="${value}">`}</div>`;
+    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}${type === 'textarea' ? `<textarea aria-label="${zh}" data-${global ? 'global' : 'prop'}="${key}">${escapeHTML(value)}</textarea>` : `<input aria-label="${zh}" type="${type}" data-${global ? 'global' : 'prop'}="${key}" value="${escapeHTML(value)}">`}</div>`;
 
   const toggle = (zh, en, key, value, global = false, hint = '') =>
     `<div class="poster-field"><label class="poster-toggle"><div class="poster-toggle-title"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div><input type="checkbox" data-${global ? 'global' : 'prop'}="${key}" ${value ? 'checked' : ''}></label>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}</div>`;
@@ -1331,7 +1335,7 @@
       const number = state.secondaries.findIndex((v) => v.id === o.id) + 1;
       const srcInfo = getImageSourceInfo(o.id);
       inspectorSelection.textContent = `SELECTED · SECONDARY IMAGE / 辅图 · ${srcInfo.name || `CARD ${String(number).padStart(2,'0')}`}`;
-      inspectorTitle.innerHTML = `辅图卡片 <small>SECONDARY · ${srcInfo.name || String(number).padStart(2,'0')}</small>`;
+      inspectorTitle.innerHTML = `辅图卡片 <small>SECONDARY · ${escapeHTML(srcInfo.name || String(number).padStart(2,'0'))}</small>`;
       if (!o.filters) o.filters = cleanFilters();
       const currentAppearance = o.appearance || (o.filters.bw > 0 ? (o.filters.contrast > 40 ? 'highbw' : 'bw') : 'original');
       let currentFramePreset = 'thin';
@@ -1351,7 +1355,7 @@
       const number = state.frames.findIndex((v) => v.id === o.id) + 1;
       const targetInfo = getImageSourceInfo(o.sourceId);
       inspectorSelection.textContent = `SELECTED · INDEX FRAME / ON ${targetInfo.name || targetInfo.displayName}`;
-      inspectorTitle.innerHTML = `索引框 <small>INDEX FRAME · ON ${targetInfo.name || targetInfo.displayName}</small>`;
+      inspectorTitle.innerHTML = `索引框 <small>INDEX FRAME · ON ${escapeHTML(targetInfo.name || targetInfo.displayName)}</small>`;
 
       const advancedLabelContent = `${toggle('自动编号','Auto Number','autoNumber',o.autoNumber)}${field('标签前缀','Label Prefix','labelPrefix',o.labelPrefix||'ITEM')}${range('编号数值','Label Number','labelNumber',o.labelNumber||1,1,999)}${field('自定义标签','Custom Label','label',o.label||'')}${field('标签底色','Tag Background','tagBackground',o.tagBackground,'color')}${field('标签文字颜色','Tag Text Color','tagTextColor',o.tagTextColor,'color')}${range('标签字号','Font Size','labelSize',o.labelSize,8,32)}${select('标签样式','Tag Style','tagStyle',o.tagStyle,[['solid','实心色块','Solid'],['plain','纯文字底','Plain'],['outline','描边线框','Outline']])}`;
 
@@ -1370,7 +1374,7 @@
         ? `SELECTED · EVIDENCE / FROM ${srcInfo.name}`
         : `SELECTED · DETAIL CROP / ${String(number).padStart(2,'0')}`;
       inspectorTitle.innerHTML = state.mode === 'multi'
-        ? `证据图 <small>EVIDENCE · FROM ${srcInfo.name}</small>`
+        ? `证据图 <small>EVIDENCE · FROM ${escapeHTML(srcInfo.name)}</small>`
         : `局部放大 <small>DETAIL CROP / ${String(number).padStart(2,'0')}</small>`;
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
         + accordion('风格滤镜', 'STYLE', `${select('滤镜类型','Filter Type','filterType',o.filterType,[['original','原图','Original'],['bw','黑白','B&W'],['highbw','高对比黑白','High Contrast B&W'],['halftone','半调网点','Halftone'],['outline','轮廓描边','Outline']])}${o.filterType === 'halftone' ? range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,2,30) : ''}${range('胶片颗粒','Grain','grain',o.grain||0,0,100)}`, true)
@@ -2505,7 +2509,9 @@
         root=root.filters;
       }
     }
+    if (c.type === 'number' && (c.value === '' || !Number.isFinite(c.valueAsNumber))) return;
     root[p]=c.type==='checkbox'?c.checked:(c.type==='range'||c.type==='number'?Number(c.value):c.value);
+    if (['w', 'h'].includes(p)) root[p] = Math.max(20, root[p]);
     if(['x','y','w','h','rotation'].includes(p)){
       if(state.selected?.type==='secondary'||state.selected?.type==='main'){
         syncAllChildFramesOf(root.id);
@@ -2522,7 +2528,7 @@
     commit(false);
     markManuallyEdited();
   });
-  inspector.addEventListener('change',(e)=>{if(e.target.matches('select'))e.target.dispatchEvent(new Event('input',{bubbles:true}));});
+  inspector.addEventListener('change',()=>{if(historyTimer)commit();});
   inspector.addEventListener('click',(e)=>{
     const segBtn = e.target.closest('.poster-segmented button');
     if (segBtn) {
@@ -2722,6 +2728,13 @@
   document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d'&&state.mode==='single')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
+  window.addEventListener('visual-lab-mode-change', (e) => {
+    if (e.detail.mode === 'poster' && zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+  });
+  window.addEventListener('blur',()=>{
+    spaceDown=false; pan=null; viewport.classList.remove('is-panning');
+    if(drag){drag=null;commit();renderInspector();}
+  });
   window.posterState = state;
   window.posterImageAssets = imageAssets;
   window.posterSetMainImage = setMainImage;
