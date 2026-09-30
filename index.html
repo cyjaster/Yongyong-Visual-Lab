@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f3f0ea" />
-    <title>Yongyong Visual Lab — Filter Recipe Studio</title>
-    <link rel="stylesheet" href="styles.css?v=20260929-2" />
-    <link rel="stylesheet" href="poster.css?v=20260929-2" />
+    <meta name="theme-color" content="#0c0e0c" />
+    <title>Yongyong Visual Lab — Filter & Collage Studio</title>
+    <link rel="stylesheet" href="styles.css?v=20260930-acid" />
+    <link rel="stylesheet" href="poster.css?v=20260930-acid" />
   </head>
   <body>
     <div class="app-shell">
@@ -14,8 +14,8 @@
         <a class="brand" href="#" aria-label="Yongyong Visual Lab 首页">
           <span class="brand-mark">Y.</span>
           <span>
-            <strong>Yongyong Visual Lab</strong>
-            <small>Filter Recipe Studio · Demo 01</small>
+            <strong>Yongyong <span>Visual Lab</span></strong>
+            <small>Filter / Collage · 本地视觉实验室</small>
           </span>
         </a>
 
@@ -283,30 +283,24 @@
           <div class="poster-panel-heading">
             <p class="eyebrow">02 / COLLAGE POSTER</p>
             <h1>索引拼贴</h1>
-            <p id="posterPanelDesc">从一张图里拆细节，生成索引海报。</p>
-            <div class="poster-mode-switcher" role="radiogroup" aria-label="拼贴模式">
-              <button type="button" class="is-active" data-poster-mode="single">单图索引 <small>SINGLE</small></button>
-              <button type="button" data-poster-mode="multi">多图拼贴 <small>MULTI</small></button>
-            </div>
+            <p id="posterPanelDesc">从一张主图开始，按需加图，拼成自己的索引海报。</p>
           </div>
-
-          <section class="poster-tool-group poster-tray-group" id="posterImageTrayGroup">
-            <div class="poster-tray-header">
-              <span class="poster-tool-label">IMAGE ROLES / 图像角色</span>
-              <span class="poster-tray-count" id="posterTrayCount">0 IMAGES</span>
-            </div>
-            <small class="poster-tool-desc">主图统领核心，辅图与特写构建多图叙事</small>
-            <label class="poster-action poster-action-primary" for="posterMultiImageInput">+ 上传图片素材 <small>BATCH / MULTI</small></label>
-            <div class="poster-image-tray" id="posterImageTray"></div>
-          </section>
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">IMAGE / FRAMES</span>
-            <small class="poster-tool-desc">上传图片并建立索引</small>
-            <label class="poster-action poster-action-primary poster-single-upload" for="posterImageInput">上传主图 <small>JPG / PNG / WEBP</small></label>
+            <small class="poster-tool-desc">一张就能开始，多张也在这里继续</small>
+            <label class="poster-action poster-action-primary" for="posterImageInput">上传 / 更换主图 <small>JPG / PNG / WEBP</small></label>
+            <button class="poster-action" type="button" id="posterAddImagesButton">＋ 添加图片 <small>可多选 · 辅图</small></button>
+            <div class="poster-tray-group" id="posterImageTrayGroup">
+              <div class="poster-tray-header">
+                <span class="poster-tool-label">当前图片 / IMAGES</span>
+                <span class="poster-tray-count" id="posterTrayCount" aria-live="polite">0 IMAGES</span>
+              </div>
+              <div class="poster-image-tray" id="posterImageTray"></div>
+            </div>
             <button class="poster-action poster-demo-button" type="button" data-poster-action="demo">恢复示范模板 <kbd>DEMO 01</kbd></button>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
-            <button class="poster-action poster-single-detail-button" type="button" data-poster-action="detail"><span id="posterActionDetailText">生成局部放大</span> <kbd>D</kbd></button>
+            <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
           </section>
 
           <section class="poster-tool-group">
@@ -398,7 +392,9 @@
             </div>
           </div>
           <div class="poster-stage-footer">
-            <p class="poster-stage-note">拖动元素调整位置；按住 Space 拖动画布；Ctrl / Cmd + 滚轮缩放。</p>
+            <div><p class="poster-stage-note">拖动元素调整位置；按住 Space 拖动画布；Ctrl / Cmd + 滚轮缩放。</p>
+              <label class="poster-motion-control">转场动效 <select id="posterMotionPreference" aria-label="转场动效"><option value="on" selected>纸片转场</option><option value="auto">跟随系统</option><option value="off">关闭</option></select></label>
+            </div>
             <div class="poster-zoom-controls" role="group" aria-label="画布缩放">
               <button type="button" data-zoom-action="out" aria-label="缩小">−</button>
               <button class="poster-zoom-value" type="button" data-zoom-action="actual" id="posterZoomValue" aria-label="恢复百分之百">100%</button>
@@ -433,6 +429,8 @@
 
     <script src="app.js"></script>
     <script src="mode-switcher.js?v=20260921-2"></script>
-  <script src="poster.js?v=20260929-2"></script>
+    <script src="poster-motion.js?v=20260930-paper"></script>
+    <script src="poster-composition.js?v=20260930-editorial"></script>
+    <script src="poster.js?v=20260930-unified"></script>
   </body>
 </html>

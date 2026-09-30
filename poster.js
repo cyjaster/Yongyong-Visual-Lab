@@ -1,4 +1,4 @@
-// Collage Poster v1.5 — Multi-Image Mode & focused framework-free editor.
+// Collage Poster — one framework-free editor, with optional additional photos.
 (() => {
   const $ = (s) => document.querySelector(s);
   const canvas = $('#posterCanvas');
@@ -17,6 +17,7 @@
   const status = $('#posterStatus');
   const viewport = $('#posterViewport');
   const canvasWrap = $('#posterCanvasWrap');
+  const motion = window.createPosterMotion(canvas, canvasWrap, $('#posterMotionPreference'));
   const zoomValue = $('#posterZoomValue');
   const W = canvas.width, H = canvas.height;
   const imageBox = { x: 70, y: 150, w: 760, h: 900 };
@@ -28,7 +29,6 @@
   const cleanFilters = () => ({ bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 8, halftoneDensity: 50, halftoneAngle: 0, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 });
 
   const state = {
-    mode: 'single',
     image: null, imageName: '', mainImageId: '', assets: [], secondaries: [],
     main: makeMain(), fragments: [], frames: [], details: [], texts: [], layers: [], selected: null,
     background: '#efeee8', backgroundStyle:'solid', backgroundImageId:null, backgroundImageOpacity:38, backgroundImageFit:'cover', border: true, borderColor: '#fff', borderWidth: 5,
@@ -42,9 +42,10 @@
       isManuallyEdited: false,
     },
   };
+  const hasSecondaryImages = () => state.secondaries.length > 0;
   let drag = null, history = [], historyIndex = -1, historyTimer = 0;
   let remixBaseSnapshot = null, remixLastResultSnapshot = null;
-  let lastRemixLayoutName = '', lastRemixCopyName = '', lastRemixMainName = '', lastRemixAnchorName = '', lastRemixFramePatternName = '', lastRemixBackgroundStyle = '', lastRemixTypographyMode = '';
+  let lastRemixCopyName = '', lastRemixAnchorName = '', lastRemixFramePatternName = '', lastRemixBackgroundStyle = '';
   let zoom = 1, zoomMode = 'fit', spaceDown = false, pan = null, fitTimer = 0;
   const imageAssets = new Map();
   const backgroundAssets = new Map();
@@ -148,14 +149,14 @@
       rolesZh: '主辅有序', rolesEn: 'Structured',
       isManuallyEdited: false,
     };
-    const multiRows = state.mode === 'multi' ? `
+    const multiRows = hasSecondaryImages() ? `
         <div class="poster-remix-row">
           <span class="poster-remix-key">多图叙事 / NARRATIVE</span>
           <div class="poster-remix-val">${info.narrativeZh || '主辅叙事'} <small>${info.narrativeEn || 'Hero + Support'}</small></div>
         </div>
         <div class="poster-remix-row">
           <span class="poster-remix-key">图像分工 / ROLES</span>
-          <div class="poster-remix-val">${info.rolesZh || '主辅有序'} <small>${info.rolesEn || 'Structured'}</small></div>
+          <div class="poster-remix-val">1主图 · ${state.secondaries.length}辅图 · ${state.details.length}局部图 <small>Primary / Secondary / Detail</small></div>
         </div>
     ` : '';
     remixStatusNode.innerHTML = `
@@ -190,34 +191,6 @@
       </div>
     `;
   }
-  function setPosterMode(nextMode) {
-    state.mode = nextMode;
-    $('#posterWorkspace')?.classList.toggle('is-multi-mode', nextMode === 'multi');
-    document.querySelectorAll('[data-poster-mode]').forEach((b) => {
-      b.classList.toggle('is-active', b.dataset.posterMode === nextMode);
-    });
-    const panelDesc = $('#posterPanelDesc');
-    if (panelDesc) {
-      panelDesc.textContent = nextMode === 'multi'
-        ? '用主图、辅图和证据图建立多图叙事。'
-        : '从一张图里拆细节，生成索引海报。';
-    }
-    const detailBtnText = $('#posterActionDetailText');
-    if (detailBtnText) {
-      detailBtnText.textContent = nextMode === 'multi' ? '生成证据图' : '生成局部放大';
-    }
-    if (nextMode === 'multi' && (!state.secondaries || state.secondaries.length === 0)) {
-      const secAsset = state.assets?.find((a) => a.id !== state.mainImageId) || (imageAssets.has('asset-demo-sec') ? { id: 'asset-demo-sec', name: 'demo-karina.jpg' } : null);
-      if (secAsset && imageAssets.has(secAsset.id)) {
-        addSecondaryImage(secAsset.id);
-      }
-    }
-    renderImageTray();
-    renderInspector();
-    render();
-    toast(`已切换至 ${nextMode === 'multi' ? '多图拼贴模式 MULTI' : '单图索引模式 SINGLE'}`);
-  }
-
   function syncFrameRelativeToParent(frame) {
     if (!frame) return;
     const parentId = frame.sourceId || 'main';
@@ -263,12 +236,14 @@
 
   function renderImageTray() {
     if (!imageTray) return;
-    if (trayCount) trayCount.textContent = `${state.assets?.length || 0} IMAGES`;
-    if (!state.assets || !state.assets.length) {
-      imageTray.innerHTML = `<p style="padding: 12px 0; color: var(--muted); font-size: 8.5px; text-align: center;">暂无素材，点击上方上传图片</p>`;
+    const activeAssets = state.assets.filter(a => a.id === state.mainImageId || state.secondaries.some(s => s.imageId === a.id));
+    if (trayCount) trayCount.textContent = `${(state.image ? 1 : 0) + state.secondaries.length} IMAGES`;
+    updateRemixCard();
+    if (!activeAssets.length) {
+      imageTray.innerHTML = `<p class="poster-help">先上传主图，也可以一次添加多张图片。</p>`;
       return;
     }
-    imageTray.innerHTML = state.assets.map((assetMeta) => {
+    imageTray.innerHTML = activeAssets.map((assetMeta) => {
       const asset = imageAssets.get(assetMeta.id);
       const src = asset?.src || (asset?.image ? asset.image.src : '');
       const isMain = state.mainImageId === assetMeta.id || (!state.mainImageId && state.imageName === assetMeta.name);
@@ -377,9 +352,10 @@
     toast(`已设为主图 · ${asset.name}`);
   }
 
-  function addSecondaryImage(assetId, extra = {}) {
+  function addSecondaryImage(assetId, extra = {}, save = true) {
     const asset = imageAssets.get(assetId);
     if (!asset) return toast('未找到对应素材。');
+    if (save) commit();
     const count = (state.secondaries || []).length;
     const positions = [
       { x: 50, y: 720, w: 260, h: 320, rotation: -3 },
@@ -413,19 +389,34 @@
     state.secondaries.push(s);
     const mainIdx = layerIndex('main', 'main-image');
     addLayer('secondary', s.id, mainIdx >= 0 ? mainIdx : state.layers.length - 1);
-    setSelected('secondary', s);
-    renderImageTray();
-    render();
-    commit();
-    markManuallyEdited();
-    toast(`已添加辅图卡片 · ${asset.name}`);
+    state.selected = { type: 'secondary', id: s.id };
+    if (save) {
+      renderImageTray(); renderInspector(); render(); commit(); markManuallyEdited();
+      toast(`已添加辅图卡片 · ${asset.name}`);
+    }
+  }
+
+  function appendImages(assets) {
+    if (!assets.length) return;
+    commit(); // One batch is one undo step, including a pending inspector edit.
+    assets.forEach(asset => {
+      imageAssets.set(asset.id, asset);
+      state.assets.push({ id: asset.id, name: asset.name });
+      if (!state.image) {
+        state.image = asset.image; state.imageName = asset.name; state.mainImageId = asset.id;
+        ensureMainLayer(); emptyState.classList.add('is-hidden');
+        status.textContent = `MAIN IMAGE / ${asset.name}`;
+      } else addSecondaryImage(asset.id, {}, false);
+    });
+    renderImageTray(); renderInspector(); render(); commit(); markManuallyEdited();
   }
 
   function deleteAsset(assetId) {
     if (state.assets.length <= 1) return toast('素材库中至少保留一张图片。');
     if (state.mainImageId === assetId) return toast('主图素材不能直接删除，请先将其他图片设为主图。');
+    commit();
     state.assets = state.assets.filter((a) => a.id !== assetId);
-    imageAssets.delete(assetId);
+    // Keep decoded pixels for undo; removing from the scene is not removing from history.
     const deadSecondaryIds = state.secondaries.filter((s) => s.imageId === assetId).map((s) => s.id);
     state.secondaries = state.secondaries.filter((s) => s.imageId !== assetId);
     const deadFrameIds = new Set(state.frames.filter((f) => deadSecondaryIds.includes(f.sourceId)).map((f) => f.id));
@@ -451,13 +442,9 @@
     if (state.mainImageId && imageAssets.has(state.mainImageId)) {
       state.image = imageAssets.get(state.mainImageId).image;
     } else {
-      state.image = currentImage;
+      state.image = state.mainImageId ? currentImage : null;
     }
     historyIndex = index;
-    $('#posterWorkspace')?.classList.toggle('is-multi-mode', state.mode === 'multi');
-    document.querySelectorAll('[data-poster-mode]').forEach((b) => {
-      b.classList.toggle('is-active', b.dataset.posterMode === (state.mode || 'single'));
-    });
     renderImageTray();
     renderInspector();
     render();
@@ -468,9 +455,11 @@
 
   function getCover() {
     if (!state.image) return null;
-    const box = state.main || imageBox;
-    const scale = Math.max(box.w / state.image.naturalWidth, box.h / state.image.naturalHeight) * (box.zoom || 1);
-    const w = state.image.naturalWidth * scale, h = state.image.naturalHeight * scale;
+    return imageCover(state.image, state.main || imageBox);
+  }
+  function imageCover(image, box) {
+    const scale = Math.max(box.w / image.naturalWidth, box.h / image.naturalHeight) * (box.zoom || 1);
+    const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
     return { x: box.x + (box.w - w) / 2 + (box.panX || 0), y: box.y + (box.h - h) / 2 + (box.panY || 0), w, h, scale };
   }
   function getSourceImageForFrame(f) {
@@ -486,35 +475,19 @@
     return state.image;
   }
   function sourceRect(frame) {
-    if (frame.sourceId && frame.sourceId !== 'main') {
-      const s = state.secondaries?.find((v) => v.id === frame.sourceId);
-      if (s) {
-        const asset = imageAssets.get(s.imageId);
-        const img = asset?.image || state.image;
-        if (!img) return null;
-        const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-        const a = rotatePoint(frame.x, frame.y, cx, cy, -(s.rotation || 0));
-        const b = rotatePoint(frame.x + frame.w, frame.y + frame.h, cx, cy, -(s.rotation || 0));
-        const left = Math.min(a.x, b.x), top = Math.min(a.y, b.y);
-        const right = Math.max(a.x, b.x), bottom = Math.max(a.y, b.y);
-        const relLeft = (left - s.x) / Math.max(1, s.w);
-        const relTop = (top - s.y) / Math.max(1, s.h);
-        const relW = (right - left) / Math.max(1, s.w);
-        const relH = (bottom - top) / Math.max(1, s.h);
-        const sx = Math.max(0, Math.min(img.naturalWidth - 8, relLeft * img.naturalWidth));
-        const sy = Math.max(0, Math.min(img.naturalHeight - 8, relTop * img.naturalHeight));
-        const sw = Math.max(8, Math.min(img.naturalWidth - sx, Math.max(0.04, relW) * img.naturalWidth));
-        const sh = Math.max(8, Math.min(img.naturalHeight - sy, Math.max(0.04, relH) * img.naturalHeight));
-        return { sx, sy, sw, sh };
-      }
-    }
-    const cover = getCover(); if (!cover) return null;
-    const box = state.main || imageBox, cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-    const a = rotatePoint(frame.x, frame.y, cx, cy, -(box.rotation || 0)), b = rotatePoint(frame.x + frame.w, frame.y + frame.h, cx, cy, -(box.rotation || 0));
-    const left = Math.max(box.x, Math.min(a.x,b.x)), top = Math.max(box.y, Math.min(a.y,b.y));
-    const right = Math.min(box.x + box.w, Math.max(a.x,b.x)), bottom = Math.min(box.y + box.h, Math.max(a.y,b.y));
-    const sx = Math.max(0, (left - cover.x) / cover.scale), sy = Math.max(0, (top - cover.y) / cover.scale);
-    return { sx, sy, sw: Math.max(1, Math.min(state.image.naturalWidth - sx, Math.max(8, right - left) / cover.scale)), sh: Math.max(1, Math.min(state.image.naturalHeight - sy, Math.max(8, bottom - top) / cover.scale)) };
+    const image = getSourceImageForFrame(frame); if (!image) return null;
+    const box = state.secondaries?.find((v) => v.id === frame.sourceId) || state.main || imageBox;
+    const cover = imageCover(image, box), cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    // Map all four rotated frame corners back into the unrotated source image.
+    const corners = [[0,0],[frame.w,0],[frame.w,frame.h],[0,frame.h]].map(([x,y]) => {
+      const p = rotatePoint(frame.x+x, frame.y+y, frame.x+frame.w/2, frame.y+frame.h/2, frame.rotation || 0);
+      return rotatePoint(p.x, p.y, cx, cy, -(box.rotation || 0));
+    });
+    const left = Math.max(box.x, Math.min(...corners.map(p => p.x))), top = Math.max(box.y, Math.min(...corners.map(p => p.y)));
+    const right = Math.min(box.x+box.w, Math.max(...corners.map(p => p.x))), bottom = Math.min(box.y+box.h, Math.max(...corners.map(p => p.y)));
+    const sx = Math.max(0, Math.min(image.naturalWidth-1, (left-cover.x)/cover.scale));
+    const sy = Math.max(0, Math.min(image.naturalHeight-1, (top-cover.y)/cover.scale));
+    return { sx, sy, sw: Math.max(1, Math.min(image.naturalWidth-sx, (right-cover.x)/cover.scale-sx)), sh: Math.max(1, Math.min(image.naturalHeight-sy, (bottom-cover.y)/cover.scale-sy)) };
   }
   function raster(w, h, draw) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); draw(c.getContext('2d'), c); return c; }
   function noise(seed) { const n = Math.sin(seed * 12.9898 + 78.233) * 43758.5453; return n - Math.floor(n); }
@@ -739,7 +712,12 @@
   function filteredImage(source, rect, w, h, o) {
     const result = raster(w, h, (rc, target) => {
       rc.filter = `grayscale(${Math.max(0, Math.min(100, o.bw || 0))}%) brightness(${Math.max(5, 100 + (o.brightness || 0))}%) contrast(${Math.max(5, 100 + (o.contrast || 0))}%) saturate(${Math.max(0, o.saturation ?? 100)}%) invert(${Math.max(0, Math.min(100, o.invert || 0))}%)`;
-      if (rect) rc.drawImage(source, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, target.width, target.height);
+      if (rect) {
+        // Cover the card with one uniform scale; crop excess edges, never stretch faces.
+        // Use logical dimensions so rounding the raster canvas cannot distort the final draw.
+        const scale = Math.max(w / rect.sw, h / rect.sh), sw = w / scale, sh = h / scale;
+        rc.drawImage(source, rect.sx+(rect.sw-sw)/2, rect.sy+(rect.sh-sh)/2, sw, sh, 0, 0, target.width, target.height);
+      }
       else { const cover = getCover(), box = state.main || imageBox; rc.drawImage(source, cover.x - box.x, cover.y - box.y, cover.w, cover.h); }
       rc.filter = 'none';
     });
@@ -1067,13 +1045,6 @@
   function addDetail(frame = null) {
     if (!state.image && (!state.assets || !state.assets.length)) return toast('请先上传图片。');
     let targetFrame = frame;
-    if (state.mode === 'multi' && !targetFrame) {
-      if (state.selected?.type === 'frame') {
-        targetFrame = selectedObject();
-      } else {
-        return;
-      }
-    }
     if (!targetFrame) {
       if (state.selected?.type === 'frame') {
         targetFrame = selectedObject();
@@ -1119,7 +1090,7 @@
     render();
     commit();
     markManuallyEdited();
-    toast(state.mode === 'multi' ? '特写证据图已生成。' : '局部放大已生成。');
+    toast('局部放大已生成。');
   }
   function addText(kind) { const defaults = { hero: { content: 'NOTICE', x: -35, y: 46, size: 112, weight: 800, font: 'Arial Black, Impact, sans-serif', color: '#171717', scaleX: 1.35, scaleY: .82 }, subtitle: { content: 'COLLAGE INDEX / EDITION 01', x: 70, y: 1085, size: 22, weight: 700, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, caption: { content: 'A visual record of detail, texture and presence.', x: 68, y: 1122, size: 15, weight: 500, font: 'Arial, sans-serif', color: '#171717', scaleX: 1, scaleY: 1 }, micro: { content: 'FILE 0021 / DATA UPDATED', x: 742, y: 245, size: 10, weight: 700, font: 'ui-monospace, Consolas, monospace', color: '#171717', scaleX: 1, scaleY: 1.08, letterSpacing: 3, writingMode: 'vertical' }, repeat: { content: 'IM RICH MAN', x: 78, y: 760, size: 20, weight: 800, font: 'Arial Black, Arial, sans-serif', color: '#bd2e35', repeat: 5, direction: 'vertical', repeatSpacing: 3, repeatOffsetX: 7, repeatOffsetY: 0, rotationStep: 0, scaleX: 1, scaleY: 1 } }; const t = { id: makeId(), kind, rotation: kind === 'hero' ? -2 : 0, opacity: 100, lineHeight: 1.15, letterSpacing: kind === 'hero' ? -2 : 0, align: 'left', writingMode: 'horizontal', ...defaults[kind] }; state.texts.push(t); addLayer('text', t.id); setSelected('text', t); render(); commit(); markManuallyEdited(); }
 
@@ -1310,8 +1281,8 @@
     }
     if (state.selected.type === 'main') {
       if (holdBeforeButton) holdBeforeButton.style.display = 'flex';
-      inspectorSelection.textContent = state.mode === 'multi' ? 'SELECTED · PRIMARY IMAGE / 主图' : `SELECTED · MAIN IMAGE / ${o.layoutMode || 'CUSTOM'}`;
-      inspectorTitle.innerHTML = state.mode === 'multi' ? '主图 <small>PRIMARY IMAGE · 核心视觉</small>' : '主图 <small>MAIN IMAGE</small>';
+      inspectorSelection.textContent = `SELECTED · MAIN IMAGE / ${o.layoutMode || 'CUSTOM'}`;
+      inspectorTitle.innerHTML = '主图 <small>MAIN IMAGE · 核心视觉</small>';
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-12,12,.5)}`, true)
         + accordion('裁切', 'CROP', `${range('画面缩放','Image Zoom','zoom',o.zoom||1,.7,2.4,.02)}${range('裁切水平偏移','Crop X','panX',o.panX||0,-350,350,1)}${range('裁切垂直偏移','Crop Y','panY',o.panY||0,-450,450,1)}`, true)
         + layerControls();
@@ -1370,10 +1341,10 @@
       const number = state.details.findIndex((v) => v.id === o.id) + 1;
       const targetFrame = frameById(o.frameId);
       const srcInfo = getImageSourceInfo(targetFrame?.sourceId || o.sourceId);
-      inspectorSelection.textContent = state.mode === 'multi'
+      inspectorSelection.textContent = hasSecondaryImages()
         ? `SELECTED · EVIDENCE / FROM ${srcInfo.name}`
         : `SELECTED · DETAIL CROP / ${String(number).padStart(2,'0')}`;
-      inspectorTitle.innerHTML = state.mode === 'multi'
+      inspectorTitle.innerHTML = hasSecondaryImages()
         ? `证据图 <small>EVIDENCE · FROM ${escapeHTML(srcInfo.name)}</small>`
         : `局部放大 <small>DETAIL CROP / ${String(number).padStart(2,'0')}</small>`;
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
@@ -1388,10 +1359,10 @@
       const d = state.details.find((item) => item.id === o.id);
       const targetFrame = d ? frameById(d.frameId) : null;
       const srcInfo = getImageSourceInfo(targetFrame?.sourceId || d?.sourceId);
-      inspectorSelection.textContent = state.mode === 'multi'
+      inspectorSelection.textContent = hasSecondaryImages()
         ? `SELECTED · CONNECTOR / ${srcInfo.name} → EVIDENCE`
         : 'SELECTED · CONNECTOR';
-      inspectorTitle.innerHTML = state.mode === 'multi'
+      inspectorTitle.innerHTML = hasSecondaryImages()
         ? `关系连线 <small>CONNECTOR · ${srcInfo.name} → EVIDENCE</small>`
         : '连接线 <small>CONNECTOR</small>';
       inspector.innerHTML = accordion('连接线', 'CONNECTOR', `${select('连接类型','Connector Type','connectorType',o.connectorType,[['straight','直线','Straight'],['elbow','折线 (智能避让)','Elbow (Avoidance)']])}${field('线条颜色','Line Color','lineColor',o.lineColor,'color')}${range('线条粗细','Line Width','connectorWidth',o.connectorWidth||2,1,12)}${range('透明度','Opacity','lineOpacity',o.lineOpacity??100,0,100)}${toggle('虚线','Dashed Line','connectorDash',o.connectorDash)}${select('端点样式','Endpoint Style','endpointStyle',o.endpointStyle,[['none','无端点','None'],['dot','圆点','Dot'],['cross','十字','Cross']])}`, true)
@@ -1411,9 +1382,8 @@
   }
 
   function applyDemo(image) {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixLayoutName = ''; lastRemixCopyName = ''; lastRemixMainName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = ''; lastRemixBackgroundStyle = ''; lastRemixTypographyMode = '';
+    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = ''; lastRemixBackgroundStyle = '';
     const mainAssetId = 'asset-demo-main';
-    const secAssetId = 'asset-demo-sec';
     imageAssets.set(mainAssetId, { id: mainAssetId, name: 'demo-collage.jpg', image, src: image.src });
     state.image = image; state.imageName = 'demo-collage.jpg'; state.mainImageId = mainAssetId;
     state.assets = [{ id: mainAssetId, name: 'demo-collage.jpg' }];
@@ -1433,22 +1403,10 @@
       strengthZh: '标准 · 平衡', strengthEn: 'Standard · Balanced',
       isManuallyEdited: false,
     };
-    const secImg = new Image();
-    secImg.onload = () => {
-      imageAssets.set(secAssetId, { id: secAssetId, name: 'demo-karina.jpg', image: secImg, src: secImg.src });
-      if (!state.assets.some((a) => a.id === secAssetId)) {
-        state.assets.push({ id: secAssetId, name: 'demo-karina.jpg' });
-      }
-      renderImageTray();
-    };
-    secImg.src = 'assets/demo-karina.jpg';
     renderImageTray(); renderInspector(); render(); if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace); history = []; historyIndex = -1; commit(); updateRemixCard();
   }
   function loadDemo(show = true) {
-    if (state.mode === 'multi') {
-      toast('多图模式下已隐藏单图示范模板。');
-      return;
-    }
+    if (show && hasSecondaryImages() && !window.confirm('恢复示范模板会替换当前海报及历史记录。确定恢复吗？')) return;
     const image = new Image();
     image.onload = () => { applyDemo(image); if (show) toast('示范模板已恢复。'); };
     image.onerror = () => toast('示范图片未能载入。');
@@ -1529,13 +1487,6 @@
     return width * height / Math.max(1, Math.min(a.w * a.h, b.w * b.h));
   }
 
-  function moveOutOfQuietZone(item, zone, gap = 18) {
-    if (!zone || !item || remixOverlap(item, zone) < .12) return;
-    if (zone.side === 'left') item.x = Math.max(item.x, zone.w + gap);
-    if (zone.side === 'right') item.x = Math.min(item.x, zone.x - item.w - gap);
-    if (zone.side === 'top') item.y = Math.max(item.y, zone.h + gap);
-    if (zone.side === 'bottom') item.y = Math.min(item.y, zone.y - item.h - gap);
-  }
 
   const narrativeTemplates = [
     {
@@ -1691,6 +1642,8 @@
 
   function remixLayout(strength = 'medium') {
     if (!state.image) return toast('请先上传主图。');
+    render(false);
+    const previousPoster = motion.capture();
     if (!state.main) state.main = makeMain();
     commit(); // capture a pending inspector edit before REMIX becomes one undo step
     const currentSnapshot = snapshot();
@@ -1724,10 +1677,6 @@
     const anchorPool = anchorModes.filter((item) => item.name !== lastRemixAnchorName);
     const anchorMode = remixPick(anchorPool.length ? anchorPool : anchorModes); lastRemixAnchorName = anchorMode.name;
     const anchorDetail = anchorMode.id === 'detail' ? remixPick(state.details) : null;
-    const quietZone = anchorMode.id === 'quiet' ? remixPick([
-      { side:'left', x:0, y:0, w:W*.27, h:H }, { side:'right', x:W*.73, y:0, w:W*.27, h:H },
-      { side:'top', x:0, y:0, w:W, h:H*.22 }, { side:'bottom', x:0, y:H*.78, w:W, h:H*.22 },
-    ]) : null;
     const budgetsByAnchor = {
       main:{ main:'stable', hero:'medium', detail:'medium', fragment:'stable', frame:'medium', tertiary:'wild', texture:'medium' },
       hero:{ main:'medium', hero:'stable', detail:'medium', fragment:'medium', frame:'medium', tertiary:'wild', texture:'medium' },
@@ -1739,26 +1688,13 @@
     const previousMain = { ...(state.main || makeMain()) };
 
     let selectedNarrative = null;
-    if (state.mode === 'multi') {
-      if (!state.secondaries || state.secondaries.length === 0) {
-        const secAsset = state.assets?.find((a) => a.id !== state.mainImageId) || (imageAssets.has('asset-demo-sec') ? { id: 'asset-demo-sec', name: 'demo-karina.jpg' } : null);
-        if (secAsset && imageAssets.has(secAsset.id)) {
-          addSecondaryImage(secAsset.id);
-        }
-      }
+    if (hasSecondaryImages()) {
       selectedNarrative = remixPick(narrativeTemplates);
       selectedNarrative.apply(state.main, state.secondaries || []);
       state.fragments = [];
       state.layers = state.layers.filter((layer) => layer.type !== 'fragment');
 
-      if (state.details.length > selectedNarrative.cropLimit) {
-        const excessDetails = state.details.slice(selectedNarrative.cropLimit);
-        const excessDetailIds = new Set(excessDetails.map((d) => d.id));
-        const excessFrameIds = new Set(excessDetails.map((d) => d.frameId));
-        state.details = state.details.slice(0, selectedNarrative.cropLimit);
-        state.frames = state.frames.filter((f) => !excessFrameIds.has(f.id));
-        state.layers = state.layers.filter((l) => !excessDetailIds.has(l.id) && !excessFrameIds.has(l.id));
-      } else if (state.details.length === 0) {
+      if (state.details.length === 0) {
         const f1 = makeFrame(1, {
           sourceId: 'main',
           labelPrefix: 'EVID',
@@ -1793,72 +1729,19 @@
         }
       }
     } else {
-      const mainModes = [
-        { name:'FULL BASE', x:70, y:150, w:760, h:900, zoom:1.02, fragments:0 },
-        { name:'TIGHT CROP', x:88, y:112, w:724, h:970, zoom:1.34, panY:28, fragments:0 },
-        { name:'OFFSET BASE', x:42, y:155, w:735, h:920, zoom:1.1, panX:-16, fragments:0 },
-        { name:'FLOATING BASE + 1', x:102, y:175, w:690, h:850, zoom:1.08, fragments:1 },
-        { name:'FULL BASE + 2', x:65, y:140, w:770, h:920, zoom:1.12, fragments:2 },
-        { name:'FRAGMENTED BASE', x:95, y:210, w:710, h:820, zoom:1.26, panY:22, fragments:3 },
-      ];
-      const strengthMainModes = strength === 'light' ? mainModes.slice(0,3) : strength === 'medium' ? mainModes.slice(0,4) : mainModes;
-      const allowedNames = anchorMode.id === 'main' ? ['FULL BASE','OFFSET BASE'] : anchorMode.id === 'quiet' ? ['FULL BASE','OFFSET BASE','FLOATING BASE + 1'] : anchorMode.id === 'detail' ? ['FULL BASE','TIGHT CROP','OFFSET BASE','FLOATING BASE + 1'] : mainModes.map((item)=>item.name);
-      const allowedMainModes = strengthMainModes.filter((item) => allowedNames.includes(item.name));
-      const freshMainModes = allowedMainModes.filter((item) => item.name !== lastRemixMainName);
-      const mainMode = remixPick(freshMainModes.length ? freshMainModes : allowedMainModes); lastRemixMainName = mainMode.name;
-      const offsetVariants = [{ label:'LEFT', x:28, y:150 },{ label:'RIGHT', x:122, y:145 },{ label:'LOW', x:72, y:235 }];
-      const offsetVariant = mainMode.name === 'OFFSET BASE' ? remixPick(offsetVariants) : null;
-      const mainConfig = offsetVariant ? { ...mainMode, x:offsetVariant.x, y:offsetVariant.y } : mainMode;
-      const mainModeLabel = offsetVariant ? `${mainMode.name} / ${offsetVariant.label}` : mainMode.name;
-      const defaultMain = makeMain(), mainChaos = budgetScale(budgets.main);
-      const mainDrift = (strength === 'light' ? 8 : strength === 'wild' ? 25 : 16) * mainChaos;
-      const modeInfluence = budgets.main === 'stable' ? .12 : budgets.main === 'medium' ? .38 : .68;
-      const sizeDelta = (strength === 'wild' ? .08 : strength === 'medium' ? .045 : .02) * mainChaos;
-      const rotationMax = (strength === 'light' ? 2 : strength === 'wild' ? 8 : 5.5) * mainChaos;
-      const blend = (base, target) => base + (target - base) * modeInfluence;
-      state.main = { id:'main-image', x:blend(defaultMain.x,mainConfig.x) + remixBetween(-mainDrift,mainDrift), y:blend(defaultMain.y,mainConfig.y) + remixBetween(-mainDrift,mainDrift), w:blend(defaultMain.w,mainConfig.w) * remixBetween(1-sizeDelta,1+sizeDelta), h:blend(defaultMain.h,mainConfig.h) * remixBetween(1-sizeDelta,1+sizeDelta), rotation:remixBetween(-rotationMax,rotationMax), zoom:remixClamp(1 + ((mainConfig.zoom || 1)-1)*modeInfluence + remixBetween(-.08,.14)*mainChaos, .88, 1.72), panX:(mainConfig.panX || 0)*modeInfluence + remixBetween(-mainDrift,mainDrift), panY:(mainConfig.panY || 0)*modeInfluence + remixBetween(-mainDrift,mainDrift), layoutMode:mainModeLabel, fragmented:mainMode.name === 'FRAGMENTED BASE' && budgets.main !== 'stable' };
-      state.main.x = remixClamp(state.main.x, -state.main.w * .18, W - state.main.w * .72);
-      state.main.y = remixClamp(state.main.y, -state.main.h * .12, H - state.main.h * .72);
-      if (budgets.main !== 'stable' && strength !== 'light' && Math.abs(state.main.rotation) < 1.1) state.main.rotation = (Math.random()<.5?-1:1) * remixBetween(1.1,Math.max(1.2,rotationMax));
-      if (quietZone) {
-        if (quietZone.side === 'left') { state.main.x = W * .23; state.main.w = Math.min(state.main.w, W * .73); }
-        if (quietZone.side === 'right') { state.main.x = 34; state.main.w = Math.min(state.main.w, W * .73); }
-        if (quietZone.side === 'top') { state.main.y = H * .21; state.main.h = Math.min(state.main.h, H * .77); }
-        if (quietZone.side === 'bottom') { state.main.y = 78; state.main.h = Math.min(state.main.h, H * .75); }
-        state.main.rotation = remixClamp(state.main.rotation, -2.2, 2.2);
-      }
-      state.layers = state.layers.filter((layer) => layer.type !== 'fragment');
+      state.main = makeMain();
+      state.main.layoutMode = 'EDITORIAL BASE';
       state.fragments = [];
-      const rawFragmentCount = strength === 'light' || budgets.fragment === 'stable' ? 0 : Math.max(0, Math.round(mainMode.fragments * budgetScale(budgets.fragment)));
-      const fragmentCount = Math.min(experimental ? 2 : 1, rawFragmentCount);
-      for (let i = 0; i < fragmentCount; i++) state.fragments.push(makeMainFragment(i, state.main, experimental && budgets.fragment === 'wild' ? 'wild' : 'medium'));
-      if (fragmentCount > 1) state.fragments.forEach((fragment) => { fragment.w *= .78; fragment.h *= .78; });
-      const overlapChance = anchorMode.id === 'main' ? (strength === 'light' ? .08 : .24) : strength === 'light' ? .16 : strength === 'wild' ? .72 : .48;
-      if (Math.random() < overlapChance) {
-        state.fragments.unshift(makeOverlapCompanion(state.main, strength));
-        state.main.layoutMode += ' / OVERLAP';
+      state.layers = state.layers.filter(layer => layer.type !== 'fragment');
+      if (strength !== 'light' && anchorMode.id !== 'main' && Math.random() < .35) {
+        state.fragments.push(makeOverlapCompanion(state.main, strength));
+      }
+      if (experimental && strength === 'wild' && Math.random() < .35) {
+        state.fragments.push(makeMainFragment(0,state.main,'medium'));
       }
     }
-    const layouts = [
-      { name:'ORBIT', slots:[[-35,210,226,252],[670,185,205,240],[650,765,245,292],[20,835,205,205]], hero:[[-65,35],[45,1010]], copy:[[640,105],[35,610],[820,270],[475,1110]] },
-      { name:'SIDE STACK', slots:[[650,245,230,270],[608,565,266,210],[-32,805,220,250],[42,185,180,215]], hero:[[-45,42],[-70,930]], copy:[[45,1090],[620,105],[28,575],[825,255]] },
-      { name:'DIAGONAL', slots:[[-34,170,220,255],[205,720,205,230],[665,820,240,255],[635,280,190,220]], hero:[[-65,48],[82,1015]], copy:[[690,105],[35,520],[790,535],[430,1120]] },
-      { name:'ONE BIG / TWO SMALL', slots:[[-58,250,305,355],[676,175,192,220],[665,825,218,240],[35,875,182,192]], hero:[[-40,35],[35,1000]], copy:[[620,112],[55,700],[810,310],[475,1110]], wild:true },
-      { name:'EDGE NOTES', slots:[[40,120,208,235],[696,350,206,248],[28,905,235,224],[648,900,230,210]], hero:[[-70,36],[100,1015]], copy:[[650,105],[35,580],[825,250],[470,1100]] },
-      { name:'TOP PRESS', slots:[[15,340,260,290],[610,300,255,250],[665,760,205,250],[-25,820,205,215]], hero:[[-80,-22],[35,38]], copy:[[42,250],[690,150],[825,560],[475,1115]] },
-      { name:'BOTTOM PRESS', slots:[[-28,135,235,260],[655,160,225,250],[610,560,265,300],[25,595,200,225]], hero:[[-85,930],[35,1030]], copy:[[650,110],[40,1120],[820,310],[365,95]] },
-      { name:'LEFT RAIL', slots:[[-35,155,220,230],[-45,445,245,250],[-30,765,215,270],[625,865,230,220]], hero:[[80,35],[-55,1010]], copy:[[670,110],[240,1085],[825,330],[230,590]] },
-      { name:'RIGHT RAIL', slots:[[690,145,220,235],[660,430,245,260],[685,760,215,275],[-30,865,225,220]], hero:[[-70,40],[55,1015]], copy:[[45,1090],[610,105],[30,420],[815,640]] },
-      { name:'SPLIT AXIS', slots:[[-45,230,240,285],[685,230,235,280],[-20,785,215,245],[675,800,230,230]], hero:[[-55,38],[65,1025]], copy:[[365,105],[350,1100],[25,620],[825,570]] },
-      { name:'CORNER BURST', slots:[[-55,105,245,275],[685,120,245,255],[-50,860,245,260],[685,865,235,245]], hero:[[-35,470],[85,520]], copy:[[360,105],[350,1110],[25,590],[815,570]], wild:true },
-      { name:'CENTER LOCK', slots:[[110,265,255,285],[555,265,245,275],[120,700,235,260],[560,710,250,255]], hero:[[-80,35],[45,1020]], copy:[[650,110],[30,1120],[815,440],[40,485]], wild:true },
-      { name:'MAGAZINE SPINE', slots:[[55,190,205,240],[630,185,240,270],[615,720,255,285],[55,790,215,225]], hero:[[-100,470],[-55,35]], copy:[[805,110],[35,1090],[450,1120],[820,520]] },
-      { name:'CROSS SCAN', slots:[[335,145,225,245],[-40,465,255,270],[680,470,250,265],[340,850,225,235]], hero:[[-70,35],[55,1010]], copy:[[45,420],[660,420],[45,760],[690,760]], wild:true },
-      { name:'OFF GRID', slots:[[-70,310,280,315],[615,120,260,285],[665,710,265,310],[40,875,190,205]], hero:[[-95,15],[130,1020]], copy:[[530,108],[25,650],[820,410],[450,1120]], wild:true },
-    ];
-    const layoutPool = strength === 'light' || !experimental ? layouts.filter((item) => !item.wild) : layouts;
-    const freshLayouts = layoutPool.filter((item) => item.name !== lastRemixLayoutName);
-    const layout = remixPick(freshLayouts.length ? freshLayouts : layoutPool); lastRemixLayoutName = layout.name;
+    // The same composition owns photography, evidence and typography.
+    const layout = window.posterComposition.choose(anchorMode.id);
 
     const copySets = [
       { name:'SIGNAL LOST', hero:'SIGNAL LOST', subtitle:'SUBJECT INDEX / 07', caption:'IMAGE FOUND BETWEEN TWO TRANSMISSIONS', micro:'FILE 0707 / SIGNAL INTERRUPTED / KEEP WATCH', repeat:'NO SIGNAL' },
@@ -1933,84 +1816,10 @@
       { type:'rough', contrast:[18,44], grain:[38,72], dot:[9,18], strength:[55,82] },
       ...(experimental ? [{ type:'posterize', contrast:[24,58], grain:[10,32], dot:[8,16], strength:[58,84] }, { type:'invert', contrast:[8,32], grain:[4,20], dot:[7,13], strength:[48,70] }] : []),
     ]);
-    const cropShapes = remixShuffle([{w:1.18,h:.82},{w:.82,h:1.2},{w:1.02,h:1.02},{w:1.25,h:.72}]);
-
-    // Protected Zones definition for REMIX collision avoidance
-    const primaryCoreZone = {
-      x: state.main.x + state.main.w * 0.2,
-      y: state.main.y + state.main.h * 0.2,
-      w: state.main.w * 0.6,
-      h: state.main.h * 0.6,
-    };
-    const secondaryCoreZones = (state.secondaries || []).map((sec) => ({
-      x: sec.x + sec.w * 0.2,
-      y: sec.y + sec.h * 0.2,
-      w: sec.w * 0.6,
-      h: sec.h * 0.6,
-    }));
-    const heroTitleObj = state.texts.find((t) => t.kind === 'hero');
-    const heroProtectedZone = heroTitleObj ? (() => {
-      const b = textBounds(heroTitleObj);
-      return { x: b.x - 15, y: b.y - 15, w: b.w + 30, h: b.h + 30 };
-    })() : null;
-    const coreProtectedZones = [primaryCoreZone, ...secondaryCoreZones, ...(heroProtectedZone ? [heroProtectedZone] : [])];
-
-    const safeMarginSlots = [
-      { x: 30, y: 740 },
-      { x: 625, y: 740 },
-      { x: 30, y: 210 },
-      { x: 625, y: 210 },
-      { x: 340, y: 820 },
-      { x: 340, y: 50 },
-    ];
 
     state.details.forEach((detail, index) => {
-      const slot = layout.slots[index % layout.slots.length];
       const isAnchor = detail === anchorDetail;
       const detailChaos = budgetScale(isAnchor ? 'stable' : budgets.detail);
-      const ratio = Math.max(.45, detail.h / Math.max(1, detail.w));
-      const slotScale = 1 + remixBetween(-power.scale, power.scale) * detailChaos;
-      const cropShape = cropShapes[index % cropShapes.length];
-      detail.w = remixClamp(slot[2] * slotScale * cropShape.w, 130, strength === 'wild' ? 320 : 270);
-      detail.h = remixClamp((slot[3] || detail.w * ratio) * slotScale * cropShape.h, 115, 340);
-      const bleedX = detail.w * power.bleed * detailChaos, bleedY = detail.h * power.bleed * detailChaos;
-      
-      let bestX = remixClamp(slot[0] + remixBetween(-power.drift, power.drift) * detailChaos, 15, W - detail.w - 15);
-      let bestY = remixClamp(slot[1] + remixBetween(-power.drift, power.drift) * detailChaos, 30, H - detail.h - 30);
-
-      // Check collision with core protected zones
-      let placedSafely = false;
-      for (let attempt = 0; attempt < 18; attempt++) {
-        let testX, testY;
-        if (attempt === 0) {
-          testX = bestX;
-          testY = bestY;
-        } else {
-          const fallback = safeMarginSlots[(index + attempt) % safeMarginSlots.length];
-          testX = remixClamp(fallback.x + remixBetween(-20, 20), 15, W - detail.w - 15);
-          testY = remixClamp(fallback.y + remixBetween(-20, 20), 30, H - detail.h - 30);
-        }
-        const candidateBox = { x: testX, y: testY, w: detail.w, h: detail.h };
-        const maxOverlap = Math.max(...coreProtectedZones.map((pz) => remixOverlap(candidateBox, pz)));
-        if (maxOverlap < 0.18) {
-          bestX = testX;
-          bestY = testY;
-          placedSafely = true;
-          break;
-        }
-      }
-      if (!placedSafely) {
-        const edge = safeMarginSlots[index % safeMarginSlots.length];
-        bestX = remixClamp(edge.x, 15, W - detail.w - 15);
-        bestY = remixClamp(edge.y, 30, H - detail.h - 30);
-      }
-      detail.x = bestX;
-      detail.y = bestY;
-      detail.rotation = remixBetween(-power.turn, power.turn) * detailChaos;
-      detail.connectorType = Math.random() < .52 ? 'elbow' : 'straight';
-      detail.connectorWidth = remixClamp(remixNudge(detail.connectorWidth || 2, (strength === 'wild' ? 2 : 1) * detailChaos), 1, 6);
-      detail.lineOpacity = Math.round(remixBetween(62, 100));
-      detail.endpointStyle = remixPick(['none','dot','cross']);
       const cropProfile = cropProfiles[index % cropProfiles.length];
       if (strength !== 'light' && !isAnchor) {
         detail.filterType = cropProfile.type;
@@ -2024,47 +1833,10 @@
       detail.grain = Math.round(remixClamp(remixNudge(detail.grain || 0, (strength === 'wild' ? 30 : 14) * detailChaos), 0, 88));
       if (strength !== 'light') { detail.color = palette.accent; detail.lineColor = palette.accent; }
       if (isAnchor) {
-        detail.w = remixClamp(detail.w * 1.22, 245, 360); detail.h = remixClamp(detail.h * 1.2, 260, 410);
-        if (state.mode !== 'multi') {
-          detail.x = remixClamp(quietZone?.side === 'right' ? 250 : quietZone?.side === 'left' ? 470 : 520, 18, W - detail.w - 18);
-          detail.y = remixClamp(quietZone?.side === 'bottom' ? 270 : 335, 18, H - detail.h - 18);
-        }
-        detail.rotation = remixBetween(-1.5,1.5); detail.opacity = 100; detail.filterType = remixPick(['original','bw']);
-        detail.contrast = remixClamp(detail.contrast || 0, -10, 20); detail.grain = Math.min(detail.grain, 6); detail.halftoneStrength = Math.min(detail.halftoneStrength, 42);
+        detail.filterType = 'original'; detail.grain = 0; detail.contrast = 0;
       }
-      moveOutOfQuietZone(detail, quietZone);
     });
 
-    if (state.secondaries && state.secondaries.length) {
-      if (state.mode !== 'multi') {
-        const secondarySlots = [
-          { x: 45, y: 680, rot: -4 },
-          { x: 590, y: 190, rot: 3 },
-          { x: 570, y: 740, rot: -2 },
-          { x: 55, y: 180, rot: 4 },
-        ];
-        state.secondaries.forEach((sec, idx) => {
-          const slot = secondarySlots[idx % secondarySlots.length];
-          const chaos = budgetScale('medium');
-          sec.x = remixClamp(slot.x + remixBetween(-30, 30) * chaos, 10, W - sec.w - 10);
-          sec.y = remixClamp(slot.y + remixBetween(-35, 35) * chaos, 10, H - sec.h - 10);
-          sec.rotation = remixClamp(slot.rot + remixBetween(-4, 4) * chaos, -12, 12);
-          if (strength !== 'light') {
-            sec.color = palette.border;
-            sec.backingColor = palette.border;
-          }
-          moveOutOfQuietZone(sec, quietZone);
-        });
-      } else {
-        state.secondaries.forEach((sec) => {
-          if (strength !== 'light') {
-            sec.color = palette.border;
-            sec.backingColor = palette.border;
-          }
-          moveOutOfQuietZone(sec, quietZone);
-        });
-      }
-    }
 
     // Keep strong treatments scarce: one loud crop in Balanced, two in Experimental.
     const strongCropFilters = new Set(['highbw','halftone','rough','outline','posterize','invert']);
@@ -2077,7 +1849,7 @@
       else { detail.filterType = remixPick(['original','bw']); detail.grain = Math.min(detail.grain, 12); }
     });
 
-    if (state.mode !== 'multi') {
+    if (!hasSecondaryImages()) {
       const targetFrameCount = strength === 'light' ? 5 : experimental && strength === 'wild' ? 7 : 6;
       const auxPrefixes = ['TRACE','AREA','SCAN','ID'];
       for (let i = state.frames.length; i < targetFrameCount; i++) {
@@ -2132,6 +1904,16 @@
       frame.w *= followScale; frame.h *= followScale;
       frame.x = state.main.x + normalizedX * state.main.w - frame.w / 2;
       frame.y = state.main.y + normalizedY * state.main.h - frame.h / 2;
+      // Crops keep their meaningful source; only unlinked annotation frames roam the perimeter.
+      if (state.details.some(detail => detail.frameId === frame.id)) {
+        frame.w = remixClamp(frame.w,48,state.main.w*.34);
+        frame.h = remixClamp(frame.h,44,state.main.h*.36);
+        const drift = strength === 'light' ? .004 : strength === 'wild' ? .015 : .008;
+        frame.x = remixClamp(frame.x+remixBetween(-1,1)*state.main.w*drift,state.main.x,state.main.x+state.main.w-frame.w);
+        frame.y = remixClamp(frame.y+remixBetween(-1,1)*state.main.h*drift,state.main.y,state.main.y+state.main.h-frame.h);
+        frame.color = palette.accent; frame.tagBackground = palette.accent;
+        return;
+      }
       const zone = framePattern.zones[index % framePattern.zones.length];
       const frameScaleRange = strength === 'light' ? .08 : strength === 'wild' ? .28 : .18;
       const sizeFactor = (1 + remixBetween(-frameScaleRange, frameScaleRange) * frameChaos) * (frameIsAnchor ? .68 : zone.scale);
@@ -2160,52 +1942,10 @@
       placedFrames.push({x:frame.x,y:frame.y,w:frame.w,h:frame.h});
     });
 
-    const heroFonts = ['Arial Black, Impact, sans-serif','Impact, Haettenschweiler, sans-serif','Franklin Gothic Medium, Arial Narrow, sans-serif','Trebuchet MS, Arial, sans-serif','Georgia, Times New Roman, serif','Times New Roman, Georgia, serif'];
-    const editorialFonts = ['Georgia, Times New Roman, serif','Times New Roman, Georgia, serif','Trebuchet MS, Arial, sans-serif','Arial, Helvetica, sans-serif'];
-    const uiFonts = ['ui-monospace, Consolas, monospace','Courier New, monospace','Arial Narrow, Arial, sans-serif'];
-    const accentFonts = ['Impact, Haettenschweiler, sans-serif','Georgia, Times New Roman, serif','Arial Black, Impact, sans-serif'];
-    const typographyModes = [
-      { name:'BOTTOM LOCK', hero:{x:-34,y:1000,size:[76,118],rotation:0,scaleX:[1.08,1.42],scaleY:[.76,.94]}, subtitle:{x:58,y:944}, caption:{x:58,y:1110}, micro:{x:650,y:1110,align:'right'}, repeat:{x:765,y:80,direction:'vertical'}, breakRole:'hero' },
-      { name:'TOP EDITORIAL', hero:{x:-32,y:24,size:[76,116],rotation:0,scaleX:[1.08,1.4],scaleY:[.78,.96]}, subtitle:{x:56,y:150}, caption:{x:56,y:190}, micro:{x:650,y:188,align:'right'}, repeat:{x:790,y:610,direction:'vertical'}, breakRole:'hero' },
-      { name:'SIDE SPINE', hero:{x:28,y:1085,size:[66,92],rotation:-90,scaleX:[1,1.18],scaleY:[.82,1]}, subtitle:{x:74,y:1055,rotation:-90}, caption:{x:108,y:1055,rotation:-90}, micro:{x:822,y:170,writingMode:'vertical'}, repeat:{x:150,y:72,direction:'horizontal'}, breakRole:'hero' },
-      { name:'SPLIT AXIS', hero:{x:-30,y:42,size:[74,112],rotation:0,scaleX:[1.04,1.36],scaleY:[.8,.98]}, subtitle:{x:648,y:118}, caption:{x:648,y:160}, micro:{x:836,y:280,writingMode:'vertical'}, repeat:{x:42,y:1090,direction:'horizontal'}, breakRole:'repeat' },
-      { name:'IMAGE OVERLAP', hero:{x:-36,y:492,size:[82,126],rotation:-2,scaleX:[1.12,1.5],scaleY:[.72,.9]}, subtitle:{x:58,y:620}, caption:{x:58,y:660}, micro:{x:828,y:250,writingMode:'vertical'}, repeat:{x:54,y:88,direction:'horizontal'}, breakRole:'hero' },
-      { name:'QUIET CORNER', hero:{x:58,y:72,size:[62,88],rotation:0,scaleX:[.94,1.16],scaleY:[.86,1]}, subtitle:{x:60,y:172}, caption:{x:60,y:212}, micro:{x:60,y:266}, repeat:{x:620,y:1080,direction:'horizontal'}, breakRole:'none' },
-    ];
-    const typographyAllowed = {
-      main:['BOTTOM LOCK','TOP EDITORIAL','SIDE SPINE','QUIET CORNER'],
-      hero:['BOTTOM LOCK','TOP EDITORIAL','SPLIT AXIS','IMAGE OVERLAP'],
-      detail:['BOTTOM LOCK','SPLIT AXIS','IMAGE OVERLAP','SIDE SPINE'],
-      quiet:['BOTTOM LOCK','TOP EDITORIAL','SIDE SPINE','QUIET CORNER'],
-    }[anchorMode.id];
-    const typographyPool = typographyModes.filter((mode)=>typographyAllowed.includes(mode.name) && mode.name !== lastRemixTypographyMode);
-    const typographyMode = remixPick(typographyPool.length ? typographyPool : typographyModes.filter((mode)=>typographyAllowed.includes(mode.name)));
-    lastRemixTypographyMode = typographyMode.name;
-    const selectedFonts = { hero:remixPick(heroFonts), editorial:remixPick(editorialFonts), ui:remixPick(uiFonts), accent:remixPick(accentFonts) };
-    const typeJitter = strength === 'light' ? 3 : strength === 'wild' && experimental ? 14 : 7;
-    const kindCounts = {};
-    state.texts.forEach((text) => {
+    state.texts.forEach(text => {
       if (remixCopyEnabled && copySet[text.kind]) text.content = copySet[text.kind];
-      kindCounts[text.kind] = (kindCounts[text.kind] || 0) + 1;
-      const stack = kindCounts[text.kind] - 1;
-      if (text.kind === 'hero') {
-        const slot = typographyMode.hero, heroChaos = budgetScale(budgets.hero), isBreak = typographyMode.breakRole === 'hero';
-        text.x = slot.x + remixBetween(-typeJitter,typeJitter) * heroChaos; text.y = slot.y + stack * 92 + remixBetween(-typeJitter,typeJitter) * heroChaos;
-        text.size = Math.round(remixBetween(...slot.size)); text.rotation = slot.rotation + (isBreak ? remixBetween(-2.2,2.2) * heroChaos : remixBetween(-.7,.7));
-        text.scaleX = remixBetween(...slot.scaleX); text.scaleY = remixBetween(...slot.scaleY); text.letterSpacing = isBreak ? remixBetween(-5,8) : remixBetween(-1,4);
-        text.font = strength === 'light' ? text.font : selectedFonts.hero; text.opacity = 100; text.align = 'left'; text.writingMode = 'horizontal';
-        const readableWidth = typographyMode.name === 'SIDE SPINE' ? 820 : 800, estimatedSize = readableWidth / Math.max(5,text.content.length*.62*text.scaleX);
-        text.size = Math.round(remixClamp(Math.min(text.size,estimatedSize),typographyMode.name==='SIDE SPINE'?54:58,126));
-      } else if (text.kind === 'repeat') {
-        const slot = typographyMode.repeat, isBreak = typographyMode.breakRole === 'repeat'; text.x = slot.x; text.y = slot.y + stack*24; text.direction = slot.direction; text.repeat = Math.round(remixBetween(3, experimental&&strength==='wild'?7:5)); text.repeatSpacing = Math.round(remixBetween(1,isBreak?14:7)); text.repeatOffsetX = isBreak ? Math.round(remixBetween(-3,7)) : 0; text.repeatOffsetY = isBreak ? Math.round(remixBetween(-2,5)) : 0; text.rotationStep = isBreak&&experimental ? remixBetween(-.6,.6) : 0; text.rotation = isBreak ? remixBetween(-2,2) : 0; text.size = remixClamp(text.size||12,8,15); text.opacity = Math.round(remixBetween(44,64)); text.font = selectedFonts.accent; text.align='left'; text.writingMode='horizontal';
-      } else {
-        const slot = typographyMode[text.kind] || typographyMode.caption, secondary = text.kind === 'subtitle' || text.kind === 'caption';
-        text.x = slot.x + remixBetween(-typeJitter*.35,typeJitter*.35); text.y = slot.y + stack*(text.kind==='subtitle'?34:26) + remixBetween(-typeJitter*.25,typeJitter*.25); text.rotation = slot.rotation||0; text.align = slot.align||'left'; text.writingMode = slot.writingMode||'horizontal';
-        text.size = text.kind==='subtitle'?Math.round(remixBetween(16,24)):text.kind==='caption'?Math.round(remixBetween(11,16)):Math.round(remixBetween(8,11)); text.font = strength==='light'?text.font:(secondary?selectedFonts.editorial:selectedFonts.ui); text.scaleX=1; text.scaleY=1; text.letterSpacing=text.kind==='micro'?remixBetween(1.2,2.8):remixBetween(.2,1.3); text.opacity=text.kind==='micro'?Math.round(remixBetween(52,72)):92;
-      }
-      if (strength !== 'light' && ['repeat','subtitle'].includes(text.kind)) text.color = palette.accent;
-      if (!['repeat','subtitle'].includes(text.kind) && strength === 'wild' && Math.random() < .28) text.color = palette.ink;
     });
+    const typographyMode = layout;
 
     const filterDrift = (strength === 'light' ? 5 : strength === 'wild' ? 24 : 12) * budgetScale(budgets.texture);
     ['contrast','grain','scan','paper','dirty','compression','halftone','posterize','outline'].forEach((key) => {
@@ -2223,142 +1963,11 @@
       state.details.forEach((detail) => { if (strongCropFilters.has(detail.filterType)) { retainedStrongCrop += 1; if (retainedStrongCrop > 1) { detail.filterType = remixPick(['original','bw']); detail.grain = Math.min(detail.grain, 10); } } });
     }
 
-    // Readability repair: reserve the anchor and keep tertiary elements from becoming the first read.
-    const heroTexts = state.texts.filter((text) => text.kind === 'hero');
-    heroTexts.forEach((hero) => { hero.x = remixClamp(hero.x, -55, W - 120); hero.y = remixClamp(hero.y, -18, H - 92); });
-    if (anchorMode.id === 'main') {
-      state.main.fragmented = false; state.fragments = []; state.main.rotation = remixClamp(state.main.rotation, -1.1, 1.1); state.main.zoom = Math.min(state.main.zoom, 1.2);
-      const safe = { x:state.main.x + state.main.w*.25, y:state.main.y + state.main.h*.08, w:state.main.w*.5, h:state.main.h*.55 };
-      state.details.forEach((detail,index) => { if (remixOverlap(detail,safe) > .38) detail.x = index % 2 ? W - detail.w - 18 : 18; });
-    }
-    if (anchorMode.id === 'hero') heroTexts.forEach((hero) => { hero.rotation = remixClamp(hero.rotation,-2.2,2.2); hero.opacity = 100; hero.scaleY = remixClamp(hero.scaleY,.84,1.12); });
-    if (quietZone) {
-      state.details.forEach((detail) => moveOutOfQuietZone(detail, quietZone));
-      state.fragments.forEach((fragment) => moveOutOfQuietZone(fragment, quietZone));
-      state.texts.forEach((text) => {
-        const proxy = { x:text.x, y:text.y, w:Math.max(90,(text.content?.length || 10)*(text.size || 12)*.42), h:Math.max(26,(text.size || 12)*1.8) };
-        moveOutOfQuietZone(proxy, quietZone); text.x = proxy.x; text.y = proxy.y;
-      });
-    }
-
-    // Rebuild layers by role.
-    const main = { type:'main', id:'main-image' };
-    const companionFragmentLayers = state.fragments.filter((f)=>f.fragmentRole==='companion').map((f)=>({type:'fragment',id:f.id}));
-    const fragmentLayers = remixShuffle(state.fragments.filter((f)=>f.fragmentRole!=='companion').map((f) => ({ type:'fragment', id:f.id })));
-    const connectorLayers = remixShuffle(state.details.map((d) => ({ type:'connector', id:d.id })));
-    const frameLayers = remixShuffle(state.frames.map((f) => ({ type:'frame', id:f.id })));
-    const detailLayers = remixShuffle(state.details.map((d) => ({ type:'detail', id:d.id })));
-    const tertiaryIds = new Set(state.texts.filter((t) => ['repeat','micro'].includes(t.kind)).map((t) => t.id));
-    const heroIds = new Set(state.texts.filter((t) => t.kind === 'hero').map((t) => t.id));
-    const tertiaryLayers = remixShuffle(state.texts.filter((t) => tertiaryIds.has(t.id)).map((t) => ({type:'text',id:t.id})));
-    const secondaryTextLayers = remixShuffle(state.texts.filter((t) => !tertiaryIds.has(t.id) && !heroIds.has(t.id)).map((t) => ({type:'text',id:t.id})));
-    const heroLayers = state.texts.filter((t) => heroIds.has(t.id)).map((t) => ({type:'text',id:t.id}));
-    const anchorDetailLayers = anchorDetail ? detailLayers.filter((layer) => layer.id === anchorDetail.id) : [];
-    const secondaryDetailLayers = detailLayers.filter((layer) => !anchorDetailLayers.some((anchor) => anchor.id === layer.id));
-    const secondaryCardLayers = (state.secondaries || []).map((s) => ({ type:'secondary', id: s.id }));
-
-    // Strict Hero Layering: Foreground Hero (above photos, in margin banners) or Background Hero (watermark behind photos). Never sandwich!
-    const heroMode = (anchorMode.id === 'hero' || Math.random() < 0.7) ? 'foreground' : 'background';
-    if (heroMode === 'background') {
-      state.texts.filter((t) => t.kind === 'hero').forEach((h) => {
-        h.opacity = Math.round(remixBetween(42, 68));
-      });
-      state.layers = [
-        ...tertiaryLayers,
-        ...heroLayers,
-        main,
-        ...secondaryCardLayers,
-        ...companionFragmentLayers,
-        ...fragmentLayers,
-        ...connectorLayers,
-        ...frameLayers,
-        ...secondaryDetailLayers,
-        ...anchorDetailLayers,
-        ...secondaryTextLayers,
-      ];
-    } else {
-      state.texts.filter((t) => t.kind === 'hero').forEach((h) => {
-        h.opacity = 100;
-        if (h.y > 160 && h.y < 920) {
-          h.y = Math.random() < 0.5 ? 42 : 1010;
-        }
-      });
-      state.layers = [
-        ...tertiaryLayers,
-        main,
-        ...secondaryCardLayers,
-        ...companionFragmentLayers,
-        ...fragmentLayers,
-        ...connectorLayers,
-        ...frameLayers,
-        ...secondaryDetailLayers,
-        ...anchorDetailLayers,
-        ...secondaryTextLayers,
-        ...heroLayers,
-      ];
-    }
-
-    // Final Guaranteed Protected Zones Collision Avoidance Pass for Details/Evidence Crops
-    if (state.details.length) {
-      const finalPCore = {
-        x: state.main.x + state.main.w * 0.2,
-        y: state.main.y + state.main.h * 0.2,
-        w: state.main.w * 0.6,
-        h: state.main.h * 0.6,
-      };
-      const finalSCores = (state.secondaries || []).map((sec) => ({
-        x: sec.x + sec.w * 0.2,
-        y: sec.y + sec.h * 0.2,
-        w: sec.w * 0.6,
-        h: sec.h * 0.6,
-      }));
-      const allCores = [finalPCore, ...finalSCores];
-
-      const getCoreOverlapRatio = (box) => {
-        let maxO = 0;
-        for (const core of allCores) {
-          const ox = Math.max(0, Math.min(box.x + box.w, core.x + core.w) - Math.max(box.x, core.x));
-          const oy = Math.max(0, Math.min(box.y + box.h, core.y + core.h) - Math.max(box.y, core.y));
-          if (ox > 0 && oy > 0) {
-            const ratio = (ox * oy) / Math.min(box.w * box.h, core.w * core.h);
-            if (ratio > maxO) maxO = ratio;
-          }
-        }
-        return maxO;
-      };
-
-      const candidatePerimeterPoints = [
-        { x: 25, y: 780 },
-        { x: W - 25, y: 780, right: true },
-        { x: 25, y: 200 },
-        { x: W - 25, y: 200, right: true },
-        { x: 25, y: 480 },
-        { x: W - 25, y: 480, right: true },
-        { x: 25, y: 880 },
-        { x: W - 25, y: 880, right: true },
-        { x: 340, y: 920 },
-        { x: 340, y: 45 },
-        { x: 50, y: 50 },
-        { x: W - 50, y: 50, right: true }
-      ];
-
-      state.details.forEach((detail, idx) => {
-        const dBox = { x: detail.x, y: detail.y, w: detail.w, h: detail.h };
-        if (getCoreOverlapRatio(dBox) > 0.15) {
-          for (let p = 0; p < candidatePerimeterPoints.length; p++) {
-            const pt = candidatePerimeterPoints[(idx + p) % candidatePerimeterPoints.length];
-            const testX = pt.right ? (W - detail.w - 20) : pt.x;
-            const testY = pt.y;
-            const testBox = { x: testX, y: testY, w: detail.w, h: detail.h };
-            if (getCoreOverlapRatio(testBox) <= 0.15) {
-              detail.x = testX;
-              detail.y = testY;
-              break;
-            }
-          }
-        }
-      });
-    }
+    // Preserve frame source coordinates as the shared composition moves its image.
+    state.frames.forEach(syncFrameRelativeToParent);
+    window.posterComposition.apply(state,layout,textBounds,strength,experimental,palette);
+    state.main.layoutMode = layout.name;
+    state.main.fragmented = false;
 
     const anchorZhMap = {
       'MAIN IMAGE STABLE': '主图锁定',
@@ -2379,6 +1988,8 @@
       'SPLIT AXIS': '双轴对齐',
       'IMAGE OVERLAP': '图文穿插',
       'QUIET CORNER': '角隅留白',
+      'CONTACT SHEET': '底部索引带',
+      'OFFSET COVER': '侧栏封面',
     };
     const bgZhMap = {
       solid: '纯色基底',
@@ -2432,7 +2043,7 @@
       strengthEn: strengthEnMap[strength] || strength,
       isManuallyEdited: false,
     };
-    if (state.mode === 'multi' && selectedNarrative) {
+    if (hasSecondaryImages() && selectedNarrative) {
       const secCount = state.secondaries?.length || 0;
       const evidCount = state.details.length;
       state.remixInfo.narrativeZh = selectedNarrative.zh;
@@ -2445,10 +2056,9 @@
     state.selected = null;
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach((s) => syncAllChildFramesOf(s.id));
-    renderInspector(); render(); commit(); remixLastResultSnapshot = snapshot();
-    const button = $('#posterRemixButton'); button?.classList.remove('is-remixing'); canvasWrap.classList.remove('is-remixing'); void canvasWrap.offsetWidth; button?.classList.add('is-remixing'); canvasWrap.classList.add('is-remixing');
-    setTimeout(() => { button?.classList.remove('is-remixing'); canvasWrap.classList.remove('is-remixing'); }, 460);
-    if (state.mode === 'multi' && selectedNarrative) {
+    renderImageTray(); renderInspector(); render(); commit(); remixLastResultSnapshot = snapshot();
+    motion.play(previousPoster);
+    if (hasSecondaryImages() && selectedNarrative) {
       toast(`NEW · 多图叙事: ${selectedNarrative.zh} (${selectedNarrative.en}) · ${anchorMode.name} · ${strength.toUpperCase()}`);
     } else {
       const backgroundLabel = ({solid:'SOLID',grid:'INDEX GRID',chrome:'CHROME',scan:'SCAN PAPER',dots:'DOT MATRIX','soft-y2k':'SOFT Y2K',blueprint:'BLUE PRINT'})[state.backgroundStyle] || 'PAPER';
@@ -2566,9 +2176,7 @@
     }
     if(l)changeLayer(l);
   });
-  document.querySelectorAll('[data-poster-mode]').forEach((b) => {
-    b.addEventListener('click', () => setPosterMode(b.dataset.posterMode));
-  });
+  $('#posterAddImagesButton').addEventListener('click', () => multiInput.click());
   imageTray?.addEventListener('click', (e) => {
     const item = e.target.closest('.poster-tray-item');
     if (!item) return;
@@ -2596,63 +2204,29 @@
     if (!files.length) return;
     toast(`正在读取 ${files.length} 张图片素材...`);
     let loadedCount = 0;
-    const newlyLoaded = [];
+    const newlyLoaded = new Array(files.length);
     const stepDone = () => {
       loadedCount++;
       if (loadedCount === files.length) {
-        if (!newlyLoaded.length) {
+        const loaded = newlyLoaded.filter(Boolean);
+        if (!loaded.length) {
           toast('未能载入图片，请检查图片格式。');
           multiInput.value = '';
           return;
         }
-        const isDemoOrEmpty = !state.image || state.mainImageId === 'asset-demo-main' || (state.imageName && state.imageName.startsWith('demo-'));
-        let startIndex = 0;
-        if (isDemoOrEmpty && newlyLoaded.length > 0) {
-          // Clear demo artifacts
-          state.secondaries = [];
-          state.frames = [];
-          state.details = [];
-          state.fragments = [];
-          state.layers = [];
-          const first = newlyLoaded[0];
-          state.image = first.image;
-          state.imageName = first.name;
-          state.mainImageId = first.id;
-          ensureMainLayer();
-          emptyState.classList.add('is-hidden');
-          status.textContent = `MAIN IMAGE / ${first.name}`;
-          startIndex = 1;
-        }
-        for (let i = startIndex; i < newlyLoaded.length; i++) {
-          addSecondaryImage(newlyLoaded[i].id);
-        }
-        if (state.mode !== 'multi') {
-          state.mode = 'multi';
-          $('#posterWorkspace')?.classList.add('is-multi-mode');
-          document.querySelectorAll('[data-poster-mode]').forEach((b) => {
-            b.classList.toggle('is-active', b.dataset.posterMode === 'multi');
-          });
-        }
-        renderImageTray();
-        renderInspector();
-        render();
-        commit();
-        markManuallyEdited();
-        toast(`已导入 ${newlyLoaded.length} 张图片并加入多图拼贴。`);
+        appendImages(loaded);
+        toast(`已添加 ${loaded.length} 张图片；原有海报已保留。${loaded.length < files.length ? '部分文件未能载入。' : ''}`);
         multiInput.value = '';
       }
     };
 
-    files.forEach((file) => {
+    files.forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = () => {
         const image = new Image();
         image.onload = () => {
           const id = makeId();
-          imageAssets.set(id, { id, name: file.name, image, src: reader.result });
-          if (!state.assets) state.assets = [];
-          state.assets.push({ id, name: file.name });
-          newlyLoaded.push({ id, name: file.name, image });
+          newlyLoaded[index] = { id, name: file.name, image, src: reader.result };
           stepDone();
         };
         image.onerror = () => {
@@ -2675,6 +2249,7 @@
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
+        commit();
         const id = makeId();
         imageAssets.set(id, { id, name: file.name, image, src: reader.result });
         if (!state.assets) state.assets = [];
@@ -2686,10 +2261,12 @@
         emptyState.classList.add('is-hidden');
         status.textContent = `MAIN IMAGE / ${file.name}`;
         renderImageTray();
+        renderInspector();
         render();
         commit();
         markManuallyEdited();
         toast('主图已载入；现有拼贴元素已保留。');
+        input.value = '';
       };
       image.onerror = () => toast('图片未能载入。');
       image.src = reader.result;
@@ -2735,7 +2312,7 @@
   viewport.addEventListener('pointerleave',()=>viewport.classList.remove('is-tracking'));
   viewport.addEventListener('pointerup',()=>{pan=null;viewport.classList.remove('is-panning');});
   viewport.addEventListener('pointercancel',()=>{pan=null;viewport.classList.remove('is-panning');});
-  document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d'&&state.mode==='single')addDetail();});
+  document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
   window.addEventListener('visual-lab-mode-change', (e) => {
