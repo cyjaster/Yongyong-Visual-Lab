@@ -35,6 +35,23 @@ vm.runInContext(`
 console.log('PASS: pending undo/redo, redo branching, main-frame sync, safe text fields');
 
 vm.runInNewContext(`
+  const W=900, H=1200, canvasWrap={style:{}}, zoomValue={};
+  const viewport={clientWidth:424,clientHeight:578,scrollLeft:0,scrollTop:0};
+  const $=()=>({hidden:false}); let zoom=1, zoomMode='fit';
+  const requestAnimationFrame=fn=>fn();
+  const getComputedStyle=()=>({paddingLeft:'10px',paddingRight:'10px',paddingTop:'10px',paddingBottom:'10px'});
+  ${section('  function applyZoom(', '  function snapshot(')}
+  fitWorkspace();
+  assert.equal(zoom,.44);
+  assert.ok(parseFloat(canvasWrap.style.width)+20<=viewport.clientWidth);
+  assert.ok(parseFloat(canvasWrap.style.height)+20<=viewport.clientHeight);
+  viewport.clientWidth=720; viewport.clientHeight=578; fitWorkspace();
+  assert.equal(zoom,.46); assert.equal(zoomValue.textContent,'46%');
+  applyZoom(.467,'manual'); assert.equal(zoom,.47,'Manual zoom still rounds normally');
+`, {assert});
+console.log('PASS: FIT uses actual panel padding, never rounds beyond available space');
+
+vm.runInNewContext(`
   const image = { naturalWidth: 1000, naturalHeight: 500 };
   const state = { image, main: { x: 0, y: 0, w: 1000, h: 500 }, secondaries: [] };
   const imageAssets = new Map();
