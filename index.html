@@ -413,6 +413,16 @@
               <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
               <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
             </div>
+            <button class="poster-master-remix-dock" id="posterMasterRemixDock" type="button" data-poster-action="master-remix" title="总 REMIX：一键直达模板 01 (Aespa Rich Man)">
+              <div class="master-dock-top">
+                <div class="master-dock-header">
+                  <span class="master-dock-spark">⚡</span>
+                  <span class="master-dock-title">总 REMIX</span>
+                </div>
+                <span class="master-dock-tag">MASTER ↻</span>
+              </div>
+              <div class="master-dock-sub">一键应用模板 01 · Aespa Rich Man</div>
+            </button>
             <div class="poster-dock-primary">
               <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="随机排版 REMIX"><b>排版 REMIX ↻</b></button>
               <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
@@ -422,7 +432,16 @@
         </aside>
 
         <section class="poster-stage" aria-label="海报编辑画布">
-          <div class="poster-stage-topline"><span id="posterStatus">上传主图后开始索引</span><span>900 × 1200 / PNG</span></div>
+          <div class="poster-stage-topline">
+            <span id="posterStatus">上传主图后开始索引</span>
+            <button class="poster-master-remix-topline" type="button" data-poster-action="master-remix" title="总 REMIX：一键应用模板 01 (Aespa Rich Man)">
+              <span class="master-spark">⚡</span>
+              <span class="master-label">总 REMIX</span>
+              <span class="master-template">模板 01 · Aespa</span>
+              <span class="master-badge">1-CLICK</span>
+            </button>
+            <span>900 × 1200 / PNG</span>
+          </div>
           <div class="poster-viewport" id="posterViewport">
             <div class="poster-canvas-wrap" id="posterCanvasWrap">
               <canvas id="posterCanvas" width="900" height="1200" tabindex="0" aria-label="可编辑的拼贴海报画布"></canvas>

@@ -2730,6 +2730,22 @@
     }
   }
 
+  function triggerMasterRemix() {
+    if (!layoutTemplates || layoutTemplates.length === 0) return;
+    const t = layoutTemplates[0];
+    const grid = document.getElementById('posterTemplateGrid');
+    const templateGroup = grid?.closest('details');
+    if (templateGroup) {
+      templateGroup.open = true;
+    }
+    applyLayoutTemplate(t.id);
+    const card = document.querySelector(`[data-poster-template="${t.id}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    toast(`⚡ 总 REMIX 已生效：已应用 ${t.nameZh}`);
+  }
+
   function remixLayout(strength = 'medium') {
     if (!state.image) return toast('请先上传主图。');
     render(false);
@@ -3313,6 +3329,7 @@
     if (a === 'undo') undo();
     if (a === 'redo') redo();
     if (a === 'duplicate') duplicateSelected();
+    if (a === 'master-remix') { triggerMasterRemix(); return; }
     if (a === 'remix') remixLayout($('#posterRemixStrength')?.value || 'medium');
     if (['hero', 'subtitle', 'caption', 'micro', 'repeat'].includes(a)) addText(a);
     if (a === 'select-main') {
@@ -3715,6 +3732,11 @@
     if(drag){drag=null;commit();renderInspector();}
   });
   document.addEventListener('click', (e) => {
+    const masterRemixBtn = e.target.closest('[data-poster-action="master-remix"]');
+    if (masterRemixBtn) {
+      triggerMasterRemix();
+      return;
+    }
     const tBtn = e.target.closest('[data-poster-template]');
     if (tBtn) {
       applyLayoutTemplate(tBtn.dataset.posterTemplate);
@@ -3735,6 +3757,7 @@
   window.posterRemixFilters = remixFilters;
   window.posterFitWorkspace = fitWorkspace;
   window.posterApplyTemplate = applyLayoutTemplate;
+  window.posterTriggerMasterRemix = triggerMasterRemix;
   window.posterLayoutTemplates = layoutTemplates;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;

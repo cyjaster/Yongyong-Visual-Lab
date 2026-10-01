@@ -120,7 +120,7 @@
 .poster-history-actions button:hover { border-color: var(--ink); color: var(--ink); }
 
 .poster-stage { min-width: 0; min-height: 0; padding: 10px 12px 8px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: #bec5ba; overflow: hidden; }
-.poster-stage-topline { width: min(100%, 680px); margin: 0 auto 10px; display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font: 9px ui-monospace, Consolas, monospace; letter-spacing: .06em; }
+.poster-stage-topline { width: min(100%, 680px); margin: 0 auto 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font: 9px ui-monospace, Consolas, monospace; letter-spacing: .06em; }
 .poster-viewport { min-width: 0; min-height: 420px; position: relative; overflow: auto; display: flex; align-items: flex-start; justify-content: flex-start; padding: 10px; scrollbar-width: thin; scrollbar-color: #566052 transparent; cursor: default; }
 .poster-viewport::after { content: ''; position: absolute; z-index: 4; width: 220px; height: 220px; left: var(--scan-x, 50%); top: var(--scan-y, 45%); border: 1px solid rgba(198,255,58,.65); border-radius: 50%; pointer-events: none; opacity: 0; background: radial-gradient(circle, rgba(198,255,58,.2) 0, rgba(198,255,58,.08) 42%, transparent 72%); transform: translate(-50%,-50%); transition: opacity 160ms ease, left 100ms ease-out, top 100ms ease-out; }
 .poster-viewport.is-tracking::after { opacity: .22; }
@@ -247,6 +247,125 @@
   color: #666;
   line-height: 1.45;
   margin: 0;
+}
+
+/* Master REMIX Buttons */
+.poster-master-remix-dock {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  background: #0b111e;
+  border: 1.5px solid #ffbe0b;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 190, 11, 0.2);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.poster-master-remix-dock:hover {
+  background: #141f36;
+  border-color: #ffd152;
+  box-shadow: 0 4px 16px rgba(255, 190, 11, 0.35);
+  transform: translateY(-1px);
+}
+.poster-master-remix-dock:active {
+  transform: translateY(0);
+  filter: brightness(1.1);
+}
+.master-dock-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.master-dock-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.master-dock-spark {
+  font-size: 14px;
+  color: #ffbe0b;
+  filter: drop-shadow(0 0 5px rgba(255, 190, 11, 0.6));
+}
+.master-dock-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+.master-dock-tag {
+  background: #ffbe0b;
+  color: #0b111e;
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+.master-dock-sub {
+  font-size: 9.5px;
+  color: #94a3b8;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poster-master-remix-topline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: #0f172a;
+  border: 1px solid #ffbe0b;
+  border-radius: 12px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+}
+.poster-master-remix-topline:hover {
+  background: #1e293b;
+  border-color: #ffd152;
+  box-shadow: 0 3px 12px rgba(255, 190, 11, 0.4);
+  transform: translateY(-1px);
+}
+.poster-master-remix-topline:active {
+  transform: translateY(0);
+}
+.poster-master-remix-topline .master-spark {
+  color: #ffbe0b;
+  font-size: 11px;
+}
+.poster-master-remix-topline .master-label {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 11px;
+}
+.poster-master-remix-topline .master-template {
+  color: #cbd5e1;
+  font-size: 10px;
+  padding-left: 5px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  margin-left: 2px;
+}
+.poster-master-remix-topline .master-badge {
+  background: #002FA7;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.05em;
 }
 
 @media (max-width: 1040px) { .poster-workspace { grid-template-columns: 200px minmax(0,1fr) 236px; } .poster-tools-content, .poster-inspector { padding: 20px 12px; } .poster-action-dock { padding-inline: 12px; } .poster-stage-note { flex-basis: 100%; } }
