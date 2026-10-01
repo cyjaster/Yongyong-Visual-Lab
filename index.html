@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
-    <link rel="stylesheet" href="styles.css?v=20260930-acid" />
-    <link rel="stylesheet" href="poster.css?v=20260930-acid" />
+    <link rel="stylesheet" href="styles.css?v=20261001-readable" />
+    <link rel="stylesheet" href="poster.css?v=20261001-readable" />
   </head>
   <body>
     <div class="app-shell">
@@ -280,16 +280,16 @@
 
       <main class="poster-workspace" id="posterWorkspace" hidden aria-label="Collage Poster 编辑器">
         <aside class="poster-tools" aria-label="拼贴海报工具栏">
+          <div class="poster-tools-content">
           <div class="poster-panel-heading">
             <p class="eyebrow">02 / COLLAGE POSTER</p>
             <h1>索引拼贴</h1>
-            <p id="posterPanelDesc">从一张主图开始，按需加图，拼成自己的索引海报。</p>
+            <p id="posterPanelDesc">上传主图，按需添加辅图。</p>
           </div>
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">IMAGE / FRAMES</span>
-            <small class="poster-tool-desc">一张就能开始，多张也在这里继续</small>
-            <label class="poster-action poster-action-primary" for="posterImageInput">上传 / 更换主图 <small>JPG / PNG / WEBP</small></label>
+            <label class="poster-action poster-action-primary" for="posterImageInput" title="支持 JPG / PNG / WEBP，上传后替换主图">上传 / 更换主图 <small>IMAGE</small></label>
             <button class="poster-action" type="button" id="posterAddImagesButton">＋ 添加图片 <small>可多选 · 辅图</small></button>
             <div class="poster-tray-group" id="posterImageTrayGroup">
               <div class="poster-tray-header">
@@ -303,7 +303,7 @@
             <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
           </section>
 
-          <section class="poster-tool-group">
+          <section class="poster-tool-group poster-text-tools">
             <span class="poster-tool-label">TYPE HIERARCHY</span>
             <small class="poster-tool-desc">添加标题与信息文字</small>
             <button class="poster-action" type="button" data-poster-action="hero">+ 主标题</button>
@@ -313,73 +313,111 @@
             <button class="poster-action" type="button" data-poster-action="repeat">+ 重复文字</button>
           </section>
 
-          <section class="poster-tool-group">
-            <span class="poster-tool-label">STYLE PRESETS</span>
-            <small class="poster-tool-desc">改变整体视觉质感</small>
-            <div class="poster-presets">
-              <button type="button" data-poster-preset="red">CCTV<br /><b>RED</b></button>
-              <button type="button" data-poster-preset="blue">CCTV<br /><b>BLUE</b></button>
-              <button type="button" data-poster-preset="editorial">HALFTONE<br /><b>EDITORIAL</b></button>
-              <button type="button" data-poster-preset="y2k">SOFT<br /><b>Y2K</b></button>
-              <button class="poster-preset-xerox" type="button" data-poster-preset="xerox">XEROX<br /><b>/ PUNK</b></button>
+          <details class="poster-tool-group" open>
+            <summary class="poster-tool-summary">主图位置与裁切 <small>MAIN CROP & POSITION</small></summary>
+            <div class="poster-field">
+              <div class="range-title">
+                <div class="poster-field-label-group">
+                  <span class="poster-label-main">画面缩放</span>
+                  <span class="poster-label-sub">Image Zoom</span>
+                </div>
+                <output id="leftMainZoomOutput">100%</output>
+              </div>
+              <span class="poster-field-hint">缩放海报主图画面</span>
+              <input type="range" data-global="mainZoom" id="leftMainZoom" min="0.7" max="2.4" step="0.02" value="1">
             </div>
-          </section>
-
-          <section class="poster-tool-group">
-            <span class="poster-tool-label">BACKGROUND / PAPER</span>
-            <small class="poster-tool-desc">改变海报底层与纸张</small>
-            <div class="poster-background-presets">
-              <button type="button" data-poster-background="solid"><b>SOLID</b><small>clean base</small></button>
-              <button type="button" data-poster-background="grid"><b>INDEX GRID</b><small>technical</small></button>
-              <button type="button" data-poster-background="chrome"><b>CHROME</b><small>gradient</small></button>
-              <button type="button" data-poster-background="scan"><b>SCAN PAPER</b><small>rough copy</small></button>
-              <button type="button" data-poster-background="dots"><b>DOT MATRIX</b><small>printed</small></button>
-              <button type="button" data-poster-background="soft-y2k"><b>SOFT Y2K</b><small>blue / pink</small></button>
-              <button type="button" data-poster-background="blueprint"><b>BLUE PRINT</b><small>data grid</small></button>
+            <div class="poster-field">
+              <div class="range-title">
+                <div class="poster-field-label-group">
+                  <span class="poster-label-main">裁切横移</span>
+                  <span class="poster-label-sub">Crop X</span>
+                </div>
+                <output id="leftMainPanXOutput">0</output>
+              </div>
+              <span class="poster-field-hint">微调主图水平位置与裁切</span>
+              <input type="range" data-global="mainPanX" id="leftMainPanX" min="-350" max="350" step="1" value="0">
             </div>
-            <label class="poster-action poster-background-upload" for="posterBackgroundImageInput">上传背景图 <small>LOCAL IMAGE</small></label>
-            <button class="poster-action" id="posterBackgroundClear" type="button">移除背景图 <small>KEEP PRESET</small></button>
-          </section>
+            <div class="poster-field">
+              <div class="range-title">
+                <div class="poster-field-label-group">
+                  <span class="poster-label-main">裁切纵移</span>
+                  <span class="poster-label-sub">Crop Y</span>
+                </div>
+                <output id="leftMainPanYOutput">0</output>
+              </div>
+              <span class="poster-field-hint">微调主图垂直位置与裁切</span>
+              <input type="range" data-global="mainPanY" id="leftMainPanY" min="-450" max="450" step="1" value="0">
+            </div>
+            <div class="poster-field">
+              <div class="range-title">
+                <div class="poster-field-label-group">
+                  <span class="poster-label-main">旋转角度</span>
+                  <span class="poster-label-sub">Rotation</span>
+                </div>
+                <output id="leftMainRotationOutput">0°</output>
+              </div>
+              <span class="poster-field-hint">微调主图旋转倾角</span>
+              <input type="range" data-global="mainRotation" id="leftMainRotation" min="-15" max="15" step="0.5" value="0">
+            </div>
+            <button type="button" class="poster-action" data-poster-action="select-main" style="width:100%;margin-top:6px;">选中主图自由拖拽 / SELECT MAIN</button>
+          </details>
 
-          <section class="poster-tool-group poster-remix-group">
-            <span class="poster-tool-label">LAYOUT REMIX</span>
-            <small class="poster-tool-desc">重新组织版式与视觉层级</small>
+          <details class="poster-tool-group" open>
+            <summary class="poster-tool-summary">精选排版模板 <small>CURATED TEMPLATES</small></summary>
+            <div class="poster-template-grid" id="posterTemplateGrid" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+              <button type="button" class="poster-template-card" data-poster-template="template-01-richman">
+                <div class="poster-template-card-header">
+                  <span class="poster-template-badge">TEMPLATE 01</span>
+                  <span class="poster-template-tag">Y2K 赛博档案</span>
+                </div>
+                <div class="poster-template-title">Aespa · Rich Man 电光档案</div>
+                <p class="poster-template-desc">全幅黑白粗半调底图 · 唇眼彩色特写 · 电光蓝金标题与三行叠字</p>
+              </button>
+            </div>
+          </details>
+
+          <details class="poster-tool-group">
+            <summary class="poster-tool-summary">海报元素列表 <small>ELEMENTS LIST</small></summary>
+            <div id="posterLeftElementsList" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;"></div>
+          </details>
+
+          <details class="poster-tool-group poster-remix-group" open>
+            <summary class="poster-tool-summary">排版 REMIX 设置 <small>LAYOUT REMIX</small></summary>
             <label class="poster-remix-strength" for="posterRemixStrength">
               <span>REMIX Strength</span>
               <select id="posterRemixStrength" aria-label="随机排版强度">
-                <option value="light">Light</option>
-                <option value="medium" selected>Medium</option>
-                <option value="wild">Wild</option>
+                <option value="light">Light · 克制微调</option>
+                <option value="medium" selected>Medium · 标准平衡</option>
+                <option value="wild">Wild · 大胆实验</option>
               </select>
             </label>
             <label class="poster-remix-strength" for="posterCompositionMode">
               <span>Composition</span>
               <select id="posterCompositionMode" aria-label="构图模式">
-                <option value="balanced" selected>Balanced</option>
-                <option value="experimental">Experimental</option>
+                <option value="balanced" selected>Balanced · 结构平衡</option>
+                <option value="experimental">Experimental · 破格构图</option>
               </select>
             </label>
             <label class="poster-remix-copy" for="posterRemixCopy">
               <input id="posterRemixCopy" type="checkbox" checked />
               <span><b>Shuffle Copy</b><small>标题与信息文案一起变化</small></span>
             </label>
-            <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix">
-              <span>随机排版</span><b>REMIX ↻</b>
-            </button>
             <small>4 种视觉锚点 · 70/30 混乱预算</small>
             <div class="poster-remix-status" id="posterRemixStatus" aria-live="polite"></div>
-          </section>
+          </details>
+          </div>
 
-          <section class="poster-tool-group poster-export-group">
-            <span class="poster-tool-label">OUTPUT</span>
-            <small class="poster-tool-desc">历史记录与高清导出</small>
+          <section class="poster-action-dock" aria-label="常用海报操作">
             <div class="poster-history-actions" role="group" aria-label="编辑历史">
               <button type="button" data-poster-action="undo" title="撤销 Ctrl+Z">↶ 撤销</button>
               <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
               <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
             </div>
-            <button class="poster-action poster-action-primary" id="posterExportButton" type="button">导出海报 PNG ↘</button>
-            <small>所有处理均在浏览器本地完成</small>
+            <div class="poster-dock-primary">
+              <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="随机排版 REMIX"><b>排版 REMIX ↻</b></button>
+              <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
+            </div>
+            <small>LOCAL ONLY · 图片仅在本地处理</small>
           </section>
         </aside>
 
@@ -392,9 +430,8 @@
             </div>
           </div>
           <div class="poster-stage-footer">
-            <div><p class="poster-stage-note">拖动元素调整位置；按住 Space 拖动画布；Ctrl / Cmd + 滚轮缩放。</p>
+            <p class="poster-stage-note">拖动编辑 · Space 平移 · Ctrl / ⌘ + 滚轮缩放</p>
               <label class="poster-motion-control">转场动效 <select id="posterMotionPreference" aria-label="转场动效"><option value="on" selected>纸片转场</option><option value="auto">跟随系统</option><option value="off">关闭</option></select></label>
-            </div>
             <div class="poster-zoom-controls" role="group" aria-label="画布缩放">
               <button type="button" data-zoom-action="out" aria-label="缩小">−</button>
               <button class="poster-zoom-value" type="button" data-zoom-action="actual" id="posterZoomValue" aria-label="恢复百分之百">100%</button>
@@ -404,11 +441,14 @@
           </div>
         </section>
 
-        <aside class="poster-inspector" aria-label="拼贴海报属性面板">
+        <aside class="poster-inspector" aria-label="拼贴海报滤镜面板">
           <div class="poster-inspector-heading">
-            <p class="eyebrow">03 / INSPECTOR</p>
-            <span class="poster-selected-label" id="posterInspectorSelection">SELECTED · POSTER</span>
-            <h2 id="posterInspectorTitle">海报全局</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <p class="eyebrow" style="margin:0;">03 / FILTERS & TEXTURE</p>
+              <button class="poster-deselect-button" id="posterDeselectButton" type="button" style="display:none;" title="返回海报全局设置">全局 POSTER ↗</button>
+            </div>
+            <span class="poster-selected-label" id="posterInspectorSelection">FILTERS · TEXTURE</span>
+            <h2 id="posterInspectorTitle">滤镜与质感</h2>
             <button class="poster-hold-before" id="posterHoldBeforeButton" type="button" aria-label="按住查看原图" style="display:none;">
               <span>按住查看原图</span>
               <small>HOLD FOR BEFORE</small>
@@ -429,8 +469,10 @@
 
     <script src="app.js"></script>
     <script src="mode-switcher.js?v=20260921-2"></script>
+    <script src="assets/demo-collage-data.js"></script>
     <script src="poster-motion.js?v=20260930-paper"></script>
     <script src="poster-composition.js?v=20260930-editorial"></script>
-    <script src="poster.js?v=20260930-unified"></script>
+    <script src="poster-liquid-chrome.js?v=20261001-v1"></script>
+    <script src="poster.js?v=20261001-v8"></script>
   </body>
 </html>
