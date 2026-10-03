@@ -765,7 +765,8 @@
       const lightRgb = hexToRgb(o.duotoneLight, [251, 167, 39]);
       for (let p = 0; p < lum.length; p++) {
         const idx = p * 4;
-        const t = Math.max(0, Math.min(1, lum[p] / 255));
+        const srcVal = (o.threshold || o.dither || o.mosaic) ? (d[idx] * .299 + d[idx + 1] * .587 + d[idx + 2] * .114) : lum[p];
+        const t = Math.max(0, Math.min(1, srcVal / 255));
         d[idx] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * t);
         d[idx + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * t);
         d[idx + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * t);
@@ -851,17 +852,22 @@
     const strength = Math.pow(o.halftone / 100, 0.75);
     const W = target.width, H = target.height;
 
+    const hexToRgb = (hex, def) => {
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+      return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : def;
+    };
+
     // A. 彩色半调 (CMYK 分色印刷网点 - 直接生成高辨识度分色网屏画面)
     if (o.colorHalftone) {
       const isDuotoneMap = !!o.duotone;
       const cmykCanvas = raster(W, H, (cc) => {
-        cc.fillStyle = isDuotoneMap ? (o.duotoneLight || '#dbe8ff') : '#f8f8f6';
+        cc.fillStyle = isDuotoneMap ? (o.duotoneLight || '#c2d4ff') : '#f8f8f6';
         cc.fillRect(0, 0, W, H);
         const channels = isDuotoneMap ? [
-          { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(24, 60, 215, 0.94)' },
-          { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(18, 42, 175, 0.92)' },
-          { name: 'y', angle: 0, color: 'rgba(68, 115, 245, 0.88)' },
-          { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(10, 20, 75, 0.98)' }
+          { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(10, 25, 75, 0.94)' },
+          { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(15, 35, 100, 0.92)' },
+          { name: 'y', angle: 0, color: 'rgba(25, 55, 140, 0.88)' },
+          { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(7, 21, 64, 0.98)' }
         ] : [
           { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(0, 168, 240, 0.92)' },
           { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(235, 10, 130, 0.92)' },
@@ -904,78 +910,121 @@
       tc.save();
       tc.globalAlpha = Math.min(1, 0.55 + strength * 0.45);
       tc.drawImage(cmykCanvas, 0, 0);
-      tc.restore();      return;
+      tc.restore();
+      return;
     }
 
     // B. 半调图案「圆形 / 同心圆」 (Concentric Circle Halftone)
     if (o.halftoneShape === 'concentric') {
-      const overlay = raster(W, H, () => {});
-      const oc = overlay.getContext('2d');
-      const centerX = W / 2, centerY = H / 2;
-      const maxR = Math.hypot(centerX, centerY);
-      const ringStep = Math.max(5, spacing * 0.95);
-      const isDuotoneConcentric = !!o.duotone;
-      oc.strokeStyle = isDuotoneConcentric ? (o.duotoneLight || '#9cb3ff') : '#111';
-      for (let r = 0; r < maxR; r += ringStep) {
-        const sampleCount = Math.max(12, Math.round(Math.PI * 2 * r / ringStep));
-        let ringLum = 0;
-        for (let a = 0; a < Math.PI * 2; a += (Math.PI * 2 / sampleCount)) {
-          const sx = Math.max(0, Math.min(W - 1, Math.round(centerX + Math.cos(a) * r)));
-          const sy = Math.max(0, Math.min(H - 1, Math.round(centerY + Math.sin(a) * r)));
-          const p = (sy * W + sx) * 4;
-          ringLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
+      const overlay = raster(W, H, (oc) => {
+        oc.fillStyle = '#ffffff';
+        oc.fillRect(0, 0, W, H);
+        const centerX = W / 2, centerY = H / 2;
+        const maxR = Math.hypot(centerX, centerY);
+        const ringStep = Math.max(5, spacing * 0.95);
+        oc.strokeStyle = '#000000';
+        for (let r = 0; r < maxR; r += ringStep) {
+          const sampleCount = Math.max(12, Math.round(Math.PI * 2 * r / ringStep));
+          let ringLum = 0;
+          for (let a = 0; a < Math.PI * 2; a += (Math.PI * 2 / sampleCount)) {
+            const sx = Math.max(0, Math.min(W - 1, Math.round(centerX + Math.cos(a) * r)));
+            const sy = Math.max(0, Math.min(H - 1, Math.round(centerY + Math.sin(a) * r)));
+            const p = (sy * W + sx) * 4;
+            ringLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
+          }
+          ringLum /= sampleCount;
+          const width = Math.max(0.6, (1 - ringLum / 255) * ringStep * 0.92 * strength);
+          oc.lineWidth = width;
+          oc.beginPath(); oc.arc(centerX, centerY, r, 0, Math.PI * 2); oc.stroke();
         }
-        ringLum /= sampleCount;
-        const width = Math.max(0.6, (1 - ringLum / 255) * ringStep * 0.92 * strength);
-        oc.lineWidth = width;
-        oc.beginPath(); oc.arc(centerX, centerY, r, 0, Math.PI * 2); oc.stroke();
+      });
+      const isDuotoneConcentric = !!o.duotone;
+      if (isDuotoneConcentric) {
+        const darkRgb = hexToRgb(o.duotoneDark, [7, 21, 64]);
+        const lightRgb = hexToRgb(o.duotoneLight, [194, 212, 255]);
+        const octx = overlay.getContext('2d');
+        const odata = octx.getImageData(0, 0, W, H);
+        const od = odata.data;
+        for (let i = 0; i < od.length; i += 4) {
+          const l = (od[i] * .299 + od[i + 1] * .587 + od[i + 2] * .114) / 255;
+          od[i] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * l);
+          od[i + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * l);
+          od[i + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * l);
+        }
+        octx.putImageData(odata, 0, 0);
+        tc.save();
+        tc.globalAlpha = Math.min(1, 0.88 + strength * 0.12);
+        tc.drawImage(overlay, 0, 0);
+        tc.restore();
+      } else {
+        tc.save();
+        tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
+        tc.globalCompositeOperation = 'multiply';
+        tc.drawImage(overlay, 0, 0);
+        tc.restore();
       }
-      tc.save();
-      tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
-      tc.globalCompositeOperation = isDuotoneConcentric ? 'screen' : 'multiply';
-      tc.drawImage(overlay, 0, 0);
-      tc.restore();
       return;
     }
 
     // B2. 半调图案「线条」 (Line / Scanline Halftone)
     if (o.halftoneShape === 'line') {
-      const overlay = raster(W, H, () => {});
-      const oc = overlay.getContext('2d');
-      const angle = (o.halftoneAngle || 0) * Math.PI / 180;
-      const lineStep = Math.max(3, spacing * 0.85);
-      const diagonal = Math.hypot(W, H);
-      oc.save();
-      oc.translate(W / 2, H / 2);
-      oc.rotate(angle);
-      const isDuotoneLine = !!o.duotone;
-      oc.strokeStyle = isDuotoneLine ? (o.duotoneLight || '#6ba0ff') : '#111';
-      for (let gy = -diagonal / 2; gy < diagonal / 2; gy += lineStep) {
-        let lineLum = 0, count = 0;
-        for (let gx = -diagonal / 2; gx < diagonal / 2; gx += lineStep * 2) {
-          const cos = Math.cos(-angle), sin = Math.sin(-angle);
-          const sx = Math.round(gx * cos - gy * sin + W / 2);
-          const sy = Math.round(gx * sin + gy * cos + H / 2);
-          if (sx >= 0 && sy >= 0 && sx < W && sy < H) {
-            const p = (sy * W + sx) * 4;
-            lineLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
-            count++;
+      const overlay = raster(W, H, (oc) => {
+        oc.fillStyle = '#ffffff';
+        oc.fillRect(0, 0, W, H);
+        const angle = (o.halftoneAngle || 0) * Math.PI / 180;
+        const lineStep = Math.max(3, spacing * 0.85);
+        const diagonal = Math.hypot(W, H);
+        oc.save();
+        oc.translate(W / 2, H / 2);
+        oc.rotate(angle);
+        oc.strokeStyle = '#000000';
+        for (let gy = -diagonal / 2; gy < diagonal / 2; gy += lineStep) {
+          let lineLum = 0, count = 0;
+          for (let gx = -diagonal / 2; gx < diagonal / 2; gx += lineStep * 2) {
+            const cos = Math.cos(-angle), sin = Math.sin(-angle);
+            const sx = Math.round(gx * cos - gy * sin + W / 2);
+            const sy = Math.round(gx * sin + gy * cos + H / 2);
+            if (sx >= 0 && sy >= 0 && sx < W && sy < H) {
+              const p = (sy * W + sx) * 4;
+              lineLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
+              count++;
+            }
           }
+          if (count > 0) lineLum /= count;
+          const lw = Math.max(0.4, (1 - lineLum / 255) * lineStep * 0.9 * strength);
+          oc.lineWidth = lw;
+          oc.beginPath();
+          oc.moveTo(-diagonal / 2, gy);
+          oc.lineTo(diagonal / 2, gy);
+          oc.stroke();
         }
-        if (count > 0) lineLum /= count;
-        const lw = Math.max(0.4, (1 - lineLum / 255) * lineStep * 0.9 * strength);
-        oc.lineWidth = lw;
-        oc.beginPath();
-        oc.moveTo(-diagonal / 2, gy);
-        oc.lineTo(diagonal / 2, gy);
-        oc.stroke();
+        oc.restore();
+      });
+      const isDuotoneLine = !!o.duotone;
+      if (isDuotoneLine) {
+        const darkRgb = hexToRgb(o.duotoneDark, [7, 21, 64]);
+        const lightRgb = hexToRgb(o.duotoneLight, [194, 212, 255]);
+        const octx = overlay.getContext('2d');
+        const odata = octx.getImageData(0, 0, W, H);
+        const od = odata.data;
+        for (let i = 0; i < od.length; i += 4) {
+          const l = (od[i] * .299 + od[i + 1] * .587 + od[i + 2] * .114) / 255;
+          od[i] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * l);
+          od[i + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * l);
+          od[i + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * l);
+        }
+        octx.putImageData(odata, 0, 0);
+        tc.save();
+        tc.globalAlpha = Math.min(1, 0.88 + strength * 0.12);
+        tc.drawImage(overlay, 0, 0);
+        tc.restore();
+      } else {
+        tc.save();
+        tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
+        tc.globalCompositeOperation = 'multiply';
+        tc.drawImage(overlay, 0, 0);
+        tc.restore();
       }
-      oc.restore();
-      tc.save();
-      tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
-      tc.globalCompositeOperation = isDuotoneLine ? 'screen' : 'multiply';
-      tc.drawImage(overlay, 0, 0);
-      tc.restore();
       return;
     }
 
@@ -983,7 +1032,9 @@
     const overlay = raster(W, H, () => {}), oc = overlay.getContext('2d');
     const angle = (o.halftoneAngle || 0) * Math.PI / 180;
     const diagonal = Math.hypot(W, H);
-    oc.save(); oc.translate(W / 2, H / 2); oc.rotate(angle); oc.fillStyle = '#111';
+    const isDuotoneDot = !!o.duotone;
+    oc.save(); oc.translate(W / 2, H / 2); oc.rotate(angle);
+    oc.fillStyle = isDuotoneDot ? (o.duotoneDark || '#071540') : '#111';
     for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
       const cos = Math.cos(-angle), sin = Math.sin(-angle);
       const sx = Math.round(gx * cos - gy * sin + W / 2);
@@ -996,9 +1047,16 @@
     }
     oc.restore();
     tc.save();
-    tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
-    tc.globalCompositeOperation = 'multiply';
-    tc.drawImage(overlay, 0, 0);
+    if (isDuotoneDot) {
+      tc.fillStyle = o.duotoneLight || '#c2d4ff';
+      tc.fillRect(0, 0, W, H);
+      tc.globalAlpha = Math.min(1, 0.75 + strength * 0.25);
+      tc.drawImage(overlay, 0, 0);
+    } else {
+      tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
+      tc.globalCompositeOperation = 'multiply';
+      tc.drawImage(overlay, 0, 0);
+    }
     tc.restore();
   }
 
@@ -1118,6 +1176,12 @@
       o.contrast += 35;
       o.halftone = d.halftoneStrength || 75;
       o.halftoneShape = 'dot';
+      o.halftoneAngle = d.halftoneAngle !== undefined ? d.halftoneAngle : 45;
+      if (d.duotone) {
+        o.duotone = true;
+        o.duotoneDark = d.duotoneDark || '#071540';
+        o.duotoneLight = d.duotoneLight || '#c2d4ff';
+      }
     }
     // 3. 半调图案「圆形」+ 颗粒 (Concentric Circle Halftone + Grain)
     else if (type === 'circle_halftone') {
@@ -1181,14 +1245,24 @@
     // 9. 位图：20 像素 (Bayer Dither 纯点刻抖动)
     else if (type === 'dither') {
       o.dither = 100;
-      o.ditherStep = d.ditherStep || 4;
-      o.contrast += 20;
+      o.ditherStep = d.ditherStep || 5;
+      o.contrast += 25;
+      if (d.duotone) {
+        o.duotone = true;
+        o.duotoneDark = d.duotoneDark || '#071540';
+        o.duotoneLight = d.duotoneLight || '#c2d4ff';
+      }
     }
     // 10. 阈值 + 颗粒 (黑白强对比复印 Threshold + Grain)
     else if (type === 'threshold' || type === 'highbw') {
       o.threshold = 100;
-      o.grain = Math.max(35, o.grain || 35);
-      o.thresholdLevel = d.thresholdLevel || 124;
+      o.grain = Math.max(30, o.grain || 30);
+      o.thresholdLevel = d.thresholdLevel || 130;
+      if (d.duotone) {
+        o.duotone = true;
+        o.duotoneDark = d.duotoneDark || '#071540';
+        o.duotoneLight = d.duotoneLight || '#c2d4ff';
+      }
     }
     // 兼容原有的黑白与描边
     else if (type === 'bw') {
@@ -1579,9 +1653,51 @@
       ctx.restore();
     }
     else if (t.writingMode === 'vertical') [...t.content.replace(/\n/g, '')].forEach((ch, i) => spacedLine(ch, 0, 0, i * t.size * lh, t.align || 'left', t.strokeColor, t.strokeWidth));
+    else if (t.kind === 'ps-title') {
+      const fontFam = t.font || 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif';
+      const baseSize = t.size || 28;
+      const numSize = Math.round(baseSize * 1.38);
+      ctx.fillStyle = t.color || '#ffffff';
+      const baselineY = baseSize * 0.95;
+      let cursor = 0;
+      ctx.textBaseline = 'alphabetic';
+      const tokens = t.content.split(/(\d+)/);
+      tokens.forEach(tok => {
+        if (!tok) return;
+        const isNum = /^\d+$/.test(tok);
+        ctx.font = `900 ${isNum ? numSize : baseSize}px ${fontFam}`;
+        ctx.fillText(tok, cursor, baselineY);
+        cursor += ctx.measureText(tok).width + (isNum ? 4 : 1);
+      });
+    }
     else {
       const lines = t.content.split('\n');
-      lines.forEach((line, i) => spacedLine(line, t.letterSpacing || 0, 0, i * t.size * lh, t.align || 'left', t.strokeColor, t.strokeWidth));
+      if (t.kind === 'ps-recipe') {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
+      }
+      lines.forEach((line, i) => {
+        if (t.kind === 'ps-recipe') {
+          const trimmed = line.trim();
+          if (trimmed === '+') {
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = `600 ${Math.max(9, Math.round(t.size * 0.85))}px ${t.font}`;
+          } else if (/^[A-Za-z0-9\s\(\)\'\:\/\.\-\,\+]+$/.test(trimmed)) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = `500 ${Math.max(8.5, Math.round(t.size * 0.88))}px ${t.font}`;
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `700 ${t.size}px ${t.font}`;
+          }
+        }
+        spacedLine(line, t.letterSpacing || 0, 0, i * t.size * lh, t.align || 'left', t.strokeColor, t.strokeWidth);
+      });
+      if (t.kind === 'ps-recipe') {
+        ctx.restore();
+      }
       if (t.strikeThrough) {
         ctx.save();
         ctx.strokeStyle = t.strikeThroughColor || '#ff2244';
@@ -1619,6 +1735,20 @@
       minX = Math.min(0, dx * (count - 1)); minY = Math.min(0, dy * (count - 1));
       w = lw + Math.abs(dx) * (count - 1); h = t.size * lh + Math.abs(dy) * (count - 1);
     }
+    if (t.kind === 'ps-title') {
+      const baseSize = t.size || 28;
+      const numSize = Math.round(baseSize * 1.38);
+      const fontFam = t.font || 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif';
+      let totalW = 0;
+      t.content.split(/(\d+)/).forEach(tok => {
+        if (!tok) return;
+        const isNum = /^\d+$/.test(tok);
+        ctx.font = `900 ${isNum ? numSize : baseSize}px ${fontFam}`;
+        totalW += ctx.measureText(tok).width + (isNum ? 4 : 1);
+      });
+      w = totalW;
+      h = numSize * lh;
+    }
     const alignShift = t.align === 'center' ? -w / 2 : t.align === 'right' ? -w : 0;
     ctx.restore();
     return { x: t.x + (minX + alignShift) * (t.scaleX || 1), y: t.y + minY * (t.scaleY || 1), w: w * (t.scaleX || 1), h: h * (t.scaleY || 1), rotation: t.rotation || 0 };
@@ -1643,7 +1773,7 @@
       ctx.strokeStyle = box.color;
       ctx.lineWidth = box.lineWidth;
       ctx.strokeRect(0, 0, box.w, box.h);
-    } else {
+    } else if (box.lineWidth !== 0) {
       ctx.strokeStyle = 'rgba(255,255,255,.25)';
       ctx.lineWidth = 1;
       ctx.strokeRect(0, 0, box.w, box.h);
@@ -2444,13 +2574,13 @@
     state.background = '#0a0c10';
     state.backgroundStyle = 'ps-dark';
     state.backgroundImageId = null;
-    state.border = true;
+    state.border = false;
     state.borderColor = '#1f2430';
     state.borderWidth = 0;
     state.filters = {
-      bw: 100, brightness: -4, contrast: 32, saturation: 0,
+      bw: 100, brightness: -4, contrast: 36, saturation: 0,
       halftone: 0, halftoneSize: 6, halftoneDensity: 55, halftoneAngle: 15,
-      grain: 12, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
+      grain: 8, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
       compression: 0, invert: 0, posterize: 0
     };
 
@@ -2460,10 +2590,12 @@
       d.showHandles = true;
       d.handleColor = '#ffffff';
       d.handleStrokeColor = '#fbcfe8';
-      d.handleSize = 7;
+      d.handleSize = 6.5;
       d.showTag = false;
       d.lineOpacity = 0;
       d.backingColor = 'transparent';
+      d.hasShadow = false;
+      d.tape = null;
     });
 
     (state.frames || []).forEach((f) => {
@@ -2472,17 +2604,23 @@
       f.showHandles = true;
       f.handleColor = '#ffffff';
       f.handleStrokeColor = '#fbcfe8';
-      f.handleSize = 7;
+      f.handleSize = 6.5;
       f.showLabel = false;
     });
 
     (state.texts || []).forEach(t => {
-      if (t.id === 't-hero') {
+      if (t.id === 't-hero' || t.kind === 'ps-title') {
         t.color = '#ffffff';
-      } else if (t.id === 't-sub' || t.id === 't-recipe-3') {
-        t.color = '#60a5fa';
-      } else if (t.kind === 'micro' || t.kind === 'caption') {
-        t.color = '#93c5fd';
+      } else if (t.id === 't-sub') {
+        t.color = '#cbd5e1';
+      } else if (t.id === 't-ps-logo') {
+        t.color = '#31a8ff';
+        t.badgeColor = '#001e36';
+        t.badgeBorderColor = '#31a8ff';
+      } else if (t.kind === 'ps-recipe') {
+        t.color = '#ffffff';
+      } else if (t.id === 't-watermark') {
+        t.color = '#64748b';
       }
     });
 
@@ -3062,18 +3200,18 @@
     state.border = false;
     state.borderWidth = 0;
 
-    // 1. 主图空间定位 (居中微调模特暗调底图，面部完全留空绝不遮挡)
+    // 1. 主图空间定位 (居中模特暗调底图，全幅沉浸)
     state.main = {
       id: 'main-image',
-      x: 45,
-      y: 110,
-      w: 810,
-      h: 1060,
+      x: 35,
+      y: 95,
+      w: 830,
+      h: 1090,
       rotation: 0,
       opacity: 100,
-      zoom: 1.0,
+      zoom: 1.12,
       panX: 0,
-      panY: 0,
+      panY: -65,
       lineWidth: 0,
       color: '#ffffff',
       layoutMode: '7 IMAGE EFFECT SHOWCASE'
@@ -3087,7 +3225,7 @@
       const secHero = {
         id: makeId(),
         imageId: slot0Id || state.mainImageId,
-        x: 620, y: 175, w: 235, h: 215,
+        x: 485, y: 265, w: 355, h: 280,
         rotation: 0, opacity: 0,
         color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
         filters: cleanFilters()
@@ -3095,7 +3233,7 @@
       const secConcentric = {
         id: makeId(),
         imageId: slot1Id || state.mainImageId,
-        x: 92, y: 385, w: 215, h: 170,
+        x: 135, y: 300, w: 245, h: 195,
         rotation: 0, opacity: 0,
         color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
         filters: cleanFilters()
@@ -3103,7 +3241,7 @@
       const secScanline = {
         id: makeId(),
         imageId: slot2Id || state.mainImageId,
-        x: 575, y: 490, w: 260, h: 175,
+        x: 590, y: 655, w: 240, h: 125,
         rotation: 0, opacity: 0,
         panY: 55,
         color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
@@ -3112,7 +3250,7 @@
       const secDither = {
         id: makeId(),
         imageId: (slot3Id && slot3Id !== state.mainImageId) ? slot3Id : (slot0Id || state.mainImageId),
-        x: 42, y: 675, w: 185, h: 175,
+        x: 55, y: 675, w: 150, h: 205,
         zoom: 1.8, panY: -10,
         rotation: 0, opacity: 0,
         color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
@@ -3128,210 +3266,266 @@
     }
     state.fragments = [];
 
-    // 3. 七大选区特效视窗 (原位采样模式：在同一张模特图上原位局部提取特效，就像 Photoshop 选区一样！)
-    // 视窗 1：左上发侧马赛克像素化 (Top-Left Mosaic, 倾斜 -3.2°)
+    // 3. 七大选区特效视窗 (完全正交 rotation: 0，粉色边界框，白色八控点手柄，经典 PS 教程质感)
+    // 视窗 1：顶部居中发带/额头 · 马赛克 + 细半调 (Mosaic Pixelate + Halftone)
     const f1 = makeFrame(1, {
       sourceId: 'main',
-      x: 58, y: 160, w: 185, h: 140,
+      x: 285, y: 185, w: 135, h: 175,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d1 = makeDetail(f1, 0, {
-      x: 58, y: 160, w: 185, h: 140, rotation: -3.2,
+      x: 285, y: 185, w: 135, h: 175, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 25, brightness: 5,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 28, brightness: 5,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'corner-left'
+      hasShadow: false, tape: null
     });
 
-    // 视窗 2：中左胸侧 · 同心圆水波半调 (Mid-Left Concentric Circle Halftone, 倾斜 +2.6°)
+    // 视窗 2：核心面部/墨镜/眼眸 · 彩色半调 + 经典渐变映射 (Hero Color Halftone + Gradient Map)
     const f2 = makeFrame(2, {
-      sourceId: secConcentricId,
-      x: 92, y: 385, w: 215, h: 170,
+      sourceId: secHeroId,
+      x: 485, y: 265, w: 355, h: 280,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d2 = makeDetail(f2, 1, {
-      x: 92, y: 385, w: 215, h: 170, rotation: 2.6,
+      x: 485, y: 265, w: 355, h: 280, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
-      duotoneDark: '#0b1a3d', duotoneLight: '#9cb3ff', duotone: true,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 65, halftoneSize: 6,
+      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'top'
+      hasShadow: false, tape: null
     });
 
-    // 视窗 3：右上肩颈 · 钴蓝彩色半调 (Top-Right Flank Cobalt Halftone - HERO, 倾斜 -2.8°)
+    // 视窗 3：左上发侧/蝴蝶 · 同心圆水波半调 + 颗粒 + 渐变映射 (Circle Halftone + Grain + Gradient Map)
     const f3 = makeFrame(3, {
-      sourceId: secHeroId,
-      x: 620, y: 175, w: 235, h: 215,
+      sourceId: secConcentricId,
+      x: 135, y: 300, w: 245, h: 195,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d3 = makeDetail(f3, 2, {
-      x: 620, y: 175, w: 235, h: 215, rotation: -2.8,
+      x: 135, y: 300, w: 245, h: 195, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 64, halftoneSize: 6,
-      duotoneDark: '#122db5', duotoneLight: '#dbe8ff', duotone: true,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
+      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'corner-right'
+      hasShadow: false, tape: null
     });
 
-    // 视窗 4：下左腹侧 · 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither, 倾斜 +4.0°)
+    // 视窗 4：右侧袖身/手臂 · 线性半调 + 动感模糊 + 渐变映射 (Line Halftone + Motion Blur + Gradient Map)
     const f4 = makeFrame(4, {
-      sourceId: secDitherId,
-      x: 42, y: 675, w: 185, h: 175,
+      sourceId: secScanlineId,
+      x: 590, y: 655, w: 240, h: 125,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d4 = makeDetail(f4, 3, {
-      x: 42, y: 675, w: 185, h: 175, rotation: 4.0,
+      x: 590, y: 655, w: 240, h: 125, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'dither', ditherStep: 5, contrast: 28,
-      duotoneDark: '#141d38', duotoneLight: '#9ab0ff', duotone: true,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 60,
+      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'corner-left'
+      hasShadow: false, tape: null
     });
 
-    // 视窗 5：左下底角斜向点状半调 (Bottom-Left Corner Slanted Dot, 倾斜 -3.5°)
+    // 视窗 5：中左侧袖/腰侧 · 20 像素 Bayer 位图点阵 + 渐变映射 (Bitmap 20px Dither + Gradient Map)
     const f5 = makeFrame(5, {
-      sourceId: 'main',
-      x: 75, y: 940, w: 185, h: 105,
+      sourceId: secDitherId,
+      x: 55, y: 675, w: 150, h: 205,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d5 = makeDetail(f5, 4, {
-      x: 75, y: 940, w: 185, h: 105, rotation: -3.5,
+      x: 55, y: 675, w: 150, h: 205, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: -18, halftoneDensity: 60, halftoneSize: 6,
-      duotoneDark: '#162878', duotoneLight: '#b8d0ff',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'dither', ditherStep: 6, contrast: 30,
+      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'corner-left'
+      hasShadow: false, tape: null
     });
 
-    // 视窗 6：胸腹部服饰 2 阶调阈值与手绘颗粒 (Torso Threshold Graphic, 纵长居中穿插, 倾斜 -2.4°)
+    // 视窗 6：胸腹居中图案 · 2 阶调阈值 + 颗粒 + 渐变映射 (Threshold + Grain + Gradient Map)
     const f6 = makeFrame(6, {
       sourceId: 'main',
-      x: 325, y: 660, w: 220, h: 360,
+      x: 445, y: 690, w: 170, h: 405,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d6 = makeDetail(f6, 5, {
-      x: 325, y: 660, w: 220, h: 360, rotation: -2.4,
+      x: 445, y: 690, w: 170, h: 405, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'threshold', thresholdLevel: 132, grain: 32,
-      duotoneDark: '#0b1632', duotoneLight: '#eef3ff',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'threshold', thresholdLevel: 132, grain: 28,
+      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'top'
+      hasShadow: false, tape: null
     });
 
-    // 视窗 7：右侧相片/模特 · 线性半调与水平动感扫描 (Right Waist Scanline, 倾斜 +3.2°)
+    // 视窗 7：左下角腹/胯部 · 45° 点状半调 + 渐变映射 (Dot Halftone + Gradient Map)
     const f7 = makeFrame(7, {
-      sourceId: secScanlineId,
-      x: 575, y: 490, w: 260, h: 175,
+      sourceId: 'main',
+      x: 70, y: 925, w: 295, h: 115,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d7 = makeDetail(f7, 6, {
-      x: 575, y: 490, w: 260, h: 175, rotation: 3.2,
+      x: 70, y: 925, w: 295, h: 115, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 58,
-      duotoneDark: '#14225a', duotoneLight: '#6ba0ff', duotone: true,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: 45, halftoneDensity: 65, halftoneSize: 6,
+      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'top'
+      hasShadow: false, tape: null
     });
 
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
     state.details = [d1, d2, d3, d4, d5, d6, d7];
 
-    // 4. 排版文字 (先锋海报化改造：艺术大标题、微型规格信息、FIG 标号排版)
+    // 4. 排版文字 (1:1 还原日系原版教程海报文字配方与层次)
     state.texts = [
-      // 先锋艺术大标题 (Top Hero Title)
+      // Top-Left Ps App Icon Badge
       {
-        id: 't-hero', kind: 'hero',
-        content: 'COLLAGE ARCHIVE',
-        x: 52, y: 44, size: 40, weight: 900,
+        id: 't-ps-logo',
+        kind: 'badge',
+        badgeShape: 'ps-icon',
+        content: 'Ps',
+        x: 60, y: 44,
+        size: 30, weight: 800,
+        align: 'center',
+        font: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        color: '#31a8ff',
+        badgeColor: '#001e36',
+        badgeBorderColor: '#31a8ff',
+        badgeWidth: 52, badgeHeight: 52,
+        opacity: 100
+      },
+      // Top Japanese Hero Title (with prominent '7')
+      {
+        id: 't-hero',
+        kind: 'ps-title',
+        content: '画像エフェクトの組み合わせ例 7 選',
+        x: 104, y: 44,
+        size: 28, weight: 900,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        letterSpacing: 0.5,
+        opacity: 100
+      },
+      // English Subtitle
+      {
+        id: 't-sub',
+        kind: 'subtitle',
+        content: '7 Photoshop Image Effect Combinations That Work Well Together',
+        x: 106, y: 84,
+        size: 13, weight: 600,
         font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#ffffff', letterSpacing: 1.5, opacity: 100
+        color: '#cbd5e1',
+        letterSpacing: 0.2,
+        opacity: 95
       },
-      // 副标与概念信息 (Concept Subtitle)
+      // Recipe 1 (Top Center Headband - Mosaic + Halftone)
       {
-        id: 't-sub', kind: 'subtitle',
-        content: 'N° 02 · MULTI-IMAGE RESAMPLING & PHYSICAL COLLAGE',
-        x: 54, y: 92, size: 12.5, weight: 700,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#60a5fa', letterSpacing: 1.2, opacity: 95
+        id: 't-recipe-1',
+        kind: 'ps-recipe',
+        content: 'モザイク（ピクセルレート）\nMosaic (Pixelate)\n+\nカラーハーフトーン（ピクセルレート）\nColor Halftone (Pixelate)',
+        x: 270, y: 188,
+        size: 11, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'right',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 右上规格元数据 (Specimen Metadata)
+      // Recipe 2 (Top Right HERO - Color Halftone + Gradient Map)
       {
-        id: 't-meta-top', kind: 'micro',
-        content: 'SPECIMEN // 02\nFORMAT: 7 PHYSICAL CUTOUTS\nAUTONOMOUS VISUAL LAB',
-        x: 848, y: 44, size: 9.5, weight: 600,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#94a3b8', align: 'right', lineHeight: 1.35, opacity: 85
+        id: 't-recipe-2',
+        kind: 'ps-recipe',
+        content: 'カラーハーフトーン（ピクセルレート）\nColor Halftone (Pixelate)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 840, y: 172,
+        size: 11, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'right',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 标注 1 (左上马赛克)
+      // Recipe 3 (Upper Left - Circle Halftone + Grain + Gradient Map)
       {
-        id: 't-recipe-1', kind: 'micro',
-        content: 'FIG. 01 // MOSAIC (PIXELATE)\nSCALE: 10PX · CONTRAST +25',
-        x: 52, y: 318, size: 9.5, weight: 600, rotation: -3.2,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
+        id: 't-recipe-3',
+        kind: 'ps-recipe',
+        content: 'ハーフトーンパターン「円」（フィルターギャラリー）\nHalftone Pattern \'Circle\' (Filter Gallery)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 75, y: 512,
+        size: 10.5, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'left',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 标注 2 (中左蹲姿相片 · 同心圆水波半调)
+      // Recipe 4 (Middle Right - Line Halftone + Motion Blur + Gradient Map)
       {
-        id: 't-recipe-2', kind: 'micro',
-        content: 'FIG. 02 // HALFTONE PATTERN \'CIRCLE\'\nRADIAL WAVE · CROUCH SPECIMEN',
-        x: 92, y: 570, size: 9.5, weight: 600, rotation: 2.6,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
+        id: 't-recipe-4',
+        kind: 'ps-recipe',
+        content: 'ハーフトーンパターン「線」\n（フィルターギャラリー）\nHalftone Pattern \'Line\' (Filter Gallery)\n+\nぼかし（移動）\nMotion Blur\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 830, y: 798,
+        size: 10.5, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'right',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 标注 3 (右上双手持花相片 · 钴蓝彩色半调 - HERO)
+      // Recipe 5 (Middle Left - Bitmap 20px Dither + Gradient Map)
       {
-        id: 't-recipe-3', kind: 'micro',
-        content: 'FIG. 03 // COLOR HALFTONE (PIXELATE)\nSCREEN ANGLE 64° · HANDS SPECIMEN',
-        x: 855, y: 405, size: 10, weight: 700, rotation: -2.8,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#60a5fa', align: 'right', lineHeight: 1.3, opacity: 95
+        id: 't-recipe-5',
+        kind: 'ps-recipe',
+        content: 'モノクロ 2 階調 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 218, y: 765,
+        size: 10.5, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'left',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 标注 4 (下左蒲公英微距 · 20 像素 Bayer 位图点阵)
+      // Recipe 6 (Center Torso - Threshold + Grain + Gradient Map)
       {
-        id: 't-recipe-4', kind: 'micro',
-        content: 'FIG. 04 // BITMAP 20PX · DITHER\nMATRIX 20PX · FLOWER MACRO',
-        x: 42, y: 865, size: 9.5, weight: 600, rotation: 4.0,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
+        id: 't-recipe-6',
+        kind: 'ps-recipe',
+        content: '2 階調化（調整レイヤー）\nThreshold (Adjustment Layer)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 630, y: 980,
+        size: 10.5, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'left',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 标注 5 (底左角点状半调)
+      // Recipe 7 (Bottom Left - Dot Halftone + Gradient Map)
       {
-        id: 't-recipe-5', kind: 'micro',
-        content: 'FIG. 05 // HALFTONE PATTERN \'DOT\'\nVECTOR -18° · DENSITY 60',
-        x: 75, y: 1060, size: 9.5, weight: 600, rotation: -3.5,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 85
+        id: 't-recipe-7',
+        kind: 'ps-recipe',
+        content: 'ハーフトーンパターン「ドット」（フィルターギャラリー）\nHalftone Pattern \'Dot\' (Filter Gallery)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 70, y: 1058,
+        size: 10.5, weight: 700,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
+        color: '#ffffff',
+        align: 'left',
+        lineHeight: 1.35,
+        opacity: 100
       },
-      // 标注 6 (胸腹服饰手绘图案)
+      // Watermark (Bottom Left vertical text)
       {
-        id: 't-recipe-6', kind: 'micro',
-        content: 'FIG. 06 // THRESHOLD + GRAIN\nHIGH-PASS 132 · TORSO XEROX',
-        x: 855, y: 885, size: 9.5, weight: 600, rotation: -2.4,
+        id: 't-watermark',
+        kind: 'micro',
+        content: 'tamesan_design',
+        x: 24, y: 1180,
+        rotation: -90,
+        size: 10, weight: 500,
         font: 'ui-monospace, Consolas, monospace',
-        color: '#93c5fd', align: 'right', lineHeight: 1.3, opacity: 90
-      },
-      // 标注 7 (右腰蓝天外景相片 · 线性半调)
-      {
-        id: 't-recipe-7', kind: 'micro',
-        content: 'FIG. 07 // HALFTONE PATTERN \'LINE\'\nMOTION BLUR · SKYLINE SPECIMEN',
-        x: 835, y: 680, size: 9.5, weight: 600, rotation: 3.2,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#93c5fd', align: 'right', lineHeight: 1.3, opacity: 90
-      },
-      // 底部画报注脚 (Footer Bar)
-      {
-        id: 't-footer', kind: 'micro',
-        content: 'YONGYONG VISUAL LAB · DYNAMIC COLLAGE SYSTEM · SPECIMEN ARCHIVE',
-        x: 52, y: 1165, size: 9, weight: 600,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#475569', align: 'left', opacity: 75
+        color: '#64748b',
+        align: 'left',
+        opacity: 85
       }
     ];
 
