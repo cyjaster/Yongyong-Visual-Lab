@@ -3725,7 +3725,7 @@
     render();
     renderInspector();
   });
-  $('#posterAddImagesButton').addEventListener('click', () => multiInput.click());
+  $('#posterAddImagesButton')?.addEventListener('click', () => multiInput?.click());
   imageTray?.addEventListener('click', (e) => {
     const item = e.target.closest('.poster-tray-item');
     if (!item) return;
@@ -3748,8 +3748,8 @@
       render();
     }
   });
-  multiInput?.addEventListener('change', () => {
-    const files = Array.from(multiInput.files || []);
+  function handlePosterImageUpload(fileList) {
+    const files = Array.from(fileList || []);
     if (!files.length) return;
     toast(`正在读取 ${files.length} 张图片素材...`);
     let loadedCount = 0;
@@ -3760,12 +3760,84 @@
         const loaded = newlyLoaded.filter(Boolean);
         if (!loaded.length) {
           toast('未能载入图片，请检查图片格式。');
-          multiInput.value = '';
+          if (input) input.value = '';
+          if (multiInput) multiInput.value = '';
           return;
         }
-        appendImages(loaded);
-        toast(`已添加 ${loaded.length} 张图片；原有海报已保留。${loaded.length < files.length ? '部分文件未能载入。' : ''}`);
-        multiInput.value = '';
+
+        commit();
+
+        const isUserMode = hasUserUploadedImages();
+
+        if (!isUserMode) {
+          // 当前为示范图模式或空画布：清除示范图，切换为用户自己的素材
+          state.assets = [];
+          const mainAsset = loaded[0];
+          imageAssets.set(mainAsset.id, mainAsset);
+          state.assets.push({ id: mainAsset.id, name: mainAsset.name });
+          state.image = mainAsset.image;
+          state.imageName = mainAsset.name;
+          state.mainImageId = mainAsset.id;
+          ensureMainLayer();
+          emptyState.classList.add('is-hidden');
+          status.textContent = `MAIN IMAGE / ${mainAsset.name}`;
+
+          for (let i = 1; i < loaded.length; i++) {
+            const asset = loaded[i];
+            imageAssets.set(asset.id, asset);
+            state.assets.push({ id: asset.id, name: asset.name });
+          }
+
+          // 自动分配槽位到当前模板卡片中
+          if (state.secondaries && state.secondaries.length > 0) {
+            state.secondaries.forEach((sec, idx) => {
+              const targetAsset = loaded[idx % loaded.length];
+              sec.imageId = targetAsset.id;
+            });
+          } else if (loaded.length > 1) {
+            for (let i = 1; i < loaded.length; i++) {
+              addSecondaryImage(loaded[i].id, {}, false);
+            }
+          }
+
+          renderImageTray();
+          renderInspector();
+          render();
+          commit();
+          markManuallyEdited();
+
+          if (loaded.length === 1) {
+            toast('已载入 1 张图片（单图创作模式），已自动适配全套排版与滤镜！');
+          } else {
+            toast(`已载入 ${loaded.length} 张图片（多图创作模式，第 1 张已设为主图）！`);
+          }
+        } else {
+          // 当前已经是用户创作状态：追加素材
+          loaded.forEach(asset => {
+            imageAssets.set(asset.id, asset);
+            state.assets.push({ id: asset.id, name: asset.name });
+            if (!state.image) {
+              state.image = asset.image;
+              state.imageName = asset.name;
+              state.mainImageId = asset.id;
+              ensureMainLayer();
+              emptyState.classList.add('is-hidden');
+              status.textContent = `MAIN IMAGE / ${asset.name}`;
+            } else {
+              addSecondaryImage(asset.id, {}, false);
+            }
+          });
+
+          renderImageTray();
+          renderInspector();
+          render();
+          commit();
+          markManuallyEdited();
+          toast(`已添加 ${loaded.length} 张图片素材；原有海报元素已保留。`);
+        }
+
+        if (input) input.value = '';
+        if (multiInput) multiInput.value = '';
       }
     };
 
@@ -3790,39 +3862,10 @@
       };
       reader.readAsDataURL(file);
     });
-  });
-  input.addEventListener('change', () => {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        commit();
-        const id = makeId();
-        imageAssets.set(id, { id, name: file.name, image, src: reader.result });
-        if (!state.assets) state.assets = [];
-        state.assets.unshift({ id, name: file.name });
-        state.image = image;
-        state.imageName = file.name;
-        state.mainImageId = id;
-        ensureMainLayer();
-        emptyState.classList.add('is-hidden');
-        status.textContent = `MAIN IMAGE / ${file.name}`;
-        renderImageTray();
-        renderInspector();
-        render();
-        commit();
-        markManuallyEdited();
-        toast('主图已载入；现有拼贴元素已保留。');
-        input.value = '';
-      };
-      image.onerror = () => toast('图片未能载入。');
-      image.src = reader.result;
-    };
-    reader.onerror = () => toast('读取文件失败。');
-    reader.readAsDataURL(file);
-  });
+  }
+
+  input?.addEventListener('change', () => handlePosterImageUpload(input.files));
+  multiInput?.addEventListener('change', () => handlePosterImageUpload(multiInput.files));
   backgroundInput?.addEventListener('change',()=>{const file=backgroundInput.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const id=makeId();backgroundAssets.set(id,image);state.backgroundImageId=id;state.backgroundImageOpacity=48;renderInspector();render();commit();markManuallyEdited();toast(`背景图已载入 · ${file.name}`);backgroundInput.value='';};image.onerror=()=>toast('背景图未能载入。');image.src=reader.result;};reader.readAsDataURL(file);});
   if (holdBeforeButton) {
     const startBefore = (e) => {

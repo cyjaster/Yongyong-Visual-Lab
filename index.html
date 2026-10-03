@@ -284,13 +284,12 @@
           <div class="poster-panel-heading">
             <p class="eyebrow">02 / COLLAGE POSTER</p>
             <h1>索引拼贴</h1>
-            <p id="posterPanelDesc">上传主图，按需添加辅图。</p>
+            <p id="posterPanelDesc">上传 1 张或多张图片，即可开始排版与滤镜创作。</p>
           </div>
 
           <section class="poster-tool-group">
             <span class="poster-tool-label">IMAGE / FRAMES</span>
-            <label class="poster-action poster-action-primary" for="posterImageInput" title="支持 JPG / PNG / WEBP，上传后替换主图">上传 / 更换主图 <small>IMAGE</small></label>
-            <button class="poster-action" type="button" id="posterAddImagesButton">＋ 添加图片 <small>可多选 · 辅图</small></button>
+            <label class="poster-action poster-action-primary" for="posterImageInput" id="posterUploadImagesLabel" title="支持选择一张（单图创作）或按住 Ctrl/Shift 选择多张图片（多图创作）">＋ 上传图片 <small>单选 / 多选</small></label>
             <div class="poster-tray-group" id="posterImageTrayGroup">
               <div class="poster-tray-header">
                 <span class="poster-tool-label">当前图片 / IMAGES</span>
@@ -483,7 +482,7 @@
     <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <input id="backgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <input id="recipeInput" type="file" accept="application/json,.json" hidden />
-    <input id="posterImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input id="posterImageInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <input id="posterMultiImageInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <input id="posterBackgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
