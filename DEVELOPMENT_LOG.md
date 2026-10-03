@@ -1,5 +1,25 @@
 # Yongyong Visual Lab 开发记录
 
+## 2026-10-03｜多图修复：消除素材托盘污染退化，完整呈现 4 组独立真实示范人像
+
+- **用户痛点与核心诊断**：
+  - 用户反馈：「这里的图也要是我给你的那几张呀」，并截图标注左侧素材面板中的 4 张图片缩略图均错误显示成了同一张特写照片（`karina-close.jpg`）；
+  - 核心根因：在执行排版/总 REMIX 循环切版时，因 `images` 参数传递为空，`resolveSlotAssetIds` 内部存在 `imgHands = images?.hands || imgClose` 的回退逻辑，意外将 `asset-karina-hands`、`asset-karina-crouch`、`asset-karina-sky` 在 `imageAssets` 缓存中的内存对象全部覆盖改写成了主图，导致多图资产丢失了各自独立性。
+
+- **修复与加固策略**：
+  1. **多图资产防污染隔离**：
+     - 重构 `resolveSlotAssetIds` 中的示范素材解算逻辑，为 `close`、`hands`、`crouch`、`sky` 绑定严格的专属 Base64 数据源与独立 `Image` 实例，杜绝向单一主图回退覆盖；
+  2. **REMIX 循环链条异步装载加固**：
+     - 在 `cycleMasterRemix` 与 `cycleLayoutRemix` 中完整衔接 `ensureKarinaMultiAssets` 回调，确保切版时 4 组图片始终精确、独立地分发至布局函数中；
+  3. **实机渲染验证**：
+     - 左侧素材面板 4 组卡片完全恢复为您提供的 4 张真实图集：
+       - `karina-close.jpg`（主图 · 黄花特写）
+       - `karina-hands.jpg`（辅图 1 · 草地双手捧花覆面）
+       - `karina-crouch.jpg`（辅图 2 · 草地轻巧蹲姿）
+       - `karina-sky.jpg`（辅图 3 · 蓝天下半身全景）
+     - 画布中 7 大拼贴视窗亦同步真实呈现对应不同视角的色彩与滤镜碰撞；
+  4. **全套自动化回归测试 100% 通过**。
+
 ## 2026-10-03｜海报化蜕变：模板 02 引入先锋艺术大标题排版，并实现「7 大拼贴视窗自动装填多图辅图」
 
 - **用户痛点与核心诉求**：

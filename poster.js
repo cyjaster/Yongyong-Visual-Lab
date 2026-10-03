@@ -2298,18 +2298,27 @@
 
   function ensureKarinaMultiAssets(callback) {
     const urls = {
-      close: window.KARINA_CLOSE_DATA || 'assets/karina-close.jpg',
-      hands: window.KARINA_HANDS_DATA || 'assets/karina-hands.jpg',
-      crouch: window.KARINA_CROUCH_DATA || 'assets/karina-crouch.jpg',
-      sky: window.KARINA_SKY_DATA || 'assets/karina-sky.jpg'
+      close: (typeof window !== 'undefined' && window.KARINA_CLOSE_DATA) || 'assets/karina-close.jpg',
+      hands: (typeof window !== 'undefined' && window.KARINA_HANDS_DATA) || 'assets/karina-hands.jpg',
+      crouch: (typeof window !== 'undefined' && window.KARINA_CROUCH_DATA) || 'assets/karina-crouch.jpg',
+      sky: (typeof window !== 'undefined' && window.KARINA_SKY_DATA) || 'assets/karina-sky.jpg'
     };
     const loadedImages = {};
     const keys = Object.keys(urls);
     let count = 0;
     keys.forEach(k => {
       const assetId = 'asset-karina-' + k;
-      if (imageAssets.has(assetId) && imageAssets.get(assetId).image) {
-        loadedImages[k] = imageAssets.get(assetId).image;
+      const expectedSrc = urls[k];
+      const existing = imageAssets.get(assetId);
+      if (existing?.image && existing.src === expectedSrc && (typeof Image === 'undefined' || existing.image.complete)) {
+        loadedImages[k] = existing.image;
+        count++;
+        if (count === keys.length) callback(loadedImages);
+        return;
+      }
+      if (typeof Image === 'undefined') {
+        const fakeImg = existing?.image || state.image || {};
+        loadedImages[k] = fakeImg;
         count++;
         if (count === keys.length) callback(loadedImages);
         return;
@@ -2326,7 +2335,7 @@
         count++;
         if (count === keys.length) callback(loadedImages);
       };
-      img.src = urls[k];
+      img.src = expectedSrc;
     });
   }
 
@@ -2517,19 +2526,42 @@
       slot2Id = getSlotAssetId(2);
       slot3Id = getSlotAssetId(3);
     } else {
-      const imgClose = images?.close || state.image;
-      const imgHands = images?.hands || imgClose;
-      const imgCrouch = images?.crouch || imgClose;
-      const imgSky = images?.sky || imgClose;
+      const rawUrls = {
+        close: (typeof window !== 'undefined' && window.KARINA_CLOSE_DATA) || 'assets/karina-close.jpg',
+        hands: (typeof window !== 'undefined' && window.KARINA_HANDS_DATA) || 'assets/karina-hands.jpg',
+        crouch: (typeof window !== 'undefined' && window.KARINA_CROUCH_DATA) || 'assets/karina-crouch.jpg',
+        sky: (typeof window !== 'undefined' && window.KARINA_SKY_DATA) || 'assets/karina-sky.jpg'
+      };
 
-      const assetClose = { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose?.src || '' };
-      const assetHands = { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands?.src || '' };
-      const assetCrouch = { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch?.src || '' };
-      const assetSky = { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky?.src || '' };
+      function resolveDemoImg(key, assetId, fileName) {
+        const expectedSrc = rawUrls[key];
+        if (images && images[key]) {
+          const img = images[key];
+          imageAssets.set(assetId, { id: assetId, name: fileName, image: img, src: img.src || expectedSrc });
+          return img;
+        }
+        const existing = imageAssets.get(assetId);
+        if (existing?.image && existing.src === expectedSrc) {
+          return existing.image;
+        }
+        if (typeof Image !== 'undefined') {
+          const img = new Image();
+          img.src = expectedSrc;
+          imageAssets.set(assetId, { id: assetId, name: fileName, image: img, src: expectedSrc });
+          return img;
+        }
+        return existing?.image || state.image;
+      }
 
-      [assetClose, assetHands, assetCrouch, assetSky].forEach(a => {
-        imageAssets.set(a.id, a);
-      });
+      const imgClose = resolveDemoImg('close', 'asset-karina-close', 'karina-close.jpg');
+      const imgHands = resolveDemoImg('hands', 'asset-karina-hands', 'karina-hands.jpg');
+      const imgCrouch = resolveDemoImg('crouch', 'asset-karina-crouch', 'karina-crouch.jpg');
+      const imgSky = resolveDemoImg('sky', 'asset-karina-sky', 'karina-sky.jpg');
+
+      const assetClose = imageAssets.get('asset-karina-close') || { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose?.src || rawUrls.close };
+      const assetHands = imageAssets.get('asset-karina-hands') || { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands?.src || rawUrls.hands };
+      const assetCrouch = imageAssets.get('asset-karina-crouch') || { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch?.src || rawUrls.crouch };
+      const assetSky = imageAssets.get('asset-karina-sky') || { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky?.src || rawUrls.sky };
 
       state.assets = [
         { id: assetClose.id, name: assetClose.name },
@@ -3309,7 +3341,13 @@
     currentLayoutIndex = (currentLayoutIndex + 1) % total;
     const item = layoutRemixList[currentLayoutIndex];
     if (item?.apply) {
-      item.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
+      if (typeof ensureKarinaMultiAssets === 'function') {
+        ensureKarinaMultiAssets(images => {
+          item.apply(images, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
+        });
+      } else {
+        item.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
+      }
     }
   }
 
@@ -3349,7 +3387,13 @@
 
   function cycleMasterRemix() {
     const nextIndex = (currentMasterIndex + 1 + masterRemixList.length) % masterRemixList.length;
-    applyMasterRemixByIndex(nextIndex, null, false);
+    if (typeof ensureKarinaMultiAssets === 'function') {
+      ensureKarinaMultiAssets(images => {
+        applyMasterRemixByIndex(nextIndex, images, false);
+      });
+    } else {
+      applyMasterRemixByIndex(nextIndex, null, false);
+    }
   }
 
   function applyTemplate01(images, isReset = false, toastMsg = '') {
