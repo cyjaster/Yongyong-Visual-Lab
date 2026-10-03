@@ -2443,8 +2443,12 @@
     });
 
     (state.texts || []).forEach(t => {
-      if (t.kind === 'micro' || t.kind === 'caption' || t.kind === 'hero') {
-        t.color = '#c0d0e6';
+      if (t.id === 't-hero') {
+        t.color = '#ffffff';
+      } else if (t.id === 't-sub' || t.id === 't-recipe-3') {
+        t.color = '#60a5fa';
+      } else if (t.kind === 'micro' || t.kind === 'caption') {
+        t.color = '#93c5fd';
       }
     });
 
@@ -2992,14 +2996,43 @@
       layoutMode: '7 IMAGE EFFECT SHOWCASE'
     };
 
-    // 2. 多图辅图卡片结构 (兼容多图用户与回归测试)
-    state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 92, y: 385, w: 215, h: 170, rotation: 2.6, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 620, y: 175, w: 235, h: 215, rotation: -2.8, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 42, y: 675, w: 185, h: 175, rotation: 4.0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 575, y: 510, w: 260, h: 135, rotation: 3.2, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() }
-    ];
+    // 2. 多图辅图卡片结构与智能装填 (支持单图/多图自由创作，各视窗自动关联不同素材)
+    const hasMultipleAssets = slot0Id && (slot0Id !== state.mainImageId || (slot1Id && slot1Id !== state.mainImageId));
 
+    const secHero = {
+      id: makeId(),
+      imageId: slot0Id || state.mainImageId,
+      x: 620, y: 175, w: 235, h: 215,
+      rotation: 0, opacity: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filters: cleanFilters()
+    };
+    const secConcentric = {
+      id: makeId(),
+      imageId: slot1Id || state.mainImageId,
+      x: 92, y: 385, w: 215, h: 170,
+      rotation: 0, opacity: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filters: cleanFilters()
+    };
+    const secScanline = {
+      id: makeId(),
+      imageId: slot2Id || state.mainImageId,
+      x: 575, y: 510, w: 260, h: 135,
+      rotation: 0, opacity: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filters: cleanFilters()
+    };
+    const secDither = {
+      id: makeId(),
+      imageId: (slot3Id && slot3Id !== state.mainImageId) ? slot3Id : (slot0Id || state.mainImageId),
+      x: 42, y: 675, w: 185, h: 175,
+      rotation: 0, opacity: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filters: cleanFilters()
+    };
+
+    state.secondaries = [secHero, secConcentric, secScanline, secDither];
     state.fragments = [];
 
     // 3. 七大选区特效视窗 (充满拼贴感：微角度倾斜、有机错落穿插、纸张立体阴影、磨砂胶带)
@@ -3018,9 +3051,9 @@
       hasShadow: true, tape: 'corner-left'
     });
 
-    // 视窗 2：中左肩部同心圆水波半调 (Mid-Left Shoulder Concentric, 内推错位 x:92, 倾斜 +2.6°)
+    // 视窗 2：中左肩部同心圆水波半调 (Mid-Left Shoulder Concentric, 倾斜 +2.6°)
     const f2 = makeFrame(2, {
-      sourceId: (isUserMode && slot2Id) ? slot2Id : 'main',
+      sourceId: hasMultipleAssets ? secConcentric.id : 'main',
       x: 92, y: 385, w: 215, h: 170,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3036,7 +3069,7 @@
 
     // 视窗 3：右上侧钴蓝双色调半调 (Top-Right Flank Cobalt Halftone - HERO, 倾斜 -2.8°)
     const f3 = makeFrame(3, {
-      sourceId: (isUserMode && slot1Id) ? slot1Id : 'main',
+      sourceId: hasMultipleAssets ? secHero.id : 'main',
       x: 620, y: 175, w: 235, h: 215,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3052,7 +3085,7 @@
 
     // 视窗 4：下左手部 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither, 倾斜 +4.0°)
     const f4 = makeFrame(4, {
-      sourceId: (isUserMode && slot3Id) ? slot3Id : 'main',
+      sourceId: hasMultipleAssets ? secDither.id : 'main',
       x: 42, y: 675, w: 185, h: 175,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3098,9 +3131,9 @@
       hasShadow: true, tape: 'top'
     });
 
-    // 视窗 7：右侧腰线线性半调与水平动感扫描 (Right Waist Scanline, 内推错位 x:575, 倾斜 +3.2°)
+    // 视窗 7：右侧腰线线性半调与水平动感扫描 (Right Waist Scanline, 倾斜 +3.2°)
     const f7 = makeFrame(7, {
-      sourceId: 'main',
+      sourceId: hasMultipleAssets ? secScanline.id : 'main',
       x: 575, y: 510, w: 260, h: 135,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3117,63 +3150,95 @@
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
     state.details = [d1, d2, d3, d4, d5, d6, d7];
 
-    // 4. 排版文字 (彻底移除展示型大标题，纯净留空，让画面与拼贴完全呼吸)
+    // 4. 排版文字 (先锋海报化改造：艺术大标题、微型规格信息、FIG 标号排版)
     state.texts = [
+      // 先锋艺术大标题 (Top Hero Title)
+      {
+        id: 't-hero', kind: 'hero',
+        content: 'COLLAGE ARCHIVE',
+        x: 52, y: 44, size: 40, weight: 900,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#ffffff', letterSpacing: 1.5, opacity: 100
+      },
+      // 副标与概念信息 (Concept Subtitle)
+      {
+        id: 't-sub', kind: 'subtitle',
+        content: 'N° 02 · MULTI-IMAGE RESAMPLING & PHYSICAL COLLAGE',
+        x: 54, y: 92, size: 12.5, weight: 700,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#60a5fa', letterSpacing: 1.2, opacity: 95
+      },
+      // 右上规格元数据 (Specimen Metadata)
+      {
+        id: 't-meta-top', kind: 'micro',
+        content: 'SPECIMEN // 02\nFORMAT: 7 PHYSICAL CUTOUTS\nAUTONOMOUS VISUAL LAB',
+        x: 848, y: 44, size: 9.5, weight: 600,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#94a3b8', align: 'right', lineHeight: 1.35, opacity: 85
+      },
       // 标注 1 (左上马赛克)
       {
         id: 't-recipe-1', kind: 'micro',
-        content: 'モザイク（ピクセレート）\nMosaic (Pixelate)\n+\nカラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)',
-        x: 52, y: 318, size: 10, weight: 600, rotation: -3.2,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#dbeafe', align: 'left', lineHeight: 1.22, opacity: 95
+        content: 'FIG. 01 // PIXELATE MOSAIC\nSCALE: 10PX · CONTRAST +25',
+        x: 52, y: 318, size: 9.5, weight: 600, rotation: -3.2,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
       },
       // 标注 2 (中左肩同心圆)
       {
         id: 't-recipe-2', kind: 'micro',
-        content: 'ハーフトーンパターン「円」（フィルターギャラリー）\nHalftone Pattern \'Circle\' (Filter Gallery)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        content: 'FIG. 02 // CONCENTRIC RIPPLE\nRADIAL WAVE · COBALT MAP',
         x: 92, y: 570, size: 9.5, weight: 600, rotation: 2.6,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
       },
       // 标注 3 (右上钴蓝半调 - HERO)
       {
         id: 't-recipe-3', kind: 'micro',
-        content: 'カラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 855, y: 405, size: 10.5, weight: 600, rotation: -2.8,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#dbeafe', align: 'right', lineHeight: 1.22, opacity: 95
+        content: 'FIG. 03 // COBALT HALFTONE\nSCREEN ANGLE 64° · HERO SPECIMEN',
+        x: 855, y: 405, size: 10, weight: 700, rotation: -2.8,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#60a5fa', align: 'right', lineHeight: 1.3, opacity: 95
       },
       // 标注 4 (下左手部位图点阵)
       {
         id: 't-recipe-4', kind: 'micro',
-        content: 'モノクロ 2 階調 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        content: 'FIG. 04 // BAYER BITMAP DITHER\nMATRIX 20PX · STEP 5',
         x: 42, y: 865, size: 9.5, weight: 600, rotation: 4.0,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
       },
       // 标注 5 (底左角点状半调)
       {
         id: 't-recipe-5', kind: 'micro',
-        content: 'ハーフトーンパターン「ドット」（フィルターギャラリー）\nHalftone Pattern \'Dot\' (Filter Gallery)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
-        x: 75, y: 1060, size: 9, weight: 600, rotation: -3.5,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#b0c4de', align: 'left', lineHeight: 1.22, opacity: 85
+        content: 'FIG. 05 // ANGULAR DOT MATRIX\nVECTOR -18° · DENSITY 60',
+        x: 75, y: 1060, size: 9.5, weight: 600, rotation: -3.5,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 85
       },
       // 标注 6 (胸腹服饰手绘图案)
       {
         id: 't-recipe-6', kind: 'micro',
-        content: '2 階調化（調整レイヤー）\nThreshold (Adjustment Layer)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        content: 'FIG. 06 // THRESHOLD XEROX\nHIGH-PASS 132 · GRAIN 32',
         x: 855, y: 885, size: 9.5, weight: 600, rotation: -2.4,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#93c5fd', align: 'right', lineHeight: 1.3, opacity: 90
       },
       // 标注 7 (右腰水平动感线状半调)
       {
         id: 't-recipe-7', kind: 'micro',
-        content: 'ハーフトーンパターン「線」\n（フィルターギャラリー）\nHalftone Pattern \'Line\' (Filter Gallery)\n+\nぼかし（移動）\nMotion Blur\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        content: 'FIG. 07 // HORIZONTAL SCANLINE\nMOTION BLUR · FREQUENCY 58',
         x: 855, y: 660, size: 9.5, weight: 600, rotation: 3.2,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#93c5fd', align: 'right', lineHeight: 1.3, opacity: 90
+      },
+      // 底部画报注脚 (Footer Bar)
+      {
+        id: 't-footer', kind: 'micro',
+        content: 'YONGYONG VISUAL LAB · DYNAMIC COLLAGE SYSTEM · SPECIMEN ARCHIVE',
+        x: 52, y: 1165, size: 9, weight: 600,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#475569', align: 'left', opacity: 75
       }
     ];
 
@@ -3191,16 +3256,16 @@
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '排版 REMIX [2/2] · 图像选区采样 7 选 (拼贴版)' : '排版 REMIX [2/2] · 图像选区采样 7 选 (拼贴版)',
-      anchorEn: 'Layout REMIX [2/2] · Dynamic Collage Showcase',
-      mainLayoutZh: '面部净空 · 有机微旋错落拼贴视窗',
-      mainLayoutEn: 'Face Clear · Staggered Rotated Collage Windows',
-      typographyZh: '倾角呼应日系排印与特效配方标注',
-      typographyEn: 'Harmonized Angle Typography & Recipe Annotation',
+      anchorZh: '排版 REMIX [2/2] · 先锋艺术多图拼贴',
+      anchorEn: 'Layout REMIX [2/2] · Avant-Garde Multi-Image Collage',
+      mainLayoutZh: '先锋排版 · 多图立体拼贴视窗 · 面部完全净空',
+      mainLayoutEn: 'Avant-Garde Typography · Multi-Image Physical Windows · Face Clear',
+      typographyZh: '先锋大标题与 FIG 特效规格排版',
+      typographyEn: 'Hero Avant-Garde Typography & Specimen Metadata',
       backgroundZh: '深邃暗夜影棚微光',
       backgroundEn: 'Deep Studio Dark Vignette',
-      strengthZh: isUserMode ? '专属图片应用' : '选区拼贴排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Collage Specimen Layout',
+      strengthZh: isUserMode ? '专属多图装填' : '多图拼贴排版',
+      strengthEn: isUserMode ? 'Custom Multi-Image Populated' : 'Multi-Image Specimen Layout',
       isManuallyEdited: false
     };
 
