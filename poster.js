@@ -2443,11 +2443,7 @@
     });
 
     (state.texts || []).forEach(t => {
-      if (t.id === 't-title-main') {
-        t.color = '#ffffff';
-      } else if (t.id === 't-title-sub') {
-        t.color = '#b8c4d8';
-      } else if (t.kind === 'micro' || t.kind === 'caption') {
+      if (t.kind === 'micro' || t.kind === 'caption' || t.kind === 'hero') {
         t.color = '#c0d0e6';
       }
     });
@@ -3121,22 +3117,8 @@
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
     state.details = [d1, d2, d3, d4, d5, d6, d7];
 
-    // 4. 排版文字 (随视窗微角呼应，充满手作拼贴律动)
+    // 4. 排版文字 (彻底移除展示型大标题，纯净留空，让画面与拼贴完全呼吸)
     state.texts = [
-      // 主标题：画像エフェクトの組み合わせ例 7選
-      {
-        id: 't-title-main', kind: 'hero', content: '画像エフェクトの組み合わせ例 7選',
-        x: 52, y: 44, size: 36, weight: 900,
-        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#ffffff', letterSpacing: -0.5, opacity: 100
-      },
-      // 副标题：7 Image Effect Combinations That Work Well Together
-      {
-        id: 't-title-sub', kind: 'caption', content: '7 Image Effect Combinations That Work Well Together',
-        x: 54, y: 92, size: 14.5, weight: 600,
-        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#b8c4d8', letterSpacing: 0.2, opacity: 90
-      },
       // 标注 1 (左上马赛克)
       {
         id: 't-recipe-1', kind: 'micro',
@@ -3192,13 +3174,6 @@
         x: 855, y: 660, size: 9.5, weight: 600, rotation: 3.2,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
-      },
-      // 水印标注 (tamasan_design)
-      {
-        id: 't-credit', kind: 'micro', content: 'tamasan_design',
-        x: 24, y: 1160, size: 11, weight: 600,
-        font: 'ui-monospace, Consolas, monospace',
-        color: '#4a5568', rotation: -90, opacity: 85
       }
     ];
 
