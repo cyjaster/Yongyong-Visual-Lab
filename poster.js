@@ -574,7 +574,14 @@
     if (style !== 'solid' && textureAlpha > 0.005) {
       ctx.save();
       ctx.globalAlpha = textureAlpha;
-      if (style === 'electric-tiger' || style === 'tiger') {
+      if (style === 'ps-dark' || style === 'dark-studio') {
+        const rad = ctx.createRadialGradient(W / 2, H * 0.45, 80, W / 2, H * 0.45, W * 0.72);
+        rad.addColorStop(0, '#1c1f28');
+        rad.addColorStop(0.65, '#0e1015');
+        rad.addColorStop(1, '#07080a');
+        ctx.fillStyle = rad;
+        ctx.fillRect(0, 0, W, H);
+      } else if (style === 'electric-tiger' || style === 'tiger') {
         drawElectricTigerPattern(ctx, W, H);
       } else if (style === 'liquid-chrome') {
         if (window.posterLiquidChrome) {
@@ -846,10 +853,16 @@
 
     // A. 彩色半调 (CMYK 分色印刷网点 - 直接生成高辨识度分色网屏画面)
     if (o.colorHalftone) {
+      const isDuotoneMap = !!o.duotone;
       const cmykCanvas = raster(W, H, (cc) => {
-        cc.fillStyle = '#f8f8f6';
+        cc.fillStyle = isDuotoneMap ? (o.duotoneLight || '#dbe8ff') : '#f8f8f6';
         cc.fillRect(0, 0, W, H);
-        const channels = [
+        const channels = isDuotoneMap ? [
+          { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(24, 60, 215, 0.94)' },
+          { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(18, 42, 175, 0.92)' },
+          { name: 'y', angle: 0, color: 'rgba(68, 115, 245, 0.88)' },
+          { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(10, 20, 75, 0.98)' }
+        ] : [
           { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(0, 168, 240, 0.92)' },
           { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(235, 10, 130, 0.92)' },
           { name: 'y', angle: 0, color: 'rgba(255, 230, 10, 0.95)' },
@@ -891,8 +904,7 @@
       tc.save();
       tc.globalAlpha = Math.min(1, 0.55 + strength * 0.45);
       tc.drawImage(cmykCanvas, 0, 0);
-      tc.restore();
-      return;
+      tc.restore();      return;
     }
 
     // B. 半调图案「圆形 / 同心圆」 (Concentric Circle Halftone)
@@ -902,7 +914,8 @@
       const centerX = W / 2, centerY = H / 2;
       const maxR = Math.hypot(centerX, centerY);
       const ringStep = Math.max(5, spacing * 0.95);
-      oc.strokeStyle = '#111';
+      const isDuotoneConcentric = !!o.duotone;
+      oc.strokeStyle = isDuotoneConcentric ? (o.duotoneLight || '#9cb3ff') : '#111';
       for (let r = 0; r < maxR; r += ringStep) {
         const sampleCount = Math.max(12, Math.round(Math.PI * 2 * r / ringStep));
         let ringLum = 0;
@@ -919,7 +932,48 @@
       }
       tc.save();
       tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
-      tc.globalCompositeOperation = 'multiply';
+      tc.globalCompositeOperation = isDuotoneConcentric ? 'screen' : 'multiply';
+      tc.drawImage(overlay, 0, 0);
+      tc.restore();
+      return;
+    }
+
+    // B2. 半调图案「线条」 (Line / Scanline Halftone)
+    if (o.halftoneShape === 'line') {
+      const overlay = raster(W, H, () => {});
+      const oc = overlay.getContext('2d');
+      const angle = (o.halftoneAngle || 0) * Math.PI / 180;
+      const lineStep = Math.max(3, spacing * 0.85);
+      const diagonal = Math.hypot(W, H);
+      oc.save();
+      oc.translate(W / 2, H / 2);
+      oc.rotate(angle);
+      const isDuotoneLine = !!o.duotone;
+      oc.strokeStyle = isDuotoneLine ? (o.duotoneLight || '#6ba0ff') : '#111';
+      for (let gy = -diagonal / 2; gy < diagonal / 2; gy += lineStep) {
+        let lineLum = 0, count = 0;
+        for (let gx = -diagonal / 2; gx < diagonal / 2; gx += lineStep * 2) {
+          const cos = Math.cos(-angle), sin = Math.sin(-angle);
+          const sx = Math.round(gx * cos - gy * sin + W / 2);
+          const sy = Math.round(gx * sin + gy * cos + H / 2);
+          if (sx >= 0 && sy >= 0 && sx < W && sy < H) {
+            const p = (sy * W + sx) * 4;
+            lineLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
+            count++;
+          }
+        }
+        if (count > 0) lineLum /= count;
+        const lw = Math.max(0.4, (1 - lineLum / 255) * lineStep * 0.9 * strength);
+        oc.lineWidth = lw;
+        oc.beginPath();
+        oc.moveTo(-diagonal / 2, gy);
+        oc.lineTo(diagonal / 2, gy);
+        oc.stroke();
+      }
+      oc.restore();
+      tc.save();
+      tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
+      tc.globalCompositeOperation = isDuotoneLine ? 'screen' : 'multiply';
       tc.drawImage(overlay, 0, 0);
       tc.restore();
       return;
@@ -1052,6 +1106,11 @@
       o.saturation = Math.max(120, o.saturation + 15);
       o.halftone = d.halftoneStrength || 85;
       o.colorHalftone = true;
+      if (d.duotone) {
+        o.duotone = true;
+        o.duotoneDark = d.duotoneDark || '#122db5';
+        o.duotoneLight = d.duotoneLight || '#dbe8ff';
+      }
     }
     // 2. 单色半调「点状」 (Dot Halftone / 强调色点阵)
     else if (type === 'dot_halftone' || type === 'halftone') {
@@ -1067,6 +1126,22 @@
       o.grain = Math.max(22, o.grain || 25);
       o.halftone = d.halftoneStrength || 80;
       o.halftoneShape = 'concentric';
+      if (d.duotone) {
+        o.duotone = true;
+        o.duotoneDark = d.duotoneDark || '#0b1a3d';
+        o.duotoneLight = d.duotoneLight || '#9cb3ff';
+      }
+    }
+    // 3b. 半调图案「线条」 (Line Halftone + Duotone)
+    else if (type === 'line_halftone') {
+      o.bw = 100;
+      o.contrast += 25;
+      o.halftone = d.halftoneStrength || 80;
+      o.halftoneShape = 'line';
+      o.halftoneAngle = d.halftoneAngle || 0;
+      o.duotone = true;
+      o.duotoneDark = d.duotoneDark || '#14225a';
+      o.duotoneLight = d.duotoneLight || '#82b1ff';
     }
     // 4. 玻璃「块状」 (Glass Brick / Refraction)
     else if (type === 'glass') {
@@ -1186,6 +1261,22 @@
       if (f.tagStyle === 'outline') { ctx.strokeStyle = f.tagBackground; ctx.lineWidth = 1.5; ctx.strokeRect(tx, ty, tw, th); }
       ctx.fillStyle = f.tagStyle === 'solid' ? (f.tagTextColor || f.tagColor || '#fff') : f.color; ctx.fillText(text.toUpperCase(), tx + px, ty + th - 4);
     }
+    if (f.showHandles) {
+      const handleSize = f.handleSize || 7;
+      const half = handleSize / 2;
+      const pts = [
+        [0, 0], [f.w / 2, 0], [f.w, 0],
+        [0, f.h / 2], [f.w, f.h / 2],
+        [0, f.h], [f.w / 2, f.h], [f.w, f.h]
+      ];
+      ctx.fillStyle = f.handleColor || '#ffffff';
+      ctx.strokeStyle = f.handleStrokeColor || f.color || '#fbcfe8';
+      ctx.lineWidth = 1.2;
+      pts.forEach(([hx, hy]) => {
+        ctx.fillRect(hx - half, hy - half, handleSize, handleSize);
+        ctx.strokeRect(hx - half, hy - half, handleSize, handleSize);
+      });
+    }
     ctx.restore();
   }
   function connectorPoints(d) { const f = frameById(d.frameId); return f ? { start: { x: f.x + f.w / 2, y: f.y + f.h / 2 }, end: { x: d.x + d.w / 2, y: d.y + d.h / 2 } } : null; }
@@ -1274,6 +1365,22 @@
     const opts = isTargetBefore ? { bw:0, brightness:0, contrast:0, saturation:100, grain:0, rough:0, outline:0, invert:0, posterize:0, compression:0, scan:0, paper:0, dirty:0, halftone:0 } : detailOptions(d);
     const cut = filteredImage(srcImg, rect, d.w, d.h, opts);
     ctx.save(); ctx.globalAlpha = (d.opacity ?? 100) / 100; transformBox(ctx, d); ctx.fillStyle = d.backingColor || '#fff'; ctx.fillRect(-3, -3, d.w + 6, d.h + 6); ctx.drawImage(cut, 0, 0, d.w, d.h); ctx.strokeStyle = d.color; ctx.lineWidth = d.lineWidth; ctx.strokeRect(0, 0, d.w, d.h);
+    if (d.showHandles) {
+      const handleSize = d.handleSize || 7;
+      const half = handleSize / 2;
+      const pts = [
+        [0, 0], [d.w / 2, 0], [d.w, 0],
+        [0, d.h / 2], [d.w, d.h / 2],
+        [0, d.h], [d.w / 2, d.h], [d.w, d.h]
+      ];
+      ctx.fillStyle = d.handleColor || '#ffffff';
+      ctx.strokeStyle = d.handleStrokeColor || d.color || '#fbcfe8';
+      ctx.lineWidth = 1.2;
+      pts.forEach(([hx, hy]) => {
+        ctx.fillRect(hx - half, hy - half, handleSize, handleSize);
+        ctx.strokeRect(hx - half, hy - half, handleSize, handleSize);
+      });
+    }
     if (d.showTag !== false && (d.tagText || (f && f.showLabel && labelText(f)))) {
       const text = d.tagText || (f ? labelText(f) : '');
       if (text) {
@@ -1397,6 +1504,21 @@
       ctx.fill();
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.restore();
+    }
+    else if (t.badgeShape === 'ps-icon' || t.badgeShape === 'app-icon') {
+      ctx.save();
+      const bw = t.badgeWidth || 54, bh = t.badgeHeight || 54, r = 12;
+      const totalH = t.size * lh;
+      ctx.translate(0, totalH * 0.5);
+      ctx.fillStyle = t.badgeColor || '#001e36';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-bw / 2, -bh / 2, bw, bh, r);
+      else ctx.rect(-bw / 2, -bh / 2, bw, bh);
+      ctx.fill();
+      ctx.strokeStyle = t.badgeBorderColor || '#1473e6';
+      ctx.lineWidth = 2.5;
       ctx.stroke();
       ctx.restore();
     }
@@ -2248,8 +2370,64 @@
   }
 
 
+  function applyFilterTemplate02(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+    state.background = '#0a0c10';
+    state.backgroundStyle = 'ps-dark';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#1f2430';
+    state.borderWidth = 0;
+    state.filters = {
+      bw: 100, brightness: -4, contrast: 32, saturation: 0,
+      halftone: 0, halftoneSize: 6, halftoneDensity: 55, halftoneAngle: 15,
+      grain: 12, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
+      compression: 0, invert: 0, posterize: 0
+    };
+
+    (state.details || []).forEach((d) => {
+      d.color = '#fbcfe8';
+      d.lineWidth = 1.2;
+      d.showHandles = true;
+      d.handleColor = '#ffffff';
+      d.handleStrokeColor = '#fbcfe8';
+      d.handleSize = 7;
+      d.showTag = false;
+      d.lineOpacity = 0;
+      d.backingColor = 'transparent';
+    });
+
+    (state.frames || []).forEach((f) => {
+      f.color = '#fbcfe8';
+      f.lineWidth = 1.2;
+      f.showHandles = true;
+      f.handleColor = '#ffffff';
+      f.handleStrokeColor = '#fbcfe8';
+      f.handleSize = 7;
+      f.showLabel = false;
+    });
+
+    (state.texts || []).forEach(t => {
+      if (t.id === 't-ps-icon' || t.badgeShape === 'ps-icon') {
+        t.color = '#31a8ff';
+        t.badgeColor = '#001e36';
+        t.badgeBorderColor = '#1473e6';
+      } else if (t.id === 't-title-main') {
+        t.color = '#ffffff';
+      } else if (t.id === 't-title-sub') {
+        t.color = '#b8c4d8';
+      } else if (t.kind === 'micro' || t.kind === 'caption') {
+        t.color = '#c0d0e6';
+      }
+    });
+
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [2/2] (滤镜模板 02)：Photoshop 教程深邃暗调与多维色度');
+  }
+
   const filterRemixList = [
-    { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 }
+    { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 },
+    { id: 'filter-02', nameZh: 'Photoshop 教程深邃暗调与多维色度', apply: applyFilterTemplate02 }
   ];
 
   // ==========================================
@@ -2736,8 +2914,8 @@
     state.selected = null;
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
-      ? `LAYOUT [1/6] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'LAYOUT [1/6] / AESPA RICH MAN (MULTI-IMAGE)';
+      ? `LAYOUT [1/2] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : 'LAYOUT [1/2] / AESPA RICH MAN (MULTI-IMAGE)';
 
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
@@ -2755,12 +2933,323 @@
   }
 
 
+  function applyLayoutTemplate02(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
+    const previousPoster = motion.capture();
+
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
+
+    // 默认确保有背景暗调
+    if (!state.backgroundStyle || state.backgroundStyle === 'solid') {
+      state.background = '#0a0c10';
+      state.backgroundStyle = 'ps-dark';
+      state.border = true;
+      state.borderColor = '#1f2430';
+      state.borderWidth = 0;
+    }
+
+    // 1. 主图空间定位 (居中微调模特暗调底图)
+    state.main = {
+      id: 'main-image',
+      x: 45,
+      y: 110,
+      w: 810,
+      h: 1060,
+      rotation: 0,
+      opacity: 100,
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
+      lineWidth: 0,
+      color: '#ffffff',
+      layoutMode: 'PHOTOSHOP EFFECT TUTORIAL'
+    };
+
+    // 2. 多图辅图卡片结构 (兼容多图用户与回归测试)
+    state.secondaries = [
+      { id: makeId(), imageId: slot0Id, x: 134, y: 318, w: 256, h: 186, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 500, y: 298, w: 344, h: 254, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 52, y: 694, w: 150, h: 184, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 580, y: 656, w: 250, h: 122, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() }
+    ];
+
+    state.fragments = [];
+
+    // 3. 七大 Ps 自由变换选区视窗 (7 Effect Specimen Callouts)
+    // 视窗 1：耳机顶部马赛克像素化 (Headphone Mosaic)
+    const f1 = makeFrame(1, {
+      sourceId: 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 278, y: 194, w: 160, h: 162,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d1 = makeDetail(f1, 0, {
+      x: 278, y: 194, w: 160, h: 162, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 25, brightness: 5,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    // 视窗 2：左肩同心圆半调与颗粒 (Left Shoulder Concentric Halftone)
+    const f2 = makeFrame(2, {
+      sourceId: (isUserMode && slot2Id) ? slot2Id : 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 134, y: 318, w: 256, h: 186,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d2 = makeDetail(f2, 1, {
+      x: 134, y: 318, w: 256, h: 186, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
+      duotoneDark: '#0b1a3d', duotoneLight: '#9cb3ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    // 视窗 3：右侧面容与墨镜彩色半调 (Face & Glasses Color Halftone - HERO)
+    const f3 = makeFrame(3, {
+      sourceId: (isUserMode && slot1Id) ? slot1Id : 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 500, y: 298, w: 344, h: 254,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d3 = makeDetail(f3, 2, {
+      x: 500, y: 298, w: 344, h: 254, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 64, halftoneSize: 6,
+      duotoneDark: '#122db5', duotoneLight: '#dbe8ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    // 视窗 4：左臂 20 像素 Bayer 位图点阵 (Arm Bitmap Dither)
+    const f4 = makeFrame(4, {
+      sourceId: (isUserMode && slot3Id) ? slot3Id : 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 52, y: 694, w: 150, h: 184,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d4 = makeDetail(f4, 3, {
+      x: 52, y: 694, w: 150, h: 184, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'dither', ditherStep: 5, contrast: 28,
+      duotoneDark: '#141d38', duotoneLight: '#9ab0ff',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    // 视窗 5：左下腹斜向点状半调 (Waist Slanted Dot Halftone)
+    const f5 = makeFrame(5, {
+      sourceId: 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 68, y: 942, w: 164, h: 98,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d5 = makeDetail(f5, 4, {
+      x: 68, y: 942, w: 164, h: 98, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: -18, halftoneDensity: 60, halftoneSize: 6,
+      duotoneDark: '#162878', duotoneLight: '#b8d0ff',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    // 视窗 6：胸前图案 2 阶调阈值与颗粒 (T-Shirt Graphic Threshold)
+    const f6 = makeFrame(6, {
+      sourceId: 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 450, y: 684, w: 182, h: 386,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d6 = makeDetail(f6, 5, {
+      x: 450, y: 684, w: 182, h: 386, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'threshold', thresholdLevel: 132, grain: 32,
+      duotoneDark: '#0b1632', duotoneLight: '#eef3ff',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    // 视窗 7：右腰线性半调与水平动感扫描 (Right Waist Scanline Halftone)
+    const f7 = makeFrame(7, {
+      sourceId: 'main',
+      labelPrefix: '', labelNumber: '',
+      x: 580, y: 656, w: 250, h: 122,
+      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showLabel: false
+    });
+    const d7 = makeDetail(f7, 6, {
+      x: 580, y: 656, w: 250, h: 122, rotation: 0,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 58,
+      duotoneDark: '#14225a', duotoneLight: '#6ba0ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
+      showTag: false, lineOpacity: 0
+    });
+
+    state.frames = [f1, f2, f3, f4, f5, f6, f7];
+    state.details = [d1, d2, d3, d4, d5, d6, d7];
+
+    // 4. 排版文字 (Texts)
+    state.texts = [
+      // Photoshop 软件徽标 (Ps Icon Badge)
+      {
+        id: 't-ps-icon', kind: 'caption', content: 'Ps',
+        x: 68, y: 46, size: 28, weight: 900,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#31a8ff', align: 'center',
+        badgeShape: 'ps-icon', badgeWidth: 54, badgeHeight: 54,
+        badgeColor: '#001e36', badgeBorderColor: '#1473e6'
+      },
+      // 主标题：画像エフェクトの組み合わせ例 7選
+      {
+        id: 't-title-main', kind: 'hero', content: '画像エフェクトの組み合わせ例 7選',
+        x: 118, y: 38, size: 36, weight: 900,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#ffffff', letterSpacing: -0.5, opacity: 100
+      },
+      // 副标题：7 Photoshop Image Effect Combinations That Work Well Together
+      {
+        id: 't-title-sub', kind: 'caption', content: '7 Photoshop Image Effect Combinations That Work Well Together',
+        x: 120, y: 84, size: 14.5, weight: 600,
+        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#b8c4d8', letterSpacing: 0.2, opacity: 90
+      },
+      // 标注 1 (耳机顶部)
+      {
+        id: 't-recipe-1', kind: 'micro',
+        content: 'モザイク（ピクセレート）\nMosaic (Pixelate)\n+\nカラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)',
+        x: 260, y: 198, size: 11, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#dbeafe', align: 'right', lineHeight: 1.22, opacity: 95
+      },
+      // 标注 2 (左肩蝴蝶)
+      {
+        id: 't-recipe-2', kind: 'micro',
+        content: 'ハーフトーンパターン「円」（フィルターギャラリー）\nHalftone Pattern \'Circle\' (Filter Gallery)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 134, y: 516, size: 10, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
+      },
+      // 标注 3 (右侧面容 - HERO)
+      {
+        id: 't-recipe-3', kind: 'micro',
+        content: 'カラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)\n+\nグラデーションマップ（调整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 844, y: 192, size: 11, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#dbeafe', align: 'right', lineHeight: 1.22, opacity: 95
+      },
+      // 标注 4 (左臂位图)
+      {
+        id: 't-recipe-4', kind: 'micro',
+        content: 'モノクロ 2 階調 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 214, y: 730, size: 10.5, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
+      },
+      // 标注 5 (左下腹点状)
+      {
+        id: 't-recipe-5', kind: 'micro',
+        content: 'ハーフトーンパターン「ドット」（フィルターギャラリー）\nHalftone Pattern \'Dot\' (Filter Gallery)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 68, y: 1052, size: 9.5, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#b0c4de', align: 'left', lineHeight: 1.22, opacity: 85
+      },
+      // 标注 6 (T恤图案阈值)
+      {
+        id: 't-recipe-6', kind: 'micro',
+        content: '2 階調化（調整レイヤー）\nThreshold (Adjustment Layer)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 644, y: 888, size: 10, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
+      },
+      // 标注 7 (右腰线状半调)
+      {
+        id: 't-recipe-7', kind: 'micro',
+        content: 'ハーフトーンパターン「線」\n（フィルターギャラリー）\nHalftone Pattern \'Line\' (Filter Gallery)\n+\nぼかし（移動）\nMotion Blur\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 844, y: 772, size: 9.5, weight: 600,
+        font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
+        color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
+      },
+      // 水印标注 (tamasan_design)
+      {
+        id: 't-credit', kind: 'micro', content: 'tamasan_design',
+        x: 24, y: 1160, size: 11, weight: 600,
+        font: 'ui-monospace, Consolas, monospace',
+        color: '#4a5568', rotation: -90, opacity: 85
+      }
+    ];
+
+    state.layers = [
+      { type: 'main', id: 'main-image' },
+      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
+      { type: 'frame', id: f1.id }, { type: 'detail', id: d1.id }, { type: 'connector', id: d1.id },
+      { type: 'frame', id: f2.id }, { type: 'detail', id: d2.id }, { type: 'connector', id: d2.id },
+      { type: 'frame', id: f3.id }, { type: 'detail', id: d3.id }, { type: 'connector', id: d3.id },
+      { type: 'frame', id: f4.id }, { type: 'detail', id: d4.id }, { type: 'connector', id: d4.id },
+      { type: 'frame', id: f5.id }, { type: 'detail', id: d5.id }, { type: 'connector', id: d5.id },
+      { type: 'frame', id: f6.id }, { type: 'detail', id: d6.id }, { type: 'connector', id: d6.id },
+      { type: 'frame', id: f7.id }, { type: 'detail', id: d7.id }, { type: 'connector', id: d7.id },
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
+    ];
+
+    state.remixInfo = {
+      anchorZh: isUserMode ? '排版 REMIX [2/2] · Photoshop 选区采样 7 选 (用户图片)' : '排版 REMIX [2/2] · Photoshop 选区采样 7 选',
+      anchorEn: 'Layout REMIX [2/2] · Photoshop 7 Effect Showcase',
+      mainLayoutZh: '暗调主图 · 7 处自由变换选区视窗',
+      mainLayoutEn: 'Moody Base · 7 Transform Specimen Windows',
+      typographyZh: 'Ps 软件徽标与特效配方标注',
+      typographyEn: 'Photoshop Badge & Effect Annotation',
+      backgroundZh: '深邃暗夜影棚微光',
+      backgroundEn: 'Deep Studio Dark Vignette',
+      strengthZh: isUserMode ? '专属图片应用' : '选区教程排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Selection Specimen Layout',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    emptyState.classList.add('is-hidden');
+    status.textContent = isUserMode
+      ? `LAYOUT [2/2] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : 'LAYOUT [2/2] / PHOTOSHOP 7 EFFECTS';
+
+    syncAllChildFramesOf('main');
+    (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray(); renderInspector(); render();
+    if (isReset) { history = []; historyIndex = -1; }
+    commit(); updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (showToast) {
+      const resolvedToast = toastMsg || (isUserMode
+        ? '📐 排版 REMIX [2/2] (排版模板 02)：已应用 Photoshop 选区采样 7 选构图 (已适配您的专属图片)'
+        : '📐 排版 REMIX [2/2] (排版模板 02)：Photoshop 选区采样 7 选构图');
+      toast(resolvedToast);
+    }
+  }
+
   const layoutRemixList = [
-    { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 }
+    { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 },
+    { id: 'layout-02', nameZh: 'Photoshop 选区采样 7 选构图', apply: applyLayoutTemplate02 }
   ];
 
   const masterRemixList = [
-    { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 }
+    { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 },
+    { nameZh: 'Photoshop 特效搭配 7 选', shortZh: 'Ps 特效 7 选', layoutIdx: 1, filterIdx: 1 }
   ];
 
   let currentLayoutIndex = 0;
@@ -2768,19 +3257,26 @@
   let currentMasterIndex = -1;
 
   function cycleLayoutRemix() {
-    currentLayoutIndex = (currentLayoutIndex + 1) % layoutRemixList.length;
+    const total = layoutRemixList.length;
+    currentLayoutIndex = (currentLayoutIndex + 1) % total;
     const item = layoutRemixList[currentLayoutIndex];
-    item.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/6]：${item.nameZh}`);
+    if (item?.apply) {
+      item.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
+    }
   }
 
   function cycleFilterRemix() {
-    currentFilterIndex = (currentFilterIndex + 1) % filterRemixList.length;
+    const total = filterRemixList.length;
+    currentFilterIndex = (currentFilterIndex + 1) % total;
     const item = filterRemixList[currentFilterIndex];
-    item.apply(true, `🎨 滤镜 REMIX [${currentFilterIndex + 1}/6]：${item.nameZh}`);
+    if (item?.apply) {
+      item.apply(true, `🎨 滤镜 REMIX [${currentFilterIndex + 1}/${total}]：${item.nameZh}`);
+    }
   }
 
   function applyMasterRemixByIndex(index, images, isReset = false, customMsg = '') {
-    const resolvedIndex = isReset ? 0 : (((index % masterRemixList.length) + masterRemixList.length) % masterRemixList.length);
+    const total = masterRemixList.length;
+    const resolvedIndex = isReset ? 0 : (((index % total) + total) % total);
     const m = masterRemixList[resolvedIndex];
     currentMasterIndex = isReset ? -1 : resolvedIndex;
     currentLayoutIndex = m.layoutIdx;
@@ -2790,16 +3286,16 @@
     filterRemixList[m.filterIdx].apply(false);
 
     const dockSub = document.querySelector('#posterMasterRemixSub');
-    if (dockSub) dockSub.textContent = `[${resolvedIndex + 1}/6] 排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1}`;
+    if (dockSub) dockSub.textContent = `[${resolvedIndex + 1}/${total}] 排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1}`;
     const dockTag = document.querySelector('#posterMasterRemixTag');
-    if (dockTag) dockTag.textContent = `[${resolvedIndex + 1}/6] ↻`;
+    if (dockTag) dockTag.textContent = `[${resolvedIndex + 1}/${total}] ↻`;
     const toplineText = document.querySelector('#posterMasterRemixToplineText');
-    if (toplineText) toplineText.textContent = `[${resolvedIndex + 1}/6] ${m.shortZh}`;
+    if (toplineText) toplineText.textContent = `[${resolvedIndex + 1}/${total}] ${m.shortZh}`;
 
     const isUserMode = !isReset && hasUserUploadedImages();
     const resolvedToast = customMsg || (isUserMode
-      ? `⚡ 总 REMIX [${resolvedIndex + 1}/6] 已生效：已为您的图片应用模板 01 (${m.nameZh})`
-      : `⚡ 总 REMIX [${resolvedIndex + 1}/6] 已生效：${m.nameZh} (排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1})`);
+      ? `⚡ 总 REMIX [${resolvedIndex + 1}/${total}] 已生效：已为您的图片应用模板 0${resolvedIndex + 1} (${m.nameZh})`
+      : `⚡ 总 REMIX [${resolvedIndex + 1}/${total}] 已生效：${m.nameZh} (排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1})`);
     toast(resolvedToast);
   }
 
@@ -2911,7 +3407,8 @@
   }
 
   const layoutTemplates = [
-    { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 }
+    { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
+    { id: 'template-02-ps7', nameZh: '模板 02 · Photoshop 特效 7 选', apply: applyLayoutTemplate02 }
   ];
 
   function applyLayoutTemplate(templateId) {
