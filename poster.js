@@ -2172,35 +2172,112 @@
     });
   }
 
+  function hasUserUploadedImages() {
+    const demoIds = new Set(['asset-karina-close', 'asset-karina-hands', 'asset-karina-crouch', 'asset-karina-sky', 'main-demo']);
+    const demoNames = new Set(['karina-close.jpg', 'karina-hands.jpg', 'karina-crouch.jpg', 'karina-sky.jpg', 'demo.jpg']);
+    const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-');
+    const isDemoId = (id) => !id || demoIds.has(id);
+
+    const hasUserAsset = (state.assets || []).some(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
+    const hasUserMain = Boolean(state.image && !isDemoId(state.mainImageId) && !isDemoName(state.imageName));
+    return hasUserAsset || hasUserMain;
+  }
+
   function applyTemplate01(images, isReset = false, toastMsg = '') {
     remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = ''; lastRemixBackgroundStyle = '';
     const previousPoster = motion.capture();
 
-    const imgClose = images?.close || state.image;
-    const imgHands = images?.hands || imgClose;
-    const imgCrouch = images?.crouch || imgClose;
-    const imgSky = images?.sky || imgClose;
+    const isUserMode = !isReset && hasUserUploadedImages();
 
-    const assetClose = { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose.src };
-    const assetHands = { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands.src };
-    const assetCrouch = { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch.src };
-    const assetSky = { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky.src };
+    let assetClose, assetHands, assetCrouch, assetSky;
+    let slot0Id, slot1Id, slot2Id, slot3Id;
 
-    imageAssets.set(assetClose.id, assetClose);
-    imageAssets.set(assetHands.id, assetHands);
-    imageAssets.set(assetCrouch.id, assetCrouch);
-    imageAssets.set(assetSky.id, assetSky);
+    if (isUserMode) {
+      const demoIds = new Set(['asset-karina-close', 'asset-karina-hands', 'asset-karina-crouch', 'asset-karina-sky', 'main-demo']);
+      const demoNames = new Set(['karina-close.jpg', 'karina-hands.jpg', 'karina-crouch.jpg', 'karina-sky.jpg', 'demo.jpg']);
+      const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-');
+      const isDemoId = (id) => !id || demoIds.has(id);
 
-    state.assets = [
-      { id: assetClose.id, name: assetClose.name },
-      { id: assetHands.id, name: assetHands.name },
-      { id: assetCrouch.id, name: assetCrouch.name },
-      { id: assetSky.id, name: assetSky.name }
-    ];
+      // Collect all user assets that have valid images
+      let userAssets = (state.assets || []).filter(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
 
-    state.image = imgClose;
-    state.imageName = 'karina-close.jpg';
-    state.mainImageId = assetClose.id;
+      // If the current main image is not yet in userAssets, register it
+      if (state.image && !isDemoId(state.mainImageId) && !isDemoName(state.imageName)) {
+        const mid = state.mainImageId || makeId();
+        if (!imageAssets.has(mid)) {
+          imageAssets.set(mid, { id: mid, name: state.imageName || 'user-image.jpg', image: state.image, src: state.image.src || '' });
+        }
+        if (!userAssets.some(a => a.id === mid)) {
+          userAssets.unshift({ id: mid, name: state.imageName || 'user-image.jpg' });
+        }
+        state.mainImageId = mid;
+      }
+
+      // Determine main asset
+      let mainAsset = userAssets.find(a => a.id === state.mainImageId);
+      if (!mainAsset && userAssets.length > 0) {
+        mainAsset = userAssets[0];
+        state.mainImageId = mainAsset.id;
+      }
+
+      if (mainAsset) {
+        const loadedMain = imageAssets.get(mainAsset.id);
+        if (loadedMain?.image) {
+          state.image = loadedMain.image;
+          state.imageName = loadedMain.name || mainAsset.name;
+        }
+      }
+
+      // Purge old Karina demo assets from state.assets so only user assets remain
+      state.assets = userAssets.map(a => ({ id: a.id, name: a.name }));
+
+      // Pick assets for the 4 secondary cards
+      const secCandidates = userAssets.filter(a => a.id !== state.mainImageId);
+      const getSlotAssetId = (idx) => {
+        if (secCandidates.length === 0) return state.mainImageId;
+        if (secCandidates.length === 1) {
+          return idx % 2 === 0 ? secCandidates[0].id : state.mainImageId;
+        }
+        return secCandidates[idx % secCandidates.length].id;
+      };
+
+      slot0Id = getSlotAssetId(0);
+      slot1Id = getSlotAssetId(1);
+      slot2Id = getSlotAssetId(2);
+      slot3Id = getSlotAssetId(3);
+    } else {
+      // Demo Mode: Karina 4-image archive
+      const imgClose = images?.close || state.image;
+      const imgHands = images?.hands || imgClose;
+      const imgCrouch = images?.crouch || imgClose;
+      const imgSky = images?.sky || imgClose;
+
+      assetClose = { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose?.src || '' };
+      assetHands = { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands?.src || '' };
+      assetCrouch = { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch?.src || '' };
+      assetSky = { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky?.src || '' };
+
+      imageAssets.set(assetClose.id, assetClose);
+      imageAssets.set(assetHands.id, assetHands);
+      imageAssets.set(assetCrouch.id, assetCrouch);
+      imageAssets.set(assetSky.id, assetSky);
+
+      state.assets = [
+        { id: assetClose.id, name: assetClose.name },
+        { id: assetHands.id, name: assetHands.name },
+        { id: assetCrouch.id, name: assetCrouch.name },
+        { id: assetSky.id, name: assetSky.name }
+      ];
+
+      state.image = imgClose;
+      state.imageName = 'karina-close.jpg';
+      state.mainImageId = assetClose.id;
+
+      slot0Id = assetHands.id;
+      slot1Id = assetCrouch.id;
+      slot2Id = assetSky.id;
+      slot3Id = assetClose.id;
+    }
 
     // 1. 底图缩放漏出电光虎纹背景 + 保留原图色彩与毛衣细节
     state.background = '#001fd4';
@@ -2298,10 +2375,10 @@
 
     // 3. 多图辅图卡片 (Secondaries)
     state.secondaries = [
-      // 辅图 1: 左上方齐刘海皮衣拿花平视照 (karina-hands)
+      // 辅图 1: 左上方平视卡片
       {
         id: makeId(),
-        imageId: assetHands.id,
+        imageId: slot0Id,
         x: 28,
         y: 175,
         w: 160,
@@ -2313,10 +2390,10 @@
         backingColor: '#ffffff',
         filters: cleanFilters()
       },
-      // 辅图 2: 右侧蓝光蹲姿卡片 (karina-crouch)
+      // 辅图 2: 右侧蓝光蹲姿卡片位置 (经典赛博黑白高反差)
       {
         id: makeId(),
-        imageId: assetCrouch.id,
+        imageId: slot1Id,
         x: 605,
         y: 285,
         w: 265,
@@ -2333,10 +2410,10 @@
           brightness: -5
         }
       },
-      // 辅图 3: 右下方纯蓝底仰角侧颜照 (karina-sky)
+      // 辅图 3: 右下方仰角卡片
       {
         id: makeId(),
-        imageId: assetSky.id,
+        imageId: slot2Id,
         x: 575,
         y: 785,
         w: 280,
@@ -2348,10 +2425,10 @@
         backingColor: '#002FA7',
         filters: cleanFilters()
       },
-      // 辅图 4: 左下方特写卡片 (karina-close)
+      // 辅图 4: 左下方特写卡片
       {
         id: makeId(),
-        imageId: assetClose.id,
+        imageId: slot3Id,
         x: 45,
         y: 745,
         w: 195,
@@ -2580,22 +2657,24 @@
     ];
 
     state.remixInfo = {
-      anchorZh: '模板 01 · Aespa 电光档案 (多图版)',
-      anchorEn: 'Template 01 · Electric Archive (Multi-Image)',
+      anchorZh: isUserMode ? '模板 01 · Aespa 电光档案 (用户图片)' : '模板 01 · Aespa 电光档案 (多图版)',
+      anchorEn: isUserMode ? 'Template 01 · Electric Archive (Custom Image)' : 'Template 01 · Electric Archive (Multi-Image)',
       mainLayoutZh: '原色缩放主图 · 镂空电光虎纹底纸',
       mainLayoutEn: 'Scaled True-Color Main · Electric Tiger Base',
       typographyZh: '电光涂鸦与三行叠字',
       typographyEn: 'Graffiti & Triple Stack',
       backgroundZh: 'Aespa 经典电光蓝黑虎纹',
       backgroundEn: 'Electric Tiger Cyber Noir',
-      strengthZh: '精选多图模板',
-      strengthEn: 'Curated Multi-Image Template',
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图模板',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Template',
       isManuallyEdited: false
     };
 
     state.selected = null;
     emptyState.classList.add('is-hidden');
-    status.textContent = 'TEMPLATE 01 / AESPA RICH MAN (MULTI-IMAGE)';
+    status.textContent = isUserMode
+      ? `TEMPLATE 01 · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : 'TEMPLATE 01 / AESPA RICH MAN (MULTI-IMAGE)';
     document.querySelectorAll('.poster-template-card').forEach(card => {
       card.classList.toggle('is-active', card.dataset.posterTemplate === 'template-01-richman');
     });
@@ -2612,7 +2691,10 @@
     updateRemixCard();
     if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
     motion.play(previousPoster);
-    if (toastMsg) toast(toastMsg);
+    const resolvedToast = toastMsg || (isUserMode
+      ? '⚡ 总 REMIX 已生效：已为您的图片应用模板 01 (Aespa Rich Man 电光档案)'
+      : '已应用：模板 01 · Aespa 多图电光档案 (Rich Man)');
+    toast(resolvedToast);
   }
 
   function applyDemo(image) {
@@ -2909,9 +2991,13 @@
       badge: 'Y2K 赛博档案',
       descZh: '全幅黑白粗半调底图 · 唇眼彩色特写 · 电光蓝金标题与三行叠字',
       apply() {
-        ensureKarinaMultiAssets(images => {
-          applyTemplate01(images, false, '已应用：模板 01 · Aespa 多图电光档案 (Rich Man)');
-        });
+        if (hasUserUploadedImages()) {
+          applyTemplate01(null, false);
+        } else {
+          ensureKarinaMultiAssets(images => {
+            applyTemplate01(images, false);
+          });
+        }
       }
     }
   ];
@@ -2939,7 +3025,6 @@
     if (card) {
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-    toast(`⚡ 总 REMIX 已生效：已应用 ${t.nameZh}`);
   }
 
   function remixLayout(strength = 'medium') {
@@ -4124,6 +4209,8 @@
   window.posterTriggerMasterRemix = triggerMasterRemix;
   window.posterLayoutTemplates = layoutTemplates;
   window.posterSetupResizers = setupPosterResizers;
+  window.posterHasUserUploadedImages = hasUserUploadedImages;
+  window.posterApplyTemplate01 = applyTemplate01;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
   renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();

@@ -135,3 +135,89 @@ vm.runInNewContext(`
 `, {assert,setTimeout,clearTimeout});
 assert.ok(!source.includes('state.mode'), 'Image count, not a saved mode, determines remix behavior');
 console.log('PASS: unified image flow, non-destructive batch add, empty poster, image counts, one-step undo/redo, deletion undo');
+
+vm.runInNewContext(`
+  let state = {
+    image: null, imageName: '', mainImageId: '', assets: [], secondaries: [],
+    frames: [], details: [], fragments: [], texts: [], layers: [], filters: {}
+  };
+  const imageAssets = new Map();
+  const emptyState = { classList: { add: () => {}, remove: () => {} } };
+  const status = { textContent: '' };
+  const motion = { capture: () => ({}), play: () => {} };
+  let lastToast = '';
+  const toast = (msg) => { lastToast = msg; };
+  let remixBaseSnapshot = null, remixLastResultSnapshot = null;
+  let lastRemixCopyName = '', lastRemixAnchorName = '', lastRemixFramePatternName = '', lastRemixBackgroundStyle = '';
+  let history = [], historyIndex = -1, historyTimer = 0;
+  let zoomMode = 'fit';
+  const fitWorkspace = () => {};
+  const requestAnimationFrame = (fn) => fn();
+  const makeId = () => 'id-' + Math.random().toString(36).slice(2, 8);
+  const cleanFilters = () => ({ bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, grain: 0 });
+  const makeFrame = (num, opts) => ({ id: makeId(), number: num, ...opts });
+  const makeDetail = (frame, idx, opts) => ({ id: makeId(), frameId: frame.id, ...opts });
+  const syncAllChildFramesOf = () => {};
+  const renderImageTray = () => {};
+  const renderInspector = () => {};
+  const render = () => {};
+  const commit = () => {};
+  const updateRemixCard = () => {};
+
+  ${section('  function hasUserUploadedImages()', '  function applyDemo(')}
+  ${section('  const layoutTemplates = [', '  function remixLayout(')}
+
+  // 1. Initial State: Demo assets
+  const demoImg = { naturalWidth: 800, naturalHeight: 1000, src: 'demo' };
+  applyTemplate01({ close: demoImg, hands: demoImg, crouch: demoImg, sky: demoImg }, true);
+  assert.equal(hasUserUploadedImages(), false, 'Demo state must not be flagged as user uploaded');
+  assert.equal(state.mainImageId, 'asset-karina-close');
+
+  // 2. User uploads a custom photo
+  const userPhoto = { naturalWidth: 600, naturalHeight: 800, src: 'user-photo' };
+  const uid = 'user-p1';
+  imageAssets.set(uid, { id: uid, name: 'my-vacation.jpg', image: userPhoto, src: userPhoto.src });
+  state.assets.unshift({ id: uid, name: 'my-vacation.jpg' });
+  state.image = userPhoto;
+  state.imageName = 'my-vacation.jpg';
+  state.mainImageId = uid;
+
+  assert.equal(hasUserUploadedImages(), true);
+  triggerMasterRemix();
+
+  assert.equal(state.image, userPhoto, 'Master Remix must preserve user image as main');
+  assert.equal(state.imageName, 'my-vacation.jpg');
+  assert.equal(state.mainImageId, uid);
+  assert.equal(state.assets.length, 1, 'Demo assets must be pruned from state.assets');
+  assert.equal(state.secondaries.length, 4);
+  state.secondaries.forEach(s => assert.equal(s.imageId, uid, 'Cards must reference user photo'));
+  assert.equal(state.backgroundStyle, 'electric-tiger');
+  assert.ok(lastToast.includes('已为您的图片应用模板 01'));
+
+  // 3. User with multiple photos
+  const u2 = 'user-p2', u3 = 'user-p3';
+  imageAssets.set(u2, { id: u2, name: 'p2.jpg', image: userPhoto, src: userPhoto.src });
+  imageAssets.set(u3, { id: u3, name: 'p3.jpg', image: userPhoto, src: userPhoto.src });
+  state.assets.push({ id: u2, name: 'p2.jpg' }, { id: u3, name: 'p3.jpg' });
+  triggerMasterRemix();
+  assert.equal(state.assets.length, 3);
+  const secIds = state.secondaries.map(s => s.imageId);
+  assert.ok(secIds.includes(u2) && secIds.includes(u3));
+
+  // 4. Demo Reset
+  applyTemplate01({ close: demoImg, hands: demoImg, crouch: demoImg, sky: demoImg }, true);
+  assert.equal(state.mainImageId, 'asset-karina-close');
+  assert.equal(hasUserUploadedImages(), false);
+`, {
+  assert,
+  setTimeout,
+  clearTimeout,
+  document: {
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    getElementById: () => null
+  },
+  window: {}
+});
+console.log('PASS: user image preservation on Master Remix, multi-image slot distribution, demo purge and restore');
+
