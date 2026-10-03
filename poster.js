@@ -861,170 +861,198 @@
     if (o.colorHalftone) {
       const isDuotoneMap = !!o.duotone;
       const cmykCanvas = raster(W, H, (cc) => {
-        cc.fillStyle = isDuotoneMap ? (o.duotoneLight || '#c2d4ff') : '#f8f8f6';
-        cc.fillRect(0, 0, W, H);
-        const channels = isDuotoneMap ? [
-          { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(10, 25, 75, 0.94)' },
-          { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(15, 35, 100, 0.92)' },
-          { name: 'y', angle: 0, color: 'rgba(25, 55, 140, 0.88)' },
-          { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(7, 21, 64, 0.98)' }
-        ] : [
-          { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(0, 168, 240, 0.92)' },
-          { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(235, 10, 130, 0.92)' },
-          { name: 'y', angle: 0, color: 'rgba(255, 230, 10, 0.95)' },
-          { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(20, 20, 20, 0.98)' }
-        ];
-        const diagonal = Math.hypot(W, H);
+        if (isDuotoneMap) {
+          // 日系 PS 原版：彩色半调 + 渐变映射 (Cobalt / Electric Blue Duotone Map)
+          // 亮部柔和蓝紫浅底，网点映射为鲜明纯正的克莱因蓝/皇家宝蓝，绝不发黑发灰发暗
+          cc.fillStyle = o.duotoneLight || '#d6e2ff';
+          cc.fillRect(0, 0, W, H);
+          const diagonal = Math.hypot(W, H);
 
-        channels.forEach((ch) => {
-          cc.save();
-          cc.translate(W / 2, H / 2);
-          cc.rotate(ch.angle);
-          cc.fillStyle = ch.color;
-          cc.globalCompositeOperation = 'multiply';
+          // 主网角 45° 电光宝蓝网点 + 副网角 15° 深邃群青暗部加强网点
+          const blueChannels = [
+            { angle: 45 * Math.PI / 180, color: 'rgba(26, 68, 196, 0.95)', scale: 1.0, threshold: 0 },
+            { angle: 15 * Math.PI / 180, color: 'rgba(10, 24, 85, 0.88)', scale: 0.85, threshold: 0.22 }
+          ];
 
-          for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) {
-            for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
-              const cos = Math.cos(-ch.angle), sin = Math.sin(-ch.angle);
-              const sx = Math.round(gx * cos - gy * sin + W / 2);
-              const sy = Math.round(gx * sin + gy * cos + H / 2);
-              if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
-              const p = (sy * W + sx) * 4;
-              const r = pixels[p] / 255, g = pixels[p + 1] / 255, b = pixels[p + 2] / 255;
-              const k = 1 - Math.max(r, g, b);
-              const c = (1 - r - k) / Math.max(0.001, 1 - k);
-              const m = (1 - g - k) / Math.max(0.001, 1 - k);
-              const yVal = (1 - b - k) / Math.max(0.001, 1 - k);
-              const dotVal = ch.name === 'c' ? c : ch.name === 'm' ? m : ch.name === 'y' ? yVal : k;
-              const radius = Math.max(0, dotVal * size * 0.68 * (0.35 + strength * 0.9));
-              if (radius > 0.4) {
-                cc.beginPath(); cc.arc(gx, gy, radius, 0, Math.PI * 2); cc.fill();
+          blueChannels.forEach((ch) => {
+            cc.save();
+            cc.translate(W / 2, H / 2);
+            cc.rotate(ch.angle);
+            cc.fillStyle = ch.color;
+
+            for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) {
+              for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
+                const cos = Math.cos(-ch.angle), sin = Math.sin(-ch.angle);
+                const sx = Math.round(gx * cos - gy * sin + W / 2);
+                const sy = Math.round(gx * sin + gy * cos + H / 2);
+                if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
+                const p = (sy * W + sx) * 4;
+                const lum = (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114) / 255;
+                const darkness = 1 - lum;
+                if (darkness <= ch.threshold) continue;
+                const dotVal = (darkness - ch.threshold) / (1 - ch.threshold);
+                const maxR = spacing * 0.52;
+                const radius = Math.max(0, Math.min(maxR, dotVal * size * 0.68 * ch.scale * (0.35 + strength * 0.9)));
+                if (radius > 0.35) {
+                  cc.beginPath();
+                  cc.arc(gx, gy, radius, 0, Math.PI * 2);
+                  cc.fill();
+                }
               }
             }
-          }
-          cc.restore();
-        });
+            cc.restore();
+          });
+        } else {
+          cc.fillStyle = '#f8f8f6';
+          cc.fillRect(0, 0, W, H);
+          const channels = [
+            { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(0, 168, 240, 0.92)' },
+            { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(235, 10, 130, 0.92)' },
+            { name: 'y', angle: 0, color: 'rgba(255, 230, 10, 0.95)' },
+            { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(20, 20, 20, 0.98)' }
+          ];
+          const diagonal = Math.hypot(W, H);
+
+          channels.forEach((ch) => {
+            cc.save();
+            cc.translate(W / 2, H / 2);
+            cc.rotate(ch.angle);
+            cc.fillStyle = ch.color;
+            cc.globalCompositeOperation = 'multiply';
+
+            for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) {
+              for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
+                const cos = Math.cos(-ch.angle), sin = Math.sin(-ch.angle);
+                const sx = Math.round(gx * cos - gy * sin + W / 2);
+                const sy = Math.round(gx * sin + gy * cos + H / 2);
+                if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
+                const p = (sy * W + sx) * 4;
+                const r = pixels[p] / 255, g = pixels[p + 1] / 255, b = pixels[p + 2] / 255;
+                const k = 1 - Math.max(r, g, b);
+                const c = (1 - r - k) / Math.max(0.001, 1 - k);
+                const m = (1 - g - k) / Math.max(0.001, 1 - k);
+                const yVal = (1 - b - k) / Math.max(0.001, 1 - k);
+                const dotVal = ch.name === 'c' ? c : ch.name === 'm' ? m : ch.name === 'y' ? yVal : k;
+                const radius = Math.max(0, dotVal * size * 0.68 * (0.35 + strength * 0.9));
+                if (radius > 0.4) {
+                  cc.beginPath(); cc.arc(gx, gy, radius, 0, Math.PI * 2); cc.fill();
+                }
+              }
+            }
+            cc.restore();
+          });
+        }
       });
 
-      // 直接以高不透明度覆盖，形成极具辨识度的真实 CMYK 网屏印刷画报感
       tc.save();
-      tc.globalAlpha = Math.min(1, 0.55 + strength * 0.45);
+      tc.globalAlpha = Math.min(1, 0.70 + strength * 0.30);
       tc.drawImage(cmykCanvas, 0, 0);
       tc.restore();
       return;
     }
 
-    // B. 半调图案「圆形 / 同心圆」 (Concentric Circle Halftone)
+    // B. 半调图案「圆形 / 同心圆」 (Concentric Circle Halftone + Grain + Duotone)
     if (o.halftoneShape === 'concentric') {
       const overlay = raster(W, H, (oc) => {
-        oc.fillStyle = '#ffffff';
-        oc.fillRect(0, 0, W, H);
-        const centerX = W / 2, centerY = H / 2;
-        const maxR = Math.hypot(centerX, centerY);
-        const ringStep = Math.max(5, spacing * 0.95);
-        oc.strokeStyle = '#000000';
-        for (let r = 0; r < maxR; r += ringStep) {
-          const sampleCount = Math.max(12, Math.round(Math.PI * 2 * r / ringStep));
-          let ringLum = 0;
-          for (let a = 0; a < Math.PI * 2; a += (Math.PI * 2 / sampleCount)) {
-            const sx = Math.max(0, Math.min(W - 1, Math.round(centerX + Math.cos(a) * r)));
-            const sy = Math.max(0, Math.min(H - 1, Math.round(centerY + Math.sin(a) * r)));
-            const p = (sy * W + sx) * 4;
-            ringLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
-          }
-          ringLum /= sampleCount;
-          const width = Math.max(0.6, (1 - ringLum / 255) * ringStep * 0.92 * strength);
-          oc.lineWidth = width;
-          oc.beginPath(); oc.arc(centerX, centerY, r, 0, Math.PI * 2); oc.stroke();
-        }
-      });
-      const isDuotoneConcentric = !!o.duotone;
-      if (isDuotoneConcentric) {
-        const darkRgb = hexToRgb(o.duotoneDark, [7, 21, 64]);
-        const lightRgb = hexToRgb(o.duotoneLight, [194, 212, 255]);
-        const octx = overlay.getContext('2d');
-        const odata = octx.getImageData(0, 0, W, H);
+        const odata = oc.createImageData(W, H);
         const od = odata.data;
-        for (let i = 0; i < od.length; i += 4) {
-          const l = (od[i] * .299 + od[i + 1] * .587 + od[i + 2] * .114) / 255;
-          od[i] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * l);
-          od[i + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * l);
-          od[i + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * l);
+        const centerX = W / 2, centerY = H / 2;
+        const ringStep = Math.max(4, spacing * 0.85);
+        const darkRgb = hexToRgb(o.duotoneDark, [13, 34, 107]);
+        const lightRgb = hexToRgb(o.duotoneLight, [214, 226, 255]);
+        const grainAmount = (o.grain || 24) * 0.45;
+
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const p = (y * W + x) * 4;
+            const lum = (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114) / 255;
+            const dist = Math.hypot(x - centerX, y - centerY);
+            const wave = Math.pow(Math.max(0, Math.sin(dist / ringStep * Math.PI * 2)), 2.8);
+            const darkness = 1 - lum;
+            const ink = Math.min(1, wave * (0.35 + darkness * 0.65));
+            const noiseVal = (noise(p * 7) - 0.5) * grainAmount / 255;
+            const finalVal = Math.max(0, Math.min(1, (1 - ink) + noiseVal));
+
+            if (o.duotone) {
+              od[p] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * finalVal);
+              od[p + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * finalVal);
+              od[p + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * finalVal);
+              od[p + 3] = 255;
+            } else {
+              const grey = Math.round(finalVal * 255);
+              od[p] = grey; od[p + 1] = grey; od[p + 2] = grey; od[p + 3] = 255;
+            }
+          }
         }
-        octx.putImageData(odata, 0, 0);
-        tc.save();
+        oc.putImageData(odata, 0, 0);
+      });
+
+      tc.save();
+      if (o.duotone) {
         tc.globalAlpha = Math.min(1, 0.88 + strength * 0.12);
         tc.drawImage(overlay, 0, 0);
-        tc.restore();
       } else {
-        tc.save();
         tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
         tc.globalCompositeOperation = 'multiply';
         tc.drawImage(overlay, 0, 0);
-        tc.restore();
       }
+      tc.restore();
       return;
     }
 
-    // B2. 半调图案「线条」 (Line / Scanline Halftone)
+    // B2. 半调图案「线条」 (Line / Scanline Halftone + Motion Blur)
     if (o.halftoneShape === 'line') {
       const overlay = raster(W, H, (oc) => {
-        oc.fillStyle = '#ffffff';
-        oc.fillRect(0, 0, W, H);
+        const odata = oc.createImageData(W, H);
+        const od = odata.data;
         const angle = (o.halftoneAngle || 0) * Math.PI / 180;
-        const lineStep = Math.max(3, spacing * 0.85);
-        const diagonal = Math.hypot(W, H);
-        oc.save();
-        oc.translate(W / 2, H / 2);
-        oc.rotate(angle);
-        oc.strokeStyle = '#000000';
-        for (let gy = -diagonal / 2; gy < diagonal / 2; gy += lineStep) {
-          let lineLum = 0, count = 0;
-          for (let gx = -diagonal / 2; gx < diagonal / 2; gx += lineStep * 2) {
-            const cos = Math.cos(-angle), sin = Math.sin(-angle);
-            const sx = Math.round(gx * cos - gy * sin + W / 2);
-            const sy = Math.round(gx * sin + gy * cos + H / 2);
-            if (sx >= 0 && sy >= 0 && sx < W && sy < H) {
-              const p = (sy * W + sx) * 4;
-              lineLum += (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114);
-              count++;
+        const lineStep = Math.max(3, spacing * 0.75);
+        const darkRgb = hexToRgb(o.duotoneDark, [13, 34, 107]);
+        const lightRgb = hexToRgb(o.duotoneLight, [214, 226, 255]);
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const p = (y * W + x) * 4;
+            const lum = (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114) / 255;
+            const proj = x * sin + y * cos;
+            const lineWave = (Math.sin(proj / lineStep * Math.PI * 2) + 1) * 0.5;
+            const darkness = 1 - lum;
+            const ink = Math.max(0, Math.min(1, lineWave * 0.65 + darkness * 0.7 - 0.15));
+
+            // ぼかし（移動） Motion Blur: horizontal gradient fade towards rich cobalt blue on the right
+            const motionRight = Math.min(1, Math.max(0, (x / W - 0.42) / 0.58));
+            const motionBlue = [37, 99, 235]; // vibrant electric cobalt blue
+
+            if (o.duotone) {
+              const baseR = darkRgb[0] + (lightRgb[0] - darkRgb[0]) * (1 - ink);
+              const baseG = darkRgb[1] + (lightRgb[1] - darkRgb[1]) * (1 - ink);
+              const baseB = darkRgb[2] + (lightRgb[2] - darkRgb[2]) * (1 - ink);
+
+              // Blend with motion blur blue on the right side
+              od[p] = Math.round(baseR + (motionBlue[0] - baseR) * motionRight * 0.88);
+              od[p + 1] = Math.round(baseG + (motionBlue[1] - baseG) * motionRight * 0.88);
+              od[p + 2] = Math.round(baseB + (motionBlue[2] - baseB) * motionRight * 0.88);
+              od[p + 3] = 255;
+            } else {
+              const grey = Math.round((1 - ink) * 255);
+              od[p] = grey; od[p + 1] = grey; od[p + 2] = grey; od[p + 3] = 255;
             }
           }
-          if (count > 0) lineLum /= count;
-          const lw = Math.max(0.4, (1 - lineLum / 255) * lineStep * 0.9 * strength);
-          oc.lineWidth = lw;
-          oc.beginPath();
-          oc.moveTo(-diagonal / 2, gy);
-          oc.lineTo(diagonal / 2, gy);
-          oc.stroke();
         }
-        oc.restore();
+        oc.putImageData(odata, 0, 0);
       });
-      const isDuotoneLine = !!o.duotone;
-      if (isDuotoneLine) {
-        const darkRgb = hexToRgb(o.duotoneDark, [7, 21, 64]);
-        const lightRgb = hexToRgb(o.duotoneLight, [194, 212, 255]);
-        const octx = overlay.getContext('2d');
-        const odata = octx.getImageData(0, 0, W, H);
-        const od = odata.data;
-        for (let i = 0; i < od.length; i += 4) {
-          const l = (od[i] * .299 + od[i + 1] * .587 + od[i + 2] * .114) / 255;
-          od[i] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * l);
-          od[i + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * l);
-          od[i + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * l);
-        }
-        octx.putImageData(odata, 0, 0);
-        tc.save();
+
+      tc.save();
+      if (o.duotone) {
         tc.globalAlpha = Math.min(1, 0.88 + strength * 0.12);
         tc.drawImage(overlay, 0, 0);
-        tc.restore();
       } else {
-        tc.save();
         tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
         tc.globalCompositeOperation = 'multiply';
         tc.drawImage(overlay, 0, 0);
-        tc.restore();
       }
+      tc.restore();
       return;
     }
 
@@ -1034,7 +1062,7 @@
     const diagonal = Math.hypot(W, H);
     const isDuotoneDot = !!o.duotone;
     oc.save(); oc.translate(W / 2, H / 2); oc.rotate(angle);
-    oc.fillStyle = isDuotoneDot ? (o.duotoneDark || '#071540') : '#111';
+    oc.fillStyle = isDuotoneDot ? (o.duotoneDark || '#0d226b') : '#111';
     for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
       const cos = Math.cos(-angle), sin = Math.sin(-angle);
       const sx = Math.round(gx * cos - gy * sin + W / 2);
@@ -1048,7 +1076,7 @@
     oc.restore();
     tc.save();
     if (isDuotoneDot) {
-      tc.fillStyle = o.duotoneLight || '#c2d4ff';
+      tc.fillStyle = o.duotoneLight || '#d6e2ff';
       tc.fillRect(0, 0, W, H);
       tc.globalAlpha = Math.min(1, 0.75 + strength * 0.25);
       tc.drawImage(overlay, 0, 0);
@@ -1166,8 +1194,8 @@
       o.colorHalftone = true;
       if (d.duotone) {
         o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#122db5';
-        o.duotoneLight = d.duotoneLight || '#dbe8ff';
+        o.duotoneDark = d.duotoneDark || '#0d226b';
+        o.duotoneLight = d.duotoneLight || '#d6e2ff';
       }
     }
     // 2. 单色半调「点状」 (Dot Halftone / 强调色点阵)
@@ -1179,8 +1207,8 @@
       o.halftoneAngle = d.halftoneAngle !== undefined ? d.halftoneAngle : 45;
       if (d.duotone) {
         o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#071540';
-        o.duotoneLight = d.duotoneLight || '#c2d4ff';
+        o.duotoneDark = d.duotoneDark || '#0d226b';
+        o.duotoneLight = d.duotoneLight || '#d6e2ff';
       }
     }
     // 3. 半调图案「圆形」+ 颗粒 (Concentric Circle Halftone + Grain)
@@ -1192,8 +1220,8 @@
       o.halftoneShape = 'concentric';
       if (d.duotone) {
         o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#0b1a3d';
-        o.duotoneLight = d.duotoneLight || '#9cb3ff';
+        o.duotoneDark = d.duotoneDark || '#0d226b';
+        o.duotoneLight = d.duotoneLight || '#d6e2ff';
       }
     }
     // 3b. 半调图案「线条」 (Line Halftone + Duotone)
@@ -1204,8 +1232,8 @@
       o.halftoneShape = 'line';
       o.halftoneAngle = d.halftoneAngle || 0;
       o.duotone = true;
-      o.duotoneDark = d.duotoneDark || '#14225a';
-      o.duotoneLight = d.duotoneLight || '#82b1ff';
+      o.duotoneDark = d.duotoneDark || '#0d226b';
+      o.duotoneLight = d.duotoneLight || '#d6e2ff';
     }
     // 4. 玻璃「块状」 (Glass Brick / Refraction)
     else if (type === 'glass') {
@@ -1249,8 +1277,8 @@
       o.contrast += 25;
       if (d.duotone) {
         o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#071540';
-        o.duotoneLight = d.duotoneLight || '#c2d4ff';
+        o.duotoneDark = d.duotoneDark || '#0d226b';
+        o.duotoneLight = d.duotoneLight || '#d6e2ff';
       }
     }
     // 10. 阈值 + 颗粒 (黑白强对比复印 Threshold + Grain)
@@ -1260,8 +1288,8 @@
       o.thresholdLevel = d.thresholdLevel || 130;
       if (d.duotone) {
         o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#071540';
-        o.duotoneLight = d.duotoneLight || '#c2d4ff';
+        o.duotoneDark = d.duotoneDark || '#0d226b';
+        o.duotoneLight = d.duotoneLight || '#e8eeff';
       }
     }
     // 兼容原有的黑白与描边
@@ -2584,7 +2612,9 @@
       compression: 0, invert: 0, posterize: 0
     };
 
-    (state.details || []).forEach((d) => {
+    const targetOpacities = [85, 82, 80, 78, 80, 82, 82];
+    (state.details || []).forEach((d, idx) => {
+      d.opacity = targetOpacities[idx] || 82;
       d.color = '#fbcfe8';
       d.lineWidth = 1.2;
       d.showHandles = true;
@@ -2596,6 +2626,10 @@
       d.backingColor = 'transparent';
       d.hasShadow = false;
       d.tape = null;
+      if (d.duotone) {
+        d.duotoneDark = '#0d226b';
+        d.duotoneLight = (idx === 5) ? '#e8eeff' : '#d6e2ff';
+      }
     });
 
     (state.frames || []).forEach((f) => {
@@ -3210,7 +3244,7 @@
       rotation: 0,
       opacity: 100,
       zoom: 1.12,
-      panX: 0,
+      panX: 30,
       panY: -65,
       lineWidth: 0,
       color: '#ffffff',
@@ -3275,8 +3309,9 @@
     });
     const d1 = makeDetail(f1, 0, {
       x: 285, y: 185, w: 135, h: 175, rotation: 0,
+      opacity: 85,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 28, brightness: 5,
+      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 28, brightness: 5, bw: 100,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3290,9 +3325,10 @@
     });
     const d2 = makeDetail(f2, 1, {
       x: 485, y: 265, w: 355, h: 280, rotation: 0,
+      opacity: 82,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 65, halftoneSize: 6,
-      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      filterType: 'color_halftone', halftoneStrength: 85, halftoneDensity: 65, halftoneSize: 6,
+      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3306,9 +3342,10 @@
     });
     const d3 = makeDetail(f3, 2, {
       x: 135, y: 300, w: 245, h: 195, rotation: 0,
+      opacity: 80,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
-      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      filterType: 'circle_halftone', halftoneStrength: 82, grain: 24,
+      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3322,9 +3359,10 @@
     });
     const d4 = makeDetail(f4, 3, {
       x: 590, y: 655, w: 240, h: 125, rotation: 0,
+      opacity: 78,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 60,
-      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      filterType: 'line_halftone', halftoneStrength: 82, halftoneAngle: 0, halftoneDensity: 60,
+      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3338,9 +3376,10 @@
     });
     const d5 = makeDetail(f5, 4, {
       x: 55, y: 675, w: 150, h: 205, rotation: 0,
+      opacity: 80,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dither', ditherStep: 6, contrast: 30,
-      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3354,9 +3393,10 @@
     });
     const d6 = makeDetail(f6, 5, {
       x: 445, y: 690, w: 170, h: 405, rotation: 0,
+      opacity: 82,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'threshold', thresholdLevel: 132, grain: 28,
-      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      duotoneDark: '#0d226b', duotoneLight: '#e8eeff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3370,9 +3410,10 @@
     });
     const d7 = makeDetail(f7, 6, {
       x: 70, y: 925, w: 295, h: 115, rotation: 0,
+      opacity: 82,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: 45, halftoneDensity: 65, halftoneSize: 6,
-      duotoneDark: '#071540', duotoneLight: '#c2d4ff', duotone: true,
+      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
