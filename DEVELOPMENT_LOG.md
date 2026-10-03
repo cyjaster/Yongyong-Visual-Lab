@@ -1,5 +1,33 @@
 # Yongyong Visual Lab 开发记录
 
+## 2026-10-04｜模板 02 实装落地：先锋暗调机能模特实机即时呈现 & 双示范模板一键切换
+
+- **用户反馈与痛点诊断**：
+  - 用户反馈：「试一下这个图」并上传了黑棚白领机能风男模写真（`model-techwear.jpg`）；
+  - 随后反馈：「我没看到呀」；
+  - **核心根因彻底定位**：
+    1. 前序验证仅在离线脚本注入，线上 `poster.js` 中模板 02 的示范素材未直连 `model-techwear.jpg`，仍回退至 Karina 多图；
+    2. 网页默认启动硬编码调用模板 01（`loadDemo(false)`），导致用户刷新浏览器依旧停留在 Aespa 模板；
+    3. `applyMasterRemixByIndex` 中曾存在 `isReset ? 0 : ...` 逻辑，重置时会将模板强制回退至模板 01。
+
+- **先锋暗调机能拆解（模板 02）实机上线全景方案**：
+  1. **资产无缝直连与智能分流**：
+     - `poster.js` 中新增 `ensureModelTechwearAsset` 预加载管线，自动解析 `assets/model-techwear.jpg` 与内联 base64；
+     - 模板 02 在示范模式下直连先锋暗调机能男模；用户模式下则优雅接入用户上传素材；
+     - 7 组视窗全面采用原图原位采样（In-place Crop & Transform），完全复刻参考图「单一模特 + 7 组 Photoshop 选区滤镜」工艺；
+  2. **左侧工具栏双示范按钮**：
+     - 将原本单一的「恢复示范模板」拆分为横排双按钮：
+       - `[示范 01 / DEMO 01]`：一键恢复 Aespa 电光多图档案；
+       - `[示范 02 / DEMO 02]`：一键切换至先锋暗调机能模特 7 选拆解；
+  3. **默认启动与版本防缓存**：
+     - 页面初始化默认启动调用 `loadDemo02(false)`，用户刷新页面无需任何操作即可直接映入眼帘；
+     - `index.html` 脚本版本号升级为 `v20261004-v2`，彻底击穿浏览器静态缓存；
+  4. **全套自动化测试回归通过**：
+     - `checks/editor-regression.cjs` 5/5 全项 PASS；
+     - `checks/composition-regression.cjs` PASS；
+     - `checks/motion-regression.cjs` PASS；
+     - Chrome CDP 实机无侵入截图校验通过，确认 `model-techwear.jpg` 完美展现在主画布上。
+
 ## 2026-10-03｜原汁原味：多图视窗精准融合模板 02 参考图专属 Photoshop 特效
 
 - **用户痛点与核心诉求**：

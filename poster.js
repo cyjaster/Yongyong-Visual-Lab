@@ -2339,10 +2339,35 @@
     });
   }
 
+  function ensureModelTechwearAsset(callback) {
+    const rawSrc = (typeof window !== 'undefined' && window.MODEL_TECHWEAR_DATA) || 'assets/model-techwear.jpg';
+    const assetId = 'asset-model-techwear';
+    const existing = imageAssets.get(assetId);
+    if (existing?.image && (typeof Image === 'undefined' || existing.image.complete)) {
+      if (typeof callback === 'function') callback(existing.image);
+      return;
+    }
+    if (typeof Image === 'undefined') {
+      const fakeImg = existing?.image || state.image || {};
+      if (typeof callback === 'function') callback(fakeImg);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      imageAssets.set(assetId, { id: assetId, name: 'model-techwear.jpg', image: img, src: img.src });
+      if (typeof callback === 'function') callback(img);
+    };
+    img.onerror = () => {
+      console.warn('Failed to load techwear model asset');
+      if (typeof callback === 'function') callback(null);
+    };
+    img.src = rawSrc;
+  }
+
   function hasUserUploadedImages() {
-    const demoIds = new Set(['asset-karina-close', 'asset-karina-hands', 'asset-karina-crouch', 'asset-karina-sky', 'main-demo']);
-    const demoNames = new Set(['karina-close.jpg', 'karina-hands.jpg', 'karina-crouch.jpg', 'karina-sky.jpg', 'demo.jpg']);
-    const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-');
+    const demoIds = new Set(['asset-karina-close', 'asset-karina-hands', 'asset-karina-crouch', 'asset-karina-sky', 'main-demo', 'asset-model-techwear']);
+    const demoNames = new Set(['karina-close.jpg', 'karina-hands.jpg', 'karina-crouch.jpg', 'karina-sky.jpg', 'demo.jpg', 'model-techwear.jpg']);
+    const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-') || n.startsWith('model-');
     const isDemoId = (id) => !id || demoIds.has(id);
 
     const hasUserAsset = (state.assets || []).some(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
@@ -3000,7 +3025,36 @@
     remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
     const previousPoster = motion.capture();
 
-    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
+    const isUserMode = !isReset && hasUserUploadedImages();
+    let slot0Id, slot1Id, slot2Id, slot3Id;
+
+    if (isUserMode) {
+      const slotData = resolveSlotAssetIds(images, isReset);
+      slot0Id = slotData.slot0Id;
+      slot1Id = slotData.slot1Id;
+      slot2Id = slotData.slot2Id;
+      slot3Id = slotData.slot3Id;
+    } else {
+      const rawSrc = (typeof window !== 'undefined' && window.MODEL_TECHWEAR_DATA) || 'assets/model-techwear.jpg';
+      let techAsset = imageAssets.get('asset-model-techwear');
+      if (!techAsset?.image) {
+        if (images && images.techwear) {
+          techAsset = { id: 'asset-model-techwear', name: 'model-techwear.jpg', image: images.techwear, src: images.techwear.src || rawSrc };
+          imageAssets.set('asset-model-techwear', techAsset);
+        } else if (typeof Image !== 'undefined') {
+          const img = new Image();
+          img.src = rawSrc;
+          techAsset = { id: 'asset-model-techwear', name: 'model-techwear.jpg', image: img, src: rawSrc };
+          imageAssets.set('asset-model-techwear', techAsset);
+        }
+      }
+      const modelImg = techAsset?.image || state.image;
+      state.image = modelImg;
+      state.imageName = 'model-techwear.jpg';
+      state.mainImageId = 'asset-model-techwear';
+      state.assets = [{ id: 'asset-model-techwear', name: 'model-techwear.jpg' }];
+      state.secondaries = [];
+    }
 
     // 默认确保深色暗调影棚背景，彻底清除虎纹等干扰
     state.background = '#0a0c10';
@@ -3026,47 +3080,55 @@
     };
 
     // 2. 多图辅图卡片结构与智能装填 (支持单图/多图自由创作，各视窗自动关联不同素材)
-    const hasMultipleAssets = slot0Id && (slot0Id !== state.mainImageId || (slot1Id && slot1Id !== state.mainImageId));
+    const hasMultipleAssets = Boolean(isUserMode && slot0Id && (slot0Id !== state.mainImageId || (slot1Id && slot1Id !== state.mainImageId)));
 
-    const secHero = {
-      id: makeId(),
-      imageId: slot0Id || state.mainImageId,
-      x: 620, y: 175, w: 235, h: 215,
-      rotation: 0, opacity: 0,
-      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filters: cleanFilters()
-    };
-    const secConcentric = {
-      id: makeId(),
-      imageId: slot1Id || state.mainImageId,
-      x: 92, y: 385, w: 215, h: 170,
-      rotation: 0, opacity: 0,
-      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filters: cleanFilters()
-    };
-    const secScanline = {
-      id: makeId(),
-      imageId: slot2Id || state.mainImageId,
-      x: 575, y: 490, w: 260, h: 175,
-      rotation: 0, opacity: 0,
-      panY: 55,
-      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filters: cleanFilters()
-    };
-    const secDither = {
-      id: makeId(),
-      imageId: (slot3Id && slot3Id !== state.mainImageId) ? slot3Id : (slot0Id || state.mainImageId),
-      x: 42, y: 675, w: 185, h: 175,
-      zoom: 1.8, panY: -10,
-      rotation: 0, opacity: 0,
-      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filters: cleanFilters()
-    };
-
-    state.secondaries = [secHero, secConcentric, secScanline, secDither];
+    let secHeroId = 'main', secConcentricId = 'main', secScanlineId = 'main', secDitherId = 'main';
+    if (hasMultipleAssets) {
+      const secHero = {
+        id: makeId(),
+        imageId: slot0Id || state.mainImageId,
+        x: 620, y: 175, w: 235, h: 215,
+        rotation: 0, opacity: 0,
+        color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+        filters: cleanFilters()
+      };
+      const secConcentric = {
+        id: makeId(),
+        imageId: slot1Id || state.mainImageId,
+        x: 92, y: 385, w: 215, h: 170,
+        rotation: 0, opacity: 0,
+        color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+        filters: cleanFilters()
+      };
+      const secScanline = {
+        id: makeId(),
+        imageId: slot2Id || state.mainImageId,
+        x: 575, y: 490, w: 260, h: 175,
+        rotation: 0, opacity: 0,
+        panY: 55,
+        color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+        filters: cleanFilters()
+      };
+      const secDither = {
+        id: makeId(),
+        imageId: (slot3Id && slot3Id !== state.mainImageId) ? slot3Id : (slot0Id || state.mainImageId),
+        x: 42, y: 675, w: 185, h: 175,
+        zoom: 1.8, panY: -10,
+        rotation: 0, opacity: 0,
+        color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+        filters: cleanFilters()
+      };
+      secHeroId = secHero.id;
+      secConcentricId = secConcentric.id;
+      secScanlineId = secScanline.id;
+      secDitherId = secDither.id;
+      state.secondaries = [secHero, secConcentric, secScanline, secDither];
+    } else {
+      state.secondaries = [];
+    }
     state.fragments = [];
 
-    // 3. 七大选区特效视窗 (充满拼贴感：微角度倾斜、有机错落穿插、纸张立体阴影、磨砂胶带)
+    // 3. 七大选区特效视窗 (原位采样模式：在同一张模特图上原位局部提取特效，就像 Photoshop 选区一样！)
     // 视窗 1：左上发侧马赛克像素化 (Top-Left Mosaic, 倾斜 -3.2°)
     const f1 = makeFrame(1, {
       sourceId: 'main',
@@ -3082,9 +3144,9 @@
       hasShadow: true, tape: 'corner-left'
     });
 
-    // 视窗 2：中左蹲姿相片 · 同心圆水波半调 (Mid-Left Concentric Circle Halftone, 倾斜 +2.6°)
+    // 视窗 2：中左胸侧 · 同心圆水波半调 (Mid-Left Concentric Circle Halftone, 倾斜 +2.6°)
     const f2 = makeFrame(2, {
-      sourceId: hasMultipleAssets ? secConcentric.id : 'main',
+      sourceId: secConcentricId,
       x: 92, y: 385, w: 215, h: 170,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3098,9 +3160,9 @@
       hasShadow: true, tape: 'top'
     });
 
-    // 视窗 3：右上双手持花相片 · 钴蓝彩色半调 (Top-Right Flank Cobalt Halftone - HERO, 倾斜 -2.8°)
+    // 视窗 3：右上肩颈 · 钴蓝彩色半调 (Top-Right Flank Cobalt Halftone - HERO, 倾斜 -2.8°)
     const f3 = makeFrame(3, {
-      sourceId: hasMultipleAssets ? secHero.id : 'main',
+      sourceId: secHeroId,
       x: 620, y: 175, w: 235, h: 215,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3114,9 +3176,9 @@
       hasShadow: true, tape: 'corner-right'
     });
 
-    // 视窗 4：下左蒲公英微距 · 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither, 倾斜 +4.0°)
+    // 视窗 4：下左腹侧 · 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither, 倾斜 +4.0°)
     const f4 = makeFrame(4, {
-      sourceId: hasMultipleAssets ? secDither.id : 'main',
+      sourceId: secDitherId,
       x: 42, y: 675, w: 185, h: 175,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3162,9 +3224,9 @@
       hasShadow: true, tape: 'top'
     });
 
-    // 视窗 7：右侧蓝天外景相片 · 线性半调与水平动感扫描 (Right Waist Scanline, 倾斜 +3.2°)
+    // 视窗 7：右侧相片/模特 · 线性半调与水平动感扫描 (Right Waist Scanline, 倾斜 +3.2°)
     const f7 = makeFrame(7, {
-      sourceId: hasMultipleAssets ? secScanline.id : 'main',
+      sourceId: secScanlineId,
       x: 575, y: 490, w: 260, h: 175,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
@@ -3361,7 +3423,7 @@
 
   function applyMasterRemixByIndex(index, images, isReset = false, customMsg = '') {
     const total = masterRemixList.length;
-    const resolvedIndex = isReset ? 0 : (((index % total) + total) % total);
+    const resolvedIndex = ((index % total) + total) % total;
     const m = masterRemixList[resolvedIndex];
     currentMasterIndex = isReset ? -1 : resolvedIndex;
     currentLayoutIndex = m.layoutIdx;
@@ -3386,9 +3448,13 @@
 
   function cycleMasterRemix() {
     const nextIndex = (currentMasterIndex + 1 + masterRemixList.length) % masterRemixList.length;
-    if (typeof ensureKarinaMultiAssets === 'function') {
+    if (nextIndex === 0 && typeof ensureKarinaMultiAssets === 'function') {
       ensureKarinaMultiAssets(images => {
         applyMasterRemixByIndex(nextIndex, images, false);
+      });
+    } else if (nextIndex === 1 && typeof ensureModelTechwearAsset === 'function') {
+      ensureModelTechwearAsset(() => {
+        applyMasterRemixByIndex(nextIndex, null, false);
       });
     } else {
       applyMasterRemixByIndex(nextIndex, null, false);
@@ -3397,6 +3463,10 @@
 
   function applyTemplate01(images, isReset = false, toastMsg = '') {
     applyMasterRemixByIndex(0, images, isReset, toastMsg);
+  }
+
+  function applyTemplate02(images, isReset = false, toastMsg = '') {
+    applyMasterRemixByIndex(1, images, isReset, toastMsg);
   }
 
   function applyDemo(image) {
@@ -3409,6 +3479,13 @@
     if (show && hasSecondaryImages() && !window.confirm('恢复示范模板会替换当前海报及历史记录。确定恢复吗？')) return;
     ensureKarinaMultiAssets(images => {
       applyMasterRemixByIndex(0, images, true, show ? '示范模板已恢复为 Aespa 多图精选档案。' : '');
+    });
+  }
+
+  function loadDemo02(show = true) {
+    if (show && hasSecondaryImages() && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？')) return;
+    ensureModelTechwearAsset(() => {
+      applyMasterRemixByIndex(1, null, true, show ? '已切换至示范模板 02：先锋暗调机能拆解。' : '');
     });
   }
 
@@ -3554,6 +3631,7 @@
     const a = targetItem?.dataset.posterAction, elemId = targetItem?.dataset.id;
     if (!a) return;
     if (a === 'demo') loadDemo();
+    if (a === 'demo-02') loadDemo02();
     if (a === 'frame') addFrame();
     if (a === 'detail') addDetail();
     if (a === 'connector') toast('每张局部图已自动拥有连接线。');
@@ -4177,11 +4255,14 @@
   window.posterSetupResizers = setupPosterResizers;
   window.posterHasUserUploadedImages = hasUserUploadedImages;
   window.posterApplyTemplate01 = applyTemplate01;
+  window.posterApplyTemplate02 = applyTemplate02;
+  window.posterLoadDemo = loadDemo;
+  window.posterLoadDemo02 = loadDemo02;
   window.posterApplyLayoutTemplate01 = applyLayoutTemplate01;
   window.posterApplyFilterTemplate01 = applyFilterTemplate01;
   window.posterApplyLayoutTemplate02 = applyLayoutTemplate02;
   window.posterApplyFilterTemplate02 = applyFilterTemplate02;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
-  renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
+  renderInspector();render();loadDemo02(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
 })();
