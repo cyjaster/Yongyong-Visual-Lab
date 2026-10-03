@@ -1224,7 +1224,14 @@
     if (!img) return;
     const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'secondary' && state.selected.id === s.id;
     const opts = isTargetBefore ? cleanFilters() : (s.filters || cleanFilters());
-    const cut = filteredImage(img, { sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight }, s.w, s.h, opts);
+    const iw = img.naturalWidth || s.w;
+    const ih = img.naturalHeight || s.h;
+    const scale = Math.max(s.w / iw, s.h / ih);
+    const sw = Math.min(iw, s.w / scale);
+    const sh = Math.min(ih, s.h / scale);
+    const sx = Math.max(0, (iw - sw) / 2);
+    const sy = Math.max(0, (ih - sh) / 2);
+    const cut = filteredImage(img, { sx, sy, sw, sh }, s.w, s.h, opts);
     ctx.save(); ctx.globalAlpha = (s.opacity ?? 100) / 100; transformBox(ctx, s);
     if (s.backingColor) { ctx.fillStyle = s.backingColor; ctx.fillRect(-2, -2, s.w + 4, s.h + 4); }
     ctx.drawImage(cut, 0, 0, s.w, s.h);
@@ -2044,40 +2051,492 @@
       + repeatControls + objectActions();
   }
 
-  function applyDemo(image) {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = ''; lastRemixBackgroundStyle = '';
-    const mainAssetId = 'asset-demo-main';
-    imageAssets.set(mainAssetId, { id: mainAssetId, name: 'demo-collage.jpg', image, src: image.src });
-    state.image = image; state.imageName = 'demo-collage.jpg'; state.mainImageId = mainAssetId;
-    state.assets = [{ id: mainAssetId, name: 'demo-collage.jpg' }];
-    state.secondaries = [];
-    state.main = makeMain(); state.fragments = []; state.background = '#dce3e5'; state.backgroundStyle='solid'; state.backgroundImageId=null; state.backgroundImageOpacity=38; state.backgroundImageFit='cover'; state.border = true; state.borderColor = '#fff'; state.borderWidth = 7;
-    state.filters = { bw: 0, brightness: 0, contrast: 8, saturation: 100, halftone: 0, halftoneSize: 8, halftoneDensity: 58, halftoneAngle: 15, grain: 4, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 4, dirty: 0, compression: 0, invert: 0, posterize: 0 };
-    state.frames = [makeFrame(1,{id:'demo-face',x:380,y:210,w:220,h:238,rotation:-3,labelPrefix:'FACE'}),makeFrame(2,{id:'demo-hand',x:472,y:405,w:238,h:320,rotation:4,labelPrefix:'HAND',frameStyle:'corner',strokeOpacity:82}),makeFrame(3,{id:'demo-flower',x:485,y:450,w:108,h:90,rotation:-7,labelPrefix:'FLOWER',tagStyle:'outline',strokeStyle:'dashed',strokeOpacity:72})];
-    state.details = [
-      makeDetail(state.frames[0],0,{id:'demo-detail-face',x:24,y:260,w:225,h:252,rotation:-6,filterType:'color_halftone',halftoneSize:10,halftoneDensity:65,halftoneAngle:15,halftoneStrength:85,connectorType:'elbow'}),
-      makeDetail(state.frames[1],1,{id:'demo-detail-hand',x:655,y:745,w:220,h:285,rotation:5,filterType:'glass',glassSize:28,contrast:16,grain:8}),
-      makeDetail(state.frames[2],2,{id:'demo-detail-flower',x:36,y:830,w:196,h:188,rotation:8,filterType:'duotone',duotoneDark:'#14226d',duotoneLight:'#fba727',grain:20,connectorType:'elbow',endpointStyle:'cross'})
-    ];
-    state.texts = [{id:'demo-title',kind:'hero',content:'WILD SIGNAL',x:-34,y:45,size:90,weight:800,font:'Arial Black, Impact, sans-serif',color:'#161616',rotation:-2,opacity:100,lineHeight:.82,letterSpacing:-4,scaleX:1.35,scaleY:.76,align:'left',writingMode:'horizontal'},{id:'demo-subtitle',kind:'subtitle',content:'SPRING INDEX / 01',x:626,y:108,size:18,weight:700,font:'Arial, sans-serif',color:'#c52f39',rotation:2,opacity:100,lineHeight:1.2,letterSpacing:1.5,scaleX:1,scaleY:1,align:'left',writingMode:'horizontal'},{id:'demo-caption',kind:'caption',content:'FACE · HAND · FLOWER\nA STUDY OF SOFT GESTURES',x:485,y:1092,size:14,weight:700,font:'ui-monospace, Consolas, monospace',color:'#161616',rotation:0,opacity:100,lineHeight:1.45,letterSpacing:.4,scaleX:1,scaleY:1,align:'left',writingMode:'horizontal'},{id:'demo-micro',kind:'micro',content:'FILE 0021 / CAMERA 01 / DATA UPDATED',x:846,y:270,size:9,weight:700,font:'ui-monospace, Consolas, monospace',color:'#161616',rotation:0,opacity:88,lineHeight:1.12,letterSpacing:2.5,scaleX:1,scaleY:1,align:'left',writingMode:'vertical'},{id:'demo-repeat',kind:'repeat',content:'FIELD NOTE',x:805,y:160,size:13,weight:800,font:'Arial, sans-serif',color:'#c52f39',repeat:8,direction:'vertical',repeatSpacing:1,repeatOffsetX:-3,repeatOffsetY:0,rotationStep:.7,rotation:3,opacity:100,lineHeight:1.25,letterSpacing:1,scaleX:1,scaleY:1,align:'left',writingMode:'horizontal'}];
-    state.layers = [{type:'text',id:'demo-title'},{type:'main',id:'main-image'},{type:'connector',id:'demo-detail-face'},{type:'frame',id:'demo-face'},{type:'detail',id:'demo-detail-face'},{type:'connector',id:'demo-detail-hand'},{type:'frame',id:'demo-hand'},{type:'text',id:'demo-repeat'},{type:'detail',id:'demo-detail-hand'},{type:'connector',id:'demo-detail-flower'},{type:'frame',id:'demo-flower'},{type:'text',id:'demo-caption'},{type:'detail',id:'demo-detail-flower'},{type:'text',id:'demo-subtitle'},{type:'text',id:'demo-micro'}];
-    state.selected = null; emptyState.classList.add('is-hidden'); status.textContent = 'DEMO 01 / WILD SIGNAL';
-    state.remixInfo = {
-      anchorZh: '示范模板', anchorEn: 'Demo Template',
-      mainLayoutZh: '完整底图', mainLayoutEn: 'Full Base',
-      typographyZh: '编辑排版', typographyEn: 'Editorial Stack',
-      backgroundZh: '纯色', backgroundEn: 'Solid',
-      strengthZh: '标准 · 平衡', strengthEn: 'Standard · Balanced',
-      isManuallyEdited: false,
+  function ensureKarinaMultiAssets(callback) {
+    const urls = {
+      close: window.KARINA_CLOSE_DATA || 'assets/karina-close.jpg',
+      hands: window.KARINA_HANDS_DATA || 'assets/karina-hands.jpg',
+      crouch: window.KARINA_CROUCH_DATA || 'assets/karina-crouch.jpg',
+      sky: window.KARINA_SKY_DATA || 'assets/karina-sky.jpg'
     };
-    renderImageTray(); renderInspector(); render(); if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace); history = []; historyIndex = -1; commit(); updateRemixCard();
+    const loadedImages = {};
+    const keys = Object.keys(urls);
+    let count = 0;
+    keys.forEach(k => {
+      const assetId = 'asset-karina-' + k;
+      if (imageAssets.has(assetId) && imageAssets.get(assetId).image) {
+        loadedImages[k] = imageAssets.get(assetId).image;
+        count++;
+        if (count === keys.length) callback(loadedImages);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        imageAssets.set(assetId, { id: assetId, name: 'karina-' + k + '.jpg', image: img, src: img.src });
+        loadedImages[k] = img;
+        count++;
+        if (count === keys.length) callback(loadedImages);
+      };
+      img.onerror = () => {
+        console.warn('Failed to load asset', k);
+        count++;
+        if (count === keys.length) callback(loadedImages);
+      };
+      img.src = urls[k];
+    });
   }
+
+  function applyTemplate01(images, isReset = false, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = ''; lastRemixBackgroundStyle = '';
+    const previousPoster = motion.capture();
+
+    const imgClose = images?.close || state.image;
+    const imgHands = images?.hands || imgClose;
+    const imgCrouch = images?.crouch || imgClose;
+    const imgSky = images?.sky || imgClose;
+
+    const assetClose = { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose.src };
+    const assetHands = { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands.src };
+    const assetCrouch = { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch.src };
+    const assetSky = { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky.src };
+
+    imageAssets.set(assetClose.id, assetClose);
+    imageAssets.set(assetHands.id, assetHands);
+    imageAssets.set(assetCrouch.id, assetCrouch);
+    imageAssets.set(assetSky.id, assetSky);
+
+    state.assets = [
+      { id: assetClose.id, name: assetClose.name },
+      { id: assetHands.id, name: assetHands.name },
+      { id: assetCrouch.id, name: assetCrouch.name },
+      { id: assetSky.id, name: assetSky.name }
+    ];
+
+    state.image = imgClose;
+    state.imageName = 'karina-close.jpg';
+    state.mainImageId = assetClose.id;
+
+    // 1. 底图全屏铺满 + 赛博暗夜黑基底
+    state.background = '#060a12';
+    state.backgroundStyle = 'solid';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#ffffff';
+    state.borderWidth = 5;
+
+    state.main = {
+      id: 'main-image',
+      x: 0,
+      y: 0,
+      w: W,
+      h: H,
+      rotation: 0,
+      opacity: 100,
+      zoom: 1.05,
+      panX: 0,
+      panY: -15,
+      layoutMode: 'AESPA RICH MAN ARCHIVE'
+    };
+
+    // 经典粗颗粒黑白报纸印刷半调
+    state.filters = {
+      bw: 100,
+      brightness: 4,
+      contrast: 72,
+      saturation: 0,
+      halftone: 45,
+      halftoneSize: 11,
+      halftoneDensity: 52,
+      halftoneAngle: -15,
+      grain: 20,
+      rough: 0,
+      outline: 0,
+      scan: 0,
+      scanAngle: 0,
+      paper: 0,
+      dirty: 0,
+      compression: 0,
+      invert: 0,
+      posterize: 0
+    };
+
+    // 2. 金黄色半透明半调衬块 (Fragments)
+    const frag1 = {
+      id: makeId(),
+      fragmentType: 'color-block',
+      source: 'main',
+      x: 125, y: 118, w: 168, h: 185,
+      rotation: 0,
+      color: '#ffbe0b',
+      backingColor: 'rgba(255, 190, 11, 0.45)',
+      opacity: 95,
+      filterType: 'duotone',
+      duotoneDark: '#7a5500',
+      duotoneLight: '#ffe600',
+      contrast: 40, brightness: 25, grain: 0,
+      halftoneSize: 9, halftoneDensity: 56, halftoneAngle: 15, halftoneStrength: 82
+    };
+    const frag2 = {
+      id: makeId(),
+      fragmentType: 'color-block',
+      source: 'main',
+      x: 220, y: 585, w: 155, h: 175,
+      rotation: 0,
+      color: '#ffbe0b',
+      backingColor: 'rgba(255, 190, 11, 0.45)',
+      opacity: 95,
+      filterType: 'duotone',
+      duotoneDark: '#7a5500',
+      duotoneLight: '#ffe600',
+      contrast: 40, brightness: 25, grain: 0,
+      halftoneSize: 9, halftoneDensity: 56, halftoneAngle: 15, halftoneStrength: 82
+    };
+    const frag3 = {
+      id: makeId(),
+      fragmentType: 'color-block',
+      source: 'main',
+      x: 240, y: 820, w: 125, h: 125,
+      rotation: 0,
+      color: '#ffbe0b',
+      backingColor: 'rgba(255, 190, 11, 0.45)',
+      opacity: 95,
+      filterType: 'duotone',
+      duotoneDark: '#7a5500',
+      duotoneLight: '#ffe600',
+      contrast: 40, brightness: 25, grain: 0,
+      halftoneSize: 9, halftoneDensity: 56, halftoneAngle: 15, halftoneStrength: 82
+    };
+    state.fragments = [frag1, frag2, frag3];
+
+    // 3. 多图辅图卡片 (Secondaries)
+    state.secondaries = [
+      // 辅图 1: 左上方齐刘海皮衣拿花平视照 (karina-hands)
+      {
+        id: makeId(),
+        imageId: assetHands.id,
+        x: 28,
+        y: 165,
+        w: 160,
+        h: 215,
+        rotation: 0,
+        opacity: 100,
+        color: '#ffffff',
+        lineWidth: 2,
+        backingColor: '#ffffff',
+        filters: cleanFilters()
+      },
+      // 辅图 2: 右侧蓝光蹲姿卡片 (karina-crouch)
+      {
+        id: makeId(),
+        imageId: assetCrouch.id,
+        x: 605,
+        y: 275,
+        w: 265,
+        h: 360,
+        rotation: 0,
+        opacity: 100,
+        color: '#002FA7',
+        lineWidth: 3,
+        backingColor: '#002FA7',
+        filters: {
+          ...cleanFilters(),
+          bw: 100,
+          contrast: 45,
+          brightness: -5
+        }
+      },
+      // 辅图 3: 右下方纯蓝底仰角侧颜照 (karina-sky)
+      {
+        id: makeId(),
+        imageId: assetSky.id,
+        x: 575,
+        y: 775,
+        w: 280,
+        h: 175,
+        rotation: 0,
+        opacity: 100,
+        color: '#002FA7',
+        lineWidth: 2.5,
+        backingColor: '#002FA7',
+        filters: cleanFilters()
+      },
+      // 辅图 4: 左下方特写卡片 (karina-close)
+      {
+        id: makeId(),
+        imageId: assetClose.id,
+        x: 45,
+        y: 730,
+        w: 195,
+        h: 145,
+        rotation: 0,
+        opacity: 100,
+        color: '#002FA7',
+        lineWidth: 2.5,
+        backingColor: '#002FA7',
+        filters: cleanFilters()
+      }
+    ];
+
+    // 4. 专属核心证据采样框与彩色特写 (Eye / Teeth / Eye contact)
+    const f1 = makeFrame(1, {
+      sourceId: 'main',
+      labelPrefix: 'Eye',
+      labelNumber: '',
+      x: 235,
+      y: 155,
+      w: 100,
+      h: 70,
+      color: '#002FA7',
+      tagBackground: '#002FA7',
+      tagTextColor: '#ffffff',
+      lineWidth: 1.5,
+      strokeStyle: 'dashed',
+      frameStyle: 'full',
+      tagStyle: 'solid',
+      showLabel: false
+    });
+    const d1 = makeDetail(f1, 0, {
+      x: 105,
+      y: 245,
+      w: 250,
+      h: 140,
+      rotation: 0
+    });
+    d1.color = '#002FA7';
+    d1.lineWidth = 2;
+    d1.lineColor = '#002FA7';
+    d1.filterType = 'original';
+    d1.connectorType = 'elbow';
+    d1.connectorWidth = 1.5;
+    d1.lineOpacity = 80;
+    d1.endpointStyle = 'dot';
+    d1.showTag = true;
+    d1.tagText = 'Eye';
+    d1.tagPosition = 'bottom-left';
+    d1.tagBackground = '#002FA7';
+    d1.tagTextColor = '#ffffff';
+
+    const f2 = makeFrame(2, {
+      sourceId: 'main',
+      labelPrefix: 'Teeth',
+      labelNumber: '',
+      x: 310,
+      y: 315,
+      w: 115,
+      h: 80,
+      color: '#002FA7',
+      tagBackground: '#002FA7',
+      tagTextColor: '#ffffff',
+      lineWidth: 1.5,
+      strokeStyle: 'dashed',
+      frameStyle: 'full',
+      tagStyle: 'solid',
+      showLabel: false
+    });
+    const d2 = makeDetail(f2, 1, {
+      x: 325,
+      y: 465,
+      w: 255,
+      h: 140,
+      rotation: 0
+    });
+    d2.color = '#002FA7';
+    d2.lineWidth = 2;
+    d2.lineColor = '#002FA7';
+    d2.filterType = 'original';
+    d2.connectorType = 'elbow';
+    d2.connectorWidth = 1.5;
+    d2.lineOpacity = 80;
+    d2.endpointStyle = 'dot';
+    d2.showTag = true;
+    d2.tagText = 'Teeth';
+    d2.tagPosition = 'bottom-right';
+    d2.tagBackground = '#002FA7';
+    d2.tagTextColor = '#ffffff';
+
+    const f3 = makeFrame(3, {
+      sourceId: 'main',
+      labelPrefix: 'Eye contact',
+      labelNumber: '',
+      x: 220,
+      y: 150,
+      w: 340,
+      h: 75,
+      color: '#002FA7',
+      tagBackground: '#002FA7',
+      tagTextColor: '#ffffff',
+      lineWidth: 1.5,
+      strokeStyle: 'dashed',
+      frameStyle: 'full',
+      tagStyle: 'solid',
+      showLabel: false
+    });
+    const d3 = makeDetail(f3, 2, {
+      x: 580,
+      y: 675,
+      w: 300,
+      h: 85,
+      rotation: 0
+    });
+    d3.color = '#002FA7';
+    d3.lineWidth = 2;
+    d3.lineColor = '#002FA7';
+    d3.filterType = 'original';
+    d3.connectorType = 'elbow';
+    d3.connectorWidth = 1.5;
+    d3.lineOpacity = 80;
+    d3.endpointStyle = 'dot';
+    d3.showTag = false;
+
+    state.frames = [f1, f2, f3];
+    state.details = [d1, d2, d3];
+
+    // 5. 排版文字 (Texts)
+    state.texts = [
+      {
+        id: 't-hero-richman', kind: 'hero', content: 'RICH MAN',
+        x: 340, y: 15, size: 78, weight: 900,
+        font: 'Impact, Arial Black, sans-serif', color: '#ffbe0b',
+        strokeColor: '#000000', strokeWidth: 5,
+        rotation: 0, opacity: 100, scaleX: 1.05, letterSpacing: -1.5
+      },
+      {
+        id: 't-hero-aespa', kind: 'hero', content: 'aespa',
+        x: 620, y: 245, size: 48, weight: 900,
+        font: 'Impact, Arial Black, sans-serif', color: '#e2e8f0',
+        strokeColor: '#111111', strokeWidth: 3.5,
+        rotation: 0, opacity: 100
+      },
+      {
+        id: 't-badge', kind: 'caption', content: 'aespa\nTHE 6TH MINI ALBUM\nRICH MAN',
+        x: 82, y: 55, size: 10, weight: 800,
+        font: 'ui-monospace, Consolas, monospace', color: '#ffbe0b',
+        rotation: -5, opacity: 100, align: 'center', lineHeight: 1.25,
+        badgeShape: 'pick', badgeColor: '#002FA7', badgeWidth: 116, badgeHeight: 128
+      },
+      {
+        id: 't-stack1', kind: 'micro', content: 'Karina\nKarina\nKarina',
+        x: 30, y: 395, size: 21, weight: 700,
+        font: 'Arial, Helvetica, sans-serif', color: '#ffffff',
+        strokeColor: '#000000', strokeWidth: 3,
+        rotation: 0, opacity: 100, lineHeight: 1.05
+      },
+      {
+        id: 't-stack2', kind: 'micro', content: 'rich man\nrich man\nrich man',
+        x: 60, y: 675, size: 15, weight: 600,
+        font: 'Arial, Helvetica, sans-serif', color: '#e2e8f0',
+        strokeColor: '#000000', strokeWidth: 2,
+        rotation: 0, opacity: 90, lineHeight: 1.1
+      },
+      {
+        id: 't-stack3', kind: 'micro', content: "i'm a rich man\ni'm a rich man\ni'm a rich man",
+        x: 470, y: 360, size: 14, weight: 600,
+        font: 'ui-monospace, Consolas, monospace', color: '#111111',
+        strokeColor: '#ffffff', strokeWidth: 1.5,
+        rotation: 0, opacity: 90, lineHeight: 1.15
+      },
+      {
+        id: 't-statement1', kind: 'hero', content: "I'M ENOUGH AS I AM.",
+        x: 50, y: 735, size: 26, weight: 900,
+        font: 'Impact, Arial Black, sans-serif', color: '#002FA7',
+        strokeColor: '#ffffff', strokeWidth: 2,
+        rotation: -1, opacity: 100
+      },
+      {
+        id: 't-statement2', kind: 'hero', content: "I'M A RICH MAN",
+        x: 92, y: 770, size: 29, weight: 900,
+        font: 'Impact, Arial Black, sans-serif', color: '#002FA7',
+        strokeColor: '#ffffff', strokeWidth: 2,
+        strikeThrough: true, strikeThroughColor: '#e60033', strikeThroughWidth: 7,
+        rotation: -1, opacity: 100
+      },
+      {
+        id: 't-woman', kind: 'micro', content: 'woman',
+        x: 365, y: 810, size: 12, weight: 600,
+        font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
+        strokeColor: '#000000', strokeWidth: 2,
+        rotation: 0, opacity: 85
+      },
+      {
+        id: 't-date', kind: 'micro', content: '11.4.2000',
+        x: 720, y: 598, size: 12, weight: 700,
+        font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
+        rotation: 0, opacity: 100, backgroundColor: '#002FA7', backgroundPaddingX: 8, backgroundPaddingY: 4
+      },
+      {
+        id: 't-name', kind: 'micro', content: 'Yu\nJi-min',
+        x: 775, y: 820, size: 11, weight: 700,
+        font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
+        strokeColor: '#000000', strokeWidth: 2,
+        rotation: 0, opacity: 90, lineHeight: 1.15
+      },
+      {
+        id: 't-eye-contact', kind: 'micro', content: 'Eye\ncontact',
+        x: 505, y: 710, size: 11, weight: 700,
+        font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
+        strokeColor: '#000000', strokeWidth: 2,
+        rotation: 0, opacity: 90, lineHeight: 1.15
+      }
+    ];
+
+    // 6. 确立层级
+    const layers = (type, items) => items.map(o => ({ type, id: o.id }));
+    state.layers = [
+      { type: 'main', id: state.main.id },
+      ...layers('fragment', state.fragments),
+      ...layers('secondary', state.secondaries),
+      ...layers('connector', state.details),
+      ...layers('frame', state.frames),
+      ...layers('detail', state.details),
+      ...layers('text', state.texts)
+    ];
+
+    state.remixInfo = {
+      anchorZh: '模板 01 · Aespa 电光档案 (多图版)',
+      anchorEn: 'Template 01 · Electric Archive (Multi-Image)',
+      mainLayoutZh: '全幅黑白半调基底',
+      mainLayoutEn: 'Full Halftone Base',
+      typographyZh: '电光涂鸦与三行叠字',
+      typographyEn: 'Graffiti & Triple Stack',
+      backgroundZh: '纯黑 / 赛博暗夜',
+      backgroundEn: 'Pure Black / Cyber Noir',
+      strengthZh: '精选多图模板',
+      strengthEn: 'Curated Multi-Image Template',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    emptyState.classList.add('is-hidden');
+    status.textContent = 'TEMPLATE 01 / AESPA RICH MAN (MULTI-IMAGE)';
+    document.querySelectorAll('.poster-template-card').forEach(card => {
+      card.classList.toggle('is-active', card.dataset.posterTemplate === 'template-01-richman');
+    });
+    syncAllChildFramesOf('main');
+    (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray();
+    renderInspector();
+    render();
+    if (isReset) {
+      history = [];
+      historyIndex = -1;
+    }
+    commit();
+    updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (toastMsg) toast(toastMsg);
+  }
+
+  function applyDemo(image) {
+    ensureKarinaMultiAssets(images => {
+      applyTemplate01(images, true);
+    });
+  }
+
   function loadDemo(show = true) {
     if (show && hasSecondaryImages() && !window.confirm('恢复示范模板会替换当前海报及历史记录。确定恢复吗？')) return;
-    const image = new Image();
-    image.onload = () => { applyDemo(image); if (show) toast('示范模板已恢复。'); };
-    image.onerror = () => toast('示范图片未能载入。');
-    image.src = window.DEMO_COLLAGE_DATA || 'assets/demo-collage.jpg';
+    ensureKarinaMultiAssets(images => {
+      applyTemplate01(images, true, show ? '示范模板已恢复为 Aespa 多图精选档案。' : '');
+    });
   }
 
   function preset(name) {
@@ -2356,366 +2815,9 @@
       badge: 'Y2K 赛博档案',
       descZh: '全幅黑白粗半调底图 · 唇眼彩色特写 · 电光蓝金标题与三行叠字',
       apply() {
-        if (!state.image) return toast('请先上传主图。');
-        const previousPoster = motion.capture();
-
-        // 1. 底图全屏铺满 + 赛博暗夜黑基底
-        state.background = '#060a12';
-        state.backgroundStyle = 'solid';
-        state.border = true;
-        state.borderColor = '#ffffff';
-        state.borderWidth = 5;
-
-        state.main = {
-          id: 'main-image',
-          x: 0,
-          y: 0,
-          w: W,
-          h: H,
-          rotation: 0,
-          opacity: 100,
-          zoom: 1,
-          panX: 0,
-          panY: 0,
-          layoutMode: 'AESPA RICH MAN ARCHIVE'
-        };
-
-        // 经典粗颗粒黑白报纸印刷半调
-        state.filters = {
-          bw: 100,
-          brightness: 4,
-          contrast: 72,
-          saturation: 0,
-          halftone: 45,
-          halftoneSize: 11,
-          halftoneDensity: 52,
-          halftoneAngle: -15,
-          grain: 20,
-          rough: 0,
-          outline: 0,
-          scan: 0,
-          scanAngle: 0,
-          paper: 0,
-          dirty: 0,
-          compression: 0,
-          invert: 0,
-          posterize: 0
-        };
-
-        // 2. 金黄色半透明半调衬块 (Fragments)
-        const frag1 = {
-          id: makeId(),
-          fragmentType: 'color-block',
-          source: 'main',
-          x: 125, y: 118, w: 168, h: 185,
-          rotation: 0,
-          color: '#ffbe0b',
-          backingColor: 'rgba(255, 190, 11, 0.45)',
-          opacity: 95,
-          filterType: 'duotone',
-          duotoneDark: '#7a5500',
-          duotoneLight: '#ffe600',
-          contrast: 40, brightness: 25, grain: 0,
-          halftoneSize: 9, halftoneDensity: 56, halftoneAngle: 15, halftoneStrength: 82
-        };
-        const frag2 = {
-          id: makeId(),
-          fragmentType: 'color-block',
-          source: 'main',
-          x: 220, y: 585, w: 155, h: 175,
-          rotation: 0,
-          color: '#ffbe0b',
-          backingColor: 'rgba(255, 190, 11, 0.45)',
-          opacity: 95,
-          filterType: 'duotone',
-          duotoneDark: '#7a5500',
-          duotoneLight: '#ffe600',
-          contrast: 40, brightness: 25, grain: 0,
-          halftoneSize: 9, halftoneDensity: 56, halftoneAngle: 15, halftoneStrength: 82
-        };
-        const frag3 = {
-          id: makeId(),
-          fragmentType: 'color-block',
-          source: 'main',
-          x: 240, y: 820, w: 125, h: 125,
-          rotation: 0,
-          color: '#ffbe0b',
-          backingColor: 'rgba(255, 190, 11, 0.45)',
-          opacity: 95,
-          filterType: 'duotone',
-          duotoneDark: '#7a5500',
-          duotoneLight: '#ffe600',
-          contrast: 40, brightness: 25, grain: 0,
-          halftoneSize: 9, halftoneDensity: 56, halftoneAngle: 15, halftoneStrength: 82
-        };
-        state.fragments = [frag1, frag2, frag3];
-
-        // 3. 三个专属核心证据框与彩色特写 (Eye / Teeth / Eye contact)
-        // Frame 1: 左上眼眸采样框
-        const f1 = makeFrame(1, {
-          sourceId: 'main',
-          labelPrefix: 'Eye',
-          labelNumber: '',
-          x: 400,
-          y: 280,
-          w: 95,
-          h: 75,
-          color: '#002FA7',
-          tagBackground: '#002FA7',
-          tagTextColor: '#ffffff',
-          lineWidth: 1.5,
-          strokeStyle: 'dashed',
-          frameStyle: 'full',
-          tagStyle: 'solid',
-          showLabel: false
+        ensureKarinaMultiAssets(images => {
+          applyTemplate01(images, false, '已应用：模板 01 · Aespa 多图电光档案 (Rich Man)');
         });
-        const d1 = makeDetail(f1, 0, {
-          x: 95,
-          y: 240,
-          w: 200,
-          h: 145,
-          rotation: 0
-        });
-        d1.color = '#002FA7';
-        d1.lineWidth = 2;
-        d1.lineColor = '#002FA7';
-        d1.filterType = 'original'; // 原汁原味高清彩色瞳孔与眼妆
-        d1.connectorType = 'elbow';
-        d1.connectorWidth = 1.5;
-        d1.lineOpacity = 80;
-        d1.endpointStyle = 'dot';
-        d1.showTag = true;
-        d1.tagText = 'Eye';
-        d1.tagPosition = 'bottom-left';
-        d1.tagBackground = '#002FA7';
-        d1.tagTextColor = '#ffffff';
-
-        // Frame 2: 中心微张唇齿采样框
-        const f2 = makeFrame(2, {
-          sourceId: 'main',
-          labelPrefix: 'Teeth',
-          labelNumber: '',
-          x: 425,
-          y: 420,
-          w: 120,
-          h: 80,
-          color: '#002FA7',
-          tagBackground: '#002FA7',
-          tagTextColor: '#ffffff',
-          lineWidth: 1.5,
-          strokeStyle: 'dashed',
-          frameStyle: 'full',
-          tagStyle: 'solid',
-          showLabel: false
-        });
-        const d2 = makeDetail(f2, 1, {
-          x: 360,
-          y: 480,
-          w: 235,
-          h: 145,
-          rotation: 0
-        });
-        d2.color = '#002FA7';
-        d2.lineWidth = 2;
-        d2.lineColor = '#002FA7';
-        d2.filterType = 'original'; // 原图彩色唇齿
-        d2.connectorType = 'elbow';
-        d2.connectorWidth = 1.5;
-        d2.lineOpacity = 80;
-        d2.endpointStyle = 'dot';
-        d2.showTag = true;
-        d2.tagText = 'Teeth';
-        d2.tagPosition = 'bottom-right';
-        d2.tagBackground = '#002FA7';
-        d2.tagTextColor = '#ffffff';
-
-        // Frame 3: 双眼全景电影宽条带采样框 (Eye contact)
-        const f3 = makeFrame(3, {
-          sourceId: 'main',
-          labelPrefix: 'Eye contact',
-          labelNumber: '',
-          x: 385,
-          y: 280,
-          w: 230,
-          h: 80,
-          color: '#002FA7',
-          tagBackground: '#002FA7',
-          tagTextColor: '#ffffff',
-          lineWidth: 1.5,
-          strokeStyle: 'dashed',
-          frameStyle: 'full',
-          tagStyle: 'solid',
-          showLabel: false
-        });
-        const d3 = makeDetail(f3, 2, {
-          x: 555,
-          y: 675,
-          w: 310,
-          h: 95,
-          rotation: 0
-        });
-        d3.color = '#002FA7';
-        d3.lineWidth = 2;
-        d3.lineColor = '#ffffff';
-        d3.filterType = 'original'; // 原图彩色横幅双眼
-        d3.connectorType = 'straight';
-        d3.connectorWidth = 1.5;
-        d3.lineOpacity = 90;
-        d3.endpointStyle = 'dot';
-        d3.showTag = false;
-
-        state.frames = [f1, f2, f3];
-        state.details = [d1, d2, d3];
-
-        // 4. 辅图卡片排布 (若有多图)
-        if (state.secondaries && state.secondaries.length > 0) {
-          const secSlots = [
-            { x: 30, y: 165, w: 160, h: 120, rot: 0, appearance: 'original', lineWidth: 2, color: '#002FA7' },
-            { x: 670, y: 260, w: 220, h: 370, rot: 0, appearance: 'original' },
-            { x: 42, y: 730, w: 210, h: 145, rot: 0, appearance: 'original', lineWidth: 2, color: '#ffffff' },
-            { x: 238, y: 825, w: 250, h: 145, rot: 0, appearance: 'original' },
-            { x: 635, y: 775, w: 250, h: 170, rot: 0, appearance: 'original', backingColor: '#002FA7' }
-          ];
-          state.secondaries.forEach((sec, i) => {
-            const slot = secSlots[i % secSlots.length];
-            sec.x = slot.x; sec.y = slot.y; sec.w = slot.w; sec.h = slot.h;
-            sec.rotation = slot.rot;
-            sec.appearance = slot.appearance;
-            if (slot.lineWidth) sec.lineWidth = slot.lineWidth;
-            if (slot.color) sec.color = slot.color;
-            if (slot.backingColor) sec.backingColor = slot.backingColor;
-            if (i === 1) {
-              if (!sec.filters) sec.filters = cleanFilters();
-              sec.filters.contrast = 45;
-              sec.filters.grain = 15;
-            }
-          });
-        }
-
-        // 5. 经典排版文字与标语系统
-        state.texts = [
-          {
-            id: 't-hero', kind: 'hero', content: 'RICH MAN',
-            x: 350, y: 35, size: 115, weight: 900,
-            font: 'Impact, Arial Black, sans-serif', color: '#ffbe0b',
-            strokeColor: '#000000', strokeWidth: 8,
-            rotation: -6, opacity: 100, letterSpacing: -2, scaleX: 1.08, scaleY: 0.92
-          },
-          {
-            id: 't-subtitle', kind: 'subtitle', content: 'aespa',
-            x: 655, y: 175, size: 48, weight: 900,
-            font: 'Impact, Arial Black, sans-serif', color: '#ffffff',
-            strokeColor: '#111111', strokeWidth: 5,
-            rotation: -4, opacity: 98, letterSpacing: 2
-          },
-          {
-            id: 't-badge', kind: 'caption', content: 'aespa\nTHE 6TH MINI ALBUM\nRICH MAN',
-            x: 82, y: 55, size: 10, weight: 800,
-            font: 'ui-monospace, Consolas, monospace', color: '#ffbe0b',
-            rotation: -5, opacity: 100, align: 'center', lineHeight: 1.25,
-            badgeShape: 'pick', badgeColor: '#002FA7', badgeWidth: 116, badgeHeight: 128
-          },
-          {
-            id: 't-stack1', kind: 'micro', content: 'Karina\nKarina\nKarina',
-            x: 30, y: 395, size: 21, weight: 700,
-            font: 'Arial, Helvetica, sans-serif', color: '#ffffff',
-            strokeColor: '#000000', strokeWidth: 3,
-            rotation: 0, opacity: 100, lineHeight: 1.05
-          },
-          {
-            id: 't-stack2', kind: 'micro', content: 'rich man\nrich man\nrich man',
-            x: 60, y: 675, size: 15, weight: 600,
-            font: 'Arial, Helvetica, sans-serif', color: '#e2e8f0',
-            strokeColor: '#000000', strokeWidth: 2,
-            rotation: 0, opacity: 90, lineHeight: 1.1
-          },
-          {
-            id: 't-stack3', kind: 'micro', content: "i'm a rich man\ni'm a rich man\ni'm a rich man",
-            x: 470, y: 360, size: 14, weight: 600,
-            font: 'ui-monospace, Consolas, monospace', color: '#111111',
-            strokeColor: '#ffffff', strokeWidth: 1.5,
-            rotation: 0, opacity: 90, lineHeight: 1.15
-          },
-          {
-            id: 't-statement1', kind: 'hero', content: "I'M ENOUGH AS I AM.",
-            x: 50, y: 735, size: 26, weight: 900,
-            font: 'Impact, Arial Black, sans-serif', color: '#002FA7',
-            strokeColor: '#ffffff', strokeWidth: 2,
-            rotation: -1, opacity: 100
-          },
-          {
-            id: 't-statement2', kind: 'hero', content: "I'M A RICH MAN",
-            x: 92, y: 770, size: 29, weight: 900,
-            font: 'Impact, Arial Black, sans-serif', color: '#002FA7',
-            strokeColor: '#ffffff', strokeWidth: 2,
-            strikeThrough: true, strikeThroughColor: '#e60033', strikeThroughWidth: 7,
-            rotation: -1, opacity: 100
-          },
-          {
-            id: 't-woman', kind: 'micro', content: 'woman',
-            x: 365, y: 810, size: 12, weight: 600,
-            font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
-            strokeColor: '#000000', strokeWidth: 2,
-            rotation: 0, opacity: 85
-          },
-          {
-            id: 't-date', kind: 'micro', content: '11.4.2000',
-            x: 720, y: 598, size: 12, weight: 700,
-            font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
-            rotation: 0, opacity: 100, backgroundColor: '#002FA7', backgroundPaddingX: 8, backgroundPaddingY: 4
-          },
-          {
-            id: 't-name', kind: 'micro', content: 'Yu\nJi-min',
-            x: 775, y: 820, size: 11, weight: 700,
-            font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
-            strokeColor: '#000000', strokeWidth: 2,
-            rotation: 0, opacity: 90, lineHeight: 1.15
-          },
-          {
-            id: 't-eye-contact', kind: 'micro', content: 'Eye\ncontact',
-            x: 505, y: 710, size: 11, weight: 700,
-            font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
-            strokeColor: '#000000', strokeWidth: 2,
-            rotation: 0, opacity: 90, lineHeight: 1.15
-          }
-        ];
-
-        // 6. 确立层级
-        const layers = (type, items) => items.map(o => ({ type, id: o.id }));
-        state.layers = [
-          { type: 'main', id: state.main.id },
-          ...layers('fragment', state.fragments),
-          ...layers('secondary', state.secondaries),
-          ...layers('connector', state.details),
-          ...layers('frame', state.frames),
-          ...layers('detail', state.details),
-          ...layers('text', state.texts)
-        ];
-
-        state.remixInfo = {
-          anchorZh: '模板 01 · Aespa 电光档案',
-          anchorEn: 'Template 01 · Electric Archive',
-          mainLayoutZh: '全幅黑白半调',
-          mainLayoutEn: 'Full Halftone Base',
-          typographyZh: '电光涂鸦与三行叠字',
-          typographyEn: 'Graffiti & Triple Stack',
-          backgroundZh: '纯黑 / 赛博暗夜',
-          backgroundEn: 'Pure Black / Cyber Noir',
-          strengthZh: '高精复刻模板',
-          strengthEn: 'Curated Template',
-          isManuallyEdited: false
-        };
-
-        state.selected = null;
-        syncAllChildFramesOf('main');
-        (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-        renderImageTray();
-        renderInspector();
-        render();
-        commit();
-        updateRemixCard();
-        motion.play(previousPoster);
-        toast('已应用：模板 01 · Aespa 电光档案 (Rich Man)');
       }
     }
   ];
