@@ -20,8 +20,17 @@
       tab.setAttribute('aria-pressed', String(active));
     });
     window.dispatchEvent(new CustomEvent('visual-lab-mode-change', { detail: { mode } }));
+    try {
+      localStorage.setItem('visual-lab-mode', mode);
+      if (history.replaceState) {
+        history.replaceState(null, '', mode === 'poster' ? '#poster' : '#filter');
+      }
+    } catch (_) {}
   }
 
   tabs.forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.mode)));
-  setMode('filter');
+  const savedMode = (window.location.hash === '#poster' || window.location.hash === '#filter')
+    ? window.location.hash.slice(1)
+    : (localStorage.getItem('visual-lab-mode') || 'poster');
+  setMode(savedMode === 'filter' ? 'filter' : 'poster');
 })();
