@@ -1930,29 +1930,19 @@
       const filterRemixBanner = `<div class="poster-inspector-remix-banner" style="margin-bottom:12px;">
         <button class="poster-filter-remix-button" type="button" data-poster-action="filter-remix" style="width:100%;padding:10px 14px;background:#002FA7;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(0,47,167,0.25);transition:all 0.15s ease;">
           <span>滤镜 REMIX ↻</span>
-          <small style="opacity:0.85;font-weight:400;font-size:11px;">随机配色 · 纸张底纸 · 印刷质感</small>
+          <small style="opacity:0.85;font-weight:400;font-size:11px;">循环切换 6 组精选滤镜调色</small>
         </button>
       </div>`;
 
-      const isFilter01Active = state.backgroundStyle === 'electric-tiger';
-      const presetsContent = `<div class="poster-template-grid" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-        <button type="button" class="poster-template-card poster-filter-template-card ${isFilter01Active ? 'is-active' : ''}" data-poster-filter-template="template-01-electric">
-          <div class="poster-template-card-header">
-            <span class="poster-template-badge" style="background:#001fd4;color:#ffbe0b;border-color:#ffbe0b;">滤镜模板 01</span>
-            <span class="poster-template-tag" style="color:#001fd4;font-weight:700;">Aespa 虎纹调色</span>
-          </div>
-          <div class="poster-template-title" style="color:#001fd4;">滤镜模板一 · Aespa 电光虎纹</div>
-          <p class="poster-template-desc">电光蓝黑虎纹底纸 · 细白描边 · 杂志原色微网点 · 蓝光黑白高反差副图</p>
-        </button>
-      </div>
-      <div class="poster-presets">
+      const presetsContent = `<div class="poster-presets">
+        <button type="button" data-poster-preset="electric">TIGER<br /><b>AESPA</b></button>
         <button type="button" data-poster-preset="red">CCTV<br /><b>RED</b></button>
         <button type="button" data-poster-preset="blue">CCTV<br /><b>BLUE</b></button>
         <button type="button" data-poster-preset="editorial">HALFTONE<br /><b>EDITORIAL</b></button>
-        <button type="button" data-poster-preset="y2k">SOFT<br /><b>Y2K</b></button>
+        <button type="button" data-poster-preset="chrome">LIQUID<br /><b>CHROME</b></button>
         <button class="poster-preset-xerox" type="button" data-poster-preset="xerox">XEROX<br /><b>/ PUNK</b></button>
       </div>`;
-      const presetsAccordion = accordion('精选滤镜模板', 'FILTER TEMPLATES', presetsContent, true);
+      const presetsAccordion = accordion('风格预设', 'STYLE PRESETS', presetsContent, true);
 
       const hasBgImage = !!state.backgroundImageId;
       const isPattern = state.backgroundStyle && state.backgroundStyle !== 'solid';
@@ -2194,134 +2184,255 @@
     return hasUserAsset || hasUserMain;
   }
 
+  // ==========================================
+  // 6 组精选滤镜模板 (FILTER TEMPLATES 01 - 06)
+  // 纯视觉调色、底纸材质与印刷质感，不改动任何空间几何坐标
+  // ==========================================
+
+  // ==========================================
+  // 6 组精选滤镜模板 (FILTER TEMPLATES 01 - 06)
+  // 纯视觉调色、底纸材质与印刷质感，不改动任何空间几何坐标
+  // ==========================================
+
+  // ==========================================
+  // 6 组精选滤镜模板 (FILTER TEMPLATES 01 - 06)
+  // 纯视觉调色、底纸材质与印刷质感，不改动任何空间几何坐标
+  // ==========================================
+
   function applyFilterTemplate01(showToast = true, toastMsg = '') {
     const previousPoster = motion.capture();
-
-    // 1. 底图与外框
     state.background = '#001fd4';
     state.backgroundStyle = 'electric-tiger';
     state.backgroundImageId = null;
     state.border = true;
     state.borderColor = '#ffffff';
     state.borderWidth = 4;
-
-    // 2. 主图滤镜：保留原色与毛衣编织细节，辅以轻量杂志印刷网点
     state.filters = {
-      bw: 0,
-      brightness: 4,
-      contrast: 18,
-      saturation: 110,
-      halftone: 20,
-      halftoneSize: 5,
-      halftoneDensity: 65,
-      halftoneAngle: 15,
-      grain: 12,
-      rough: 0,
-      outline: 0,
-      scan: 0,
-      scanAngle: 0,
-      paper: 0,
-      dirty: 0,
-      compression: 0,
-      invert: 0,
-      posterize: 0
+      bw: 0, brightness: 4, contrast: 18, saturation: 110,
+      halftone: 20, halftoneSize: 5, halftoneDensity: 65, halftoneAngle: 15,
+      grain: 12, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
+      compression: 0, invert: 0, posterize: 0
     };
-
-    // 3. 辅图卡片滤镜与边框风格
     (state.secondaries || []).forEach((sec, idx) => {
       if (idx === 1) {
-        // 卡片 2：右侧经典蓝光黑白高反差
-        sec.color = '#002FA7';
-        sec.lineWidth = 3;
-        sec.backingColor = '#002FA7';
-        sec.filters = {
-          ...cleanFilters(),
-          bw: 100,
-          contrast: 45,
-          brightness: -5
-        };
+        sec.color = '#002FA7'; sec.lineWidth = 3; sec.backingColor = '#002FA7';
+        sec.filters = { ...cleanFilters(), bw: 100, contrast: 45, brightness: -5 };
       } else if (idx === 0) {
-        // 卡片 1：白边原色
-        sec.color = '#ffffff';
-        sec.lineWidth = 2;
-        sec.backingColor = '#ffffff';
+        sec.color = '#ffffff'; sec.lineWidth = 2; sec.backingColor = '#ffffff';
         sec.filters = cleanFilters();
       } else {
-        // 卡片 3, 4：克莱因蓝细边原色
-        sec.color = '#002FA7';
-        sec.lineWidth = 2.5;
-        sec.backingColor = '#002FA7';
+        sec.color = '#002FA7'; sec.lineWidth = 2.5; sec.backingColor = '#002FA7';
         sec.filters = cleanFilters();
       }
     });
-
-    // 4. 金黄色半透明半调衬块 (Fragments)
-    (state.fragments || []).forEach((frag) => {
-      frag.color = '#ffbe0b';
-      frag.backingColor = 'rgba(255, 190, 11, 0.45)';
-      frag.opacity = 95;
-      frag.filterType = 'duotone';
-      frag.duotoneDark = '#7a5500';
-      frag.duotoneLight = '#ffe600';
-      frag.contrast = 40;
-      frag.brightness = 25;
-      frag.grain = 0;
-      frag.halftoneSize = 9;
-      frag.halftoneDensity = 56;
-      frag.halftoneAngle = 15;
-      frag.halftoneStrength = 82;
+    (state.fragments || []).forEach(frag => {
+      frag.color = '#ffbe0b'; frag.backingColor = 'rgba(255, 190, 11, 0.45)'; frag.opacity = 95;
+      frag.filterType = 'duotone'; frag.duotoneDark = '#7a5500'; frag.duotoneLight = '#ffe600';
+      frag.contrast = 40; frag.brightness = 25; frag.grain = 0;
+      frag.halftoneSize = 9; frag.halftoneDensity = 56; frag.halftoneAngle = 15; frag.halftoneStrength = 82;
     });
-
-    // 5. 证据框与局部特写色彩
-    (state.frames || []).forEach((f) => {
-      f.color = '#002FA7';
-      f.tagBackground = '#002FA7';
-      f.tagTextColor = '#ffffff';
-    });
-    (state.details || []).forEach((d) => {
-      d.color = '#002FA7';
-      d.lineColor = '#002FA7';
-      d.filterType = 'original';
-    });
-
-    // 6. 排版文字色彩
-    (state.texts || []).forEach((t) => {
+    (state.frames || []).forEach(f => { f.color = '#002FA7'; f.tagBackground = '#002FA7'; f.tagTextColor = '#ffffff'; });
+    (state.details || []).forEach(d => { d.color = '#002FA7'; d.lineColor = '#002FA7'; d.filterType = 'original'; });
+    (state.texts || []).forEach(t => {
       if (t.id === 't-hero-richman' || (t.kind === 'hero' && t.content?.includes('RICH'))) {
-        t.color = '#ffbe0b';
-        t.strokeColor = '#000000';
+        t.color = '#ffbe0b'; t.strokeColor = '#000000';
       } else if (t.id === 't-hero-aespa' || (t.kind === 'hero' && t.content?.includes('aespa'))) {
-        t.color = '#e2e8f0';
-        t.strokeColor = '#111111';
+        t.color = '#e2e8f0'; t.strokeColor = '#111111';
       } else if (t.id === 't-badge') {
-        t.color = '#ffbe0b';
-        t.badgeColor = '#002FA7';
+        t.color = '#ffbe0b'; t.badgeColor = '#002FA7';
       }
     });
-
-    document.querySelectorAll('.poster-filter-template-card').forEach(card => {
-      card.classList.toggle('is-active', card.dataset.posterFilterTemplate === 'template-01-electric');
-    });
-    document.querySelectorAll('[data-poster-preset]').forEach(card => {
-      card.classList.remove('is-active');
-    });
-
-    render();
-    renderInspector();
-    commit();
-    markManuallyEdited();
-    motion.play(previousPoster);
-    if (showToast) {
-      toast(toastMsg || '🎨 已应用：滤镜模板 01 · Aespa 电光虎纹与胶印色彩');
-    }
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'electric'));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [1/6] (滤镜模板 01)：Aespa 电光虎纹与胶印色彩');
   }
 
-  function applyLayoutTemplate01(images, isReset = false, showToast = true, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
+  function applyFilterTemplate02(showToast = true, toastMsg = '') {
     const previousPoster = motion.capture();
+    state.background = '#d8d6d0';
+    state.backgroundStyle = 'scan';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#ffffff';
+    state.borderWidth = 7;
+    state.filters = {
+      bw: 0, brightness: -2, contrast: 32, saturation: 110,
+      halftone: 0, halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15,
+      grain: 14, rough: 0, outline: 0, scan: 20, scanAngle: 0, paper: 16, dirty: 10,
+      compression: 0, invert: 0, posterize: 0
+    };
+    (state.secondaries || []).forEach((sec) => {
+      sec.color = '#ffffff'; sec.lineWidth = 2; sec.backingColor = '#ffffff';
+      sec.filters = cleanFilters();
+    });
+    (state.fragments || []).forEach(frag => {
+      frag.color = '#c32631'; frag.backingColor = 'rgba(195,38,49,0.3)'; frag.opacity = 90;
+      frag.filterType = 'duotone'; frag.duotoneDark = '#1a1020'; frag.duotoneLight = '#fca311';
+      frag.contrast = 35; frag.brightness = 15; frag.grain = 10;
+    });
+    (state.frames || []).forEach(f => { f.color = '#c32631'; f.tagBackground = '#c32631'; f.tagTextColor = '#ffffff'; });
+    (state.details || []).forEach(d => { d.color = '#c32631'; d.lineColor = '#c32631'; d.filterType = 'color_halftone'; });
+    (state.texts || []).forEach(t => {
+      if (t.kind === 'hero' || t.kind === 'repeat') t.color = '#c32631';
+      else t.color = '#111111';
+    });
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'red'));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [2/6]：CCTV 绯红胶印报刊');
+  }
 
+  function applyFilterTemplate03(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+    state.background = '#dbe3e9';
+    state.backgroundStyle = 'grid';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#171717';
+    state.borderWidth = 6;
+    state.filters = {
+      bw: 0, brightness: 2, contrast: 25, saturation: 105,
+      halftone: 0, halftoneSize: 7, halftoneDensity: 62, halftoneAngle: -15,
+      grain: 10, rough: 0, outline: 0, scan: 12, scanAngle: 90, paper: 8, dirty: 0,
+      compression: 0, invert: 0, posterize: 0
+    };
+    (state.secondaries || []).forEach((sec) => {
+      sec.color = '#171717'; sec.lineWidth = 2.5; sec.backingColor = '#dbe3e9';
+      sec.filters = cleanFilters();
+    });
+    (state.fragments || []).forEach(frag => {
+      frag.color = '#1f54bd'; frag.backingColor = 'rgba(31,84,189,0.3)'; frag.opacity = 90;
+      frag.filterType = 'duotone'; frag.duotoneDark = '#0a1931'; frag.duotoneLight = '#93c5fd';
+      frag.contrast = 25; frag.brightness = 10;
+    });
+    (state.frames || []).forEach(f => { f.color = '#1f54bd'; f.tagBackground = '#1f54bd'; f.tagTextColor = '#ffffff'; });
+    (state.details || []).forEach(d => { d.color = '#1f54bd'; d.lineColor = '#1f54bd'; d.filterType = 'gradient_map'; });
+    (state.texts || []).forEach(t => {
+      if (t.kind === 'hero' || t.kind === 'repeat') t.color = '#1f54bd';
+      else t.color = '#0a1931';
+    });
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'blue'));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [3/6]：CCTV 蔚蓝坐标网格');
+  }
+
+  function applyFilterTemplate04(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+    state.background = '#e4dfd3';
+    state.backgroundStyle = 'scan';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#ffffff';
+    state.borderWidth = 8;
+    state.filters = {
+      bw: 0, brightness: 2, contrast: 28, saturation: 95,
+      halftone: 26, halftoneSize: 10, halftoneDensity: 62, halftoneAngle: 22,
+      grain: 16, rough: 0, outline: 0, scan: 8, scanAngle: 0, paper: 24, dirty: 6,
+      compression: 0, invert: 0, posterize: 0
+    };
+    (state.secondaries || []).forEach((sec) => {
+      sec.color = '#2355b7'; sec.lineWidth = 2; sec.backingColor = '#ffffff';
+      sec.filters = cleanFilters();
+    });
+    (state.fragments || []).forEach(frag => {
+      frag.color = '#2355b7'; frag.backingColor = 'rgba(35,85,183,0.3)'; frag.opacity = 90;
+      frag.filterType = 'duotone'; frag.duotoneDark = '#1e3a8a'; frag.duotoneLight = '#fed7aa';
+      frag.contrast = 30; frag.brightness = 15;
+    });
+    (state.frames || []).forEach(f => { f.color = '#2355b7'; f.tagBackground = '#2355b7'; f.tagTextColor = '#ffffff'; });
+    (state.details || []).forEach(d => { d.color = '#2355b7'; d.lineColor = '#2355b7'; d.filterType = 'circle_halftone'; });
+    (state.texts || []).forEach(t => {
+      if (t.kind === 'hero') t.color = '#181818';
+      else if (t.kind === 'repeat' || t.kind === 'subtitle') t.color = '#2355b7';
+      else t.color = '#222222';
+    });
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'editorial'));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [4/6]：半调杂志复古编辑');
+  }
+
+  function applyFilterTemplate05(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+    state.background = '#0b1220';
+    state.backgroundStyle = 'liquid-chrome';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#ffffff';
+    state.borderWidth = 4;
+    state.filters = {
+      bw: 0, brightness: 4, contrast: 30, saturation: 120,
+      halftone: 0, halftoneSize: 6, halftoneDensity: 60, halftoneAngle: 0,
+      grain: 10, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
+      compression: 0, invert: 0, posterize: 0
+    };
+    (state.secondaries || []).forEach((sec) => {
+      sec.color = '#00f0ff'; sec.lineWidth = 2.5; sec.backingColor = '#0b1220';
+      sec.filters = cleanFilters();
+    });
+    (state.fragments || []).forEach(frag => {
+      frag.color = '#00f0ff'; frag.backingColor = 'rgba(0,240,255,0.25)'; frag.opacity = 90;
+      frag.filterType = 'duotone'; frag.duotoneDark = '#021b2b'; frag.duotoneLight = '#00f0ff';
+      frag.contrast = 35; frag.brightness = 20;
+    });
+    (state.frames || []).forEach(f => { f.color = '#00f0ff'; f.tagBackground = '#00f0ff'; f.tagTextColor = '#0b1220'; });
+    (state.details || []).forEach(d => { d.color = '#00f0ff'; d.lineColor = '#00f0ff'; d.filterType = 'original'; });
+    (state.texts || []).forEach(t => {
+      if (['#111111', '#151515', '#161616', '#171717', '#000000', '#181818', '#222222'].includes(t.color)) {
+        t.color = '#ffffff';
+      }
+      if (t.kind === 'hero') t.color = '#ffffff';
+      else if (t.kind === 'repeat' || t.kind === 'subtitle') t.color = '#00f0ff';
+    });
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'chrome'));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [5/6]：酸性全息流体水银');
+  }
+
+  function applyFilterTemplate06(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+    state.background = '#d8d5cc';
+    state.backgroundStyle = 'solid';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#111111';
+    state.borderWidth = 10;
+    state.filters = {
+      bw: 100, brightness: 2, contrast: 95, saturation: 0,
+      halftone: 80, halftoneSize: 15, halftoneDensity: 48, halftoneAngle: -18,
+      grain: 65, rough: 50, outline: 0, scan: 55, scanAngle: 0, paper: 65, dirty: 70,
+      compression: 25, invert: 0, posterize: 45
+    };
+    (state.secondaries || []).forEach((sec) => {
+      sec.color = '#111111'; sec.lineWidth = 3; sec.backingColor = '#d8d5cc';
+      sec.filters = { ...cleanFilters(), bw: 100, contrast: 90 };
+    });
+    (state.fragments || []).forEach(frag => {
+      frag.color = '#111111'; frag.backingColor = 'rgba(17,17,17,0.3)'; frag.opacity = 95;
+      frag.filterType = 'dither'; frag.contrast = 80; frag.brightness = 0;
+    });
+    (state.frames || []).forEach(f => { f.color = '#111111'; f.tagBackground = '#111111'; f.tagTextColor = '#ffffff'; });
+    (state.details || []).forEach(d => { d.color = '#111111'; d.lineColor = '#111111'; d.filterType = 'threshold'; });
+    (state.texts || []).forEach(t => {
+      t.color = '#111111'; t.strokeColor = '#ffffff';
+    });
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'xerox'));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [6/6]：XEROX 街头重墨复印');
+  }
+
+  const filterRemixList = [
+    { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 },
+    { id: 'filter-02', nameZh: 'CCTV 绯红胶印报刊', apply: applyFilterTemplate02 },
+    { id: 'filter-03', nameZh: 'CCTV 蔚蓝坐标网格', apply: applyFilterTemplate03 },
+    { id: 'filter-04', nameZh: '半调杂志复古编辑', apply: applyFilterTemplate04 },
+    { id: 'filter-05', nameZh: '酸性全息流体水银', apply: applyFilterTemplate05 },
+    { id: 'filter-06', nameZh: 'XEROX 街头重墨复印', apply: applyFilterTemplate06 }
+  ];
+
+  // ==========================================
+  // 通用用户图片/示范素材卡片槽位分配器
+  // ==========================================
+  function resolveSlotAssetIds(images, isReset) {
     const isUserMode = !isReset && hasUserUploadedImages();
-
-    let assetClose, assetHands, assetCrouch, assetSky;
     let slot0Id, slot1Id, slot2Id, slot3Id;
 
     if (isUserMode) {
@@ -2330,7 +2441,6 @@
       const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-');
       const isDemoId = (id) => !id || demoIds.has(id);
 
-      // Collect all user assets that have valid images
       let userAssets = (state.assets || []).filter(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
 
       if (state.image && !isDemoId(state.mainImageId) && !isDemoName(state.imageName)) {
@@ -2379,15 +2489,14 @@
       const imgCrouch = images?.crouch || imgClose;
       const imgSky = images?.sky || imgClose;
 
-      assetClose = { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose?.src || '' };
-      assetHands = { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands?.src || '' };
-      assetCrouch = { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch?.src || '' };
-      assetSky = { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky?.src || '' };
+      const assetClose = { id: 'asset-karina-close', name: 'karina-close.jpg', image: imgClose, src: imgClose?.src || '' };
+      const assetHands = { id: 'asset-karina-hands', name: 'karina-hands.jpg', image: imgHands, src: imgHands?.src || '' };
+      const assetCrouch = { id: 'asset-karina-crouch', name: 'karina-crouch.jpg', image: imgCrouch, src: imgCrouch?.src || '' };
+      const assetSky = { id: 'asset-karina-sky', name: 'karina-sky.jpg', image: imgSky, src: imgSky?.src || '' };
 
-      imageAssets.set(assetClose.id, assetClose);
-      imageAssets.set(assetHands.id, assetHands);
-      imageAssets.set(assetCrouch.id, assetCrouch);
-      imageAssets.set(assetSky.id, assetSky);
+      [assetClose, assetHands, assetCrouch, assetSky].forEach(a => {
+        imageAssets.set(a.id, a);
+      });
 
       state.assets = [
         { id: assetClose.id, name: assetClose.name },
@@ -2405,6 +2514,20 @@
       slot2Id = assetSky.id;
       slot3Id = assetClose.id;
     }
+
+    return { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id };
+  }
+
+  // ==========================================
+  // 6 组精选排版模板 (LAYOUT TEMPLATES 01 - 06)
+  // 纯空间几何构图，不覆盖用户已选定的滤镜或背景调色
+  // ==========================================
+
+  function applyLayoutTemplate01(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
+    const previousPoster = motion.capture();
+
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
 
     // 默认确保有背景纸张与外框
     if (!state.backgroundStyle || state.backgroundStyle === 'solid') {
@@ -2532,9 +2655,9 @@
       {
         id: makeId(),
         imageId: slot3Id,
-        x: 45,
-        y: 745,
-        w: 195,
+        x: 440,
+        y: 855,
+        w: 185,
         h: 145,
         rotation: 0,
         opacity: 100,
@@ -2618,7 +2741,7 @@
     d2.endpointStyle = 'dot';
     d2.showTag = true;
     d2.tagText = 'Teeth';
-    d2.tagPosition = 'bottom-right';
+    d2.tagPosition = 'bottom-left';
     d2.tagBackground = '#002FA7';
     d2.tagTextColor = '#ffffff';
 
@@ -2626,10 +2749,10 @@
       sourceId: 'main',
       labelPrefix: 'Eye contact',
       labelNumber: '',
-      x: 220,
-      y: 185,
-      w: 505,
-      h: 150,
+      x: 320,
+      y: 470,
+      w: 250,
+      h: 90,
       color: '#002FA7',
       tagBackground: '#002FA7',
       tagTextColor: '#ffffff',
@@ -2640,10 +2763,10 @@
       showLabel: false
     });
     const d3 = makeDetail(f3, 2, {
-      x: 520,
-      y: 585,
-      w: 285,
-      h: 85,
+      x: 388,
+      y: 442,
+      w: 240,
+      h: 110,
       rotation: 0
     });
     d3.color = '#002FA7';
@@ -2654,7 +2777,11 @@
     d3.connectorWidth = 1.5;
     d3.lineOpacity = 80;
     d3.endpointStyle = 'dot';
-    d3.showTag = false;
+    d3.showTag = true;
+    d3.tagText = 'Eye contact';
+    d3.tagPosition = 'bottom-left';
+    d3.tagBackground = '#002FA7';
+    d3.tagTextColor = '#ffffff';
 
     state.frames = [f1, f2, f3];
     state.details = [d1, d2, d3];
@@ -2736,32 +2863,41 @@
         x: 775, y: 830, size: 11, weight: 700,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 2,
-        rotation: 0, opacity: 90, lineHeight: 1.15
+        rotation: 0, opacity: 85
       },
       {
-        id: 't-eye-contact', kind: 'micro', content: 'Eye\ncontact',
-        x: 505, y: 720, size: 11, weight: 700,
+        id: 't-eyecontact', kind: 'micro', content: 'Eye contact',
+        x: 505, y: 608, size: 11, weight: 600,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 2,
-        rotation: 0, opacity: 90, lineHeight: 1.15
+        rotation: 0, opacity: 90
       }
     ];
 
-    // 6. 确立层级
-    const layers = (type, items) => items.map(o => ({ type, id: o.id }));
     state.layers = [
-      { type: 'main', id: state.main.id },
-      ...layers('fragment', state.fragments),
-      ...layers('secondary', state.secondaries),
-      ...layers('connector', state.details),
-      ...layers('frame', state.frames),
-      ...layers('detail', state.details),
-      ...layers('text', state.texts)
+      { type: 'main', id: 'main-image' },
+      { type: 'secondary', id: state.secondaries[0].id },
+      { type: 'secondary', id: state.secondaries[1].id },
+      { type: 'secondary', id: state.secondaries[2].id },
+      { type: 'secondary', id: state.secondaries[3].id },
+      { type: 'fragment', id: frag1.id },
+      { type: 'fragment', id: frag2.id },
+      { type: 'fragment', id: frag3.id },
+      { type: 'frame', id: f1.id },
+      { type: 'detail', id: d1.id },
+      { type: 'connector', id: d1.id },
+      { type: 'frame', id: f2.id },
+      { type: 'detail', id: d2.id },
+      { type: 'connector', id: d2.id },
+      { type: 'frame', id: f3.id },
+      { type: 'detail', id: d3.id },
+      { type: 'connector', id: d3.id },
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '排版模板 01 · Aespa 电光档案 (用户图片)' : '排版模板 01 · Aespa 电光档案 (多图版)',
-      anchorEn: isUserMode ? 'Layout Template 01 · Electric Archive (Custom Image)' : 'Layout Template 01 · Electric Archive (Multi-Image)',
+      anchorZh: isUserMode ? '排版 REMIX [1/6] · Aespa 电光档案 (用户图片)' : '排版 REMIX [1/6] · Aespa 电光档案 (多图版)',
+      anchorEn: 'Layout REMIX [1/6] · Electric Archive',
       mainLayoutZh: '原色缩放主图 · 镂空电光虎纹底纸',
       mainLayoutEn: 'Scaled True-Color Main · Electric Tiger Base',
       typographyZh: '电光涂鸦与三行叠字',
@@ -2776,94 +2912,419 @@
     state.selected = null;
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
-      ? `LAYOUT 01 · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'LAYOUT 01 / AESPA RICH MAN (MULTI-IMAGE)';
-    document.querySelectorAll('.poster-template-card').forEach(card => {
-      card.classList.toggle('is-active', card.dataset.posterTemplate === 'template-01-richman');
-    });
+      ? `LAYOUT [1/6] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : 'LAYOUT [1/6] / AESPA RICH MAN (MULTI-IMAGE)';
+
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-    renderImageTray();
-    renderInspector();
-    render();
-    if (isReset) {
-      history = [];
-      historyIndex = -1;
-    }
-    commit();
-    updateRemixCard();
+    renderImageTray(); renderInspector(); render();
+    if (isReset) { history = []; historyIndex = -1; }
+    commit(); updateRemixCard();
     if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
     motion.play(previousPoster);
     if (showToast) {
       const resolvedToast = toastMsg || (isUserMode
-        ? '📐 已应用：排版模板 01 (已适配您的专属图片)'
-        : '📐 已应用：排版模板 01 · Aespa 多图电光档案构图');
+        ? '📐 排版 REMIX [1/6] (排版模板 01)：已应用 Aespa 电光档案构图 (已适配您的专属图片)'
+        : '📐 排版 REMIX [1/6] (排版模板 01)：Aespa 电光档案构图');
       toast(resolvedToast);
     }
   }
 
-  function applyTemplate01(images, isReset = false, toastMsg = '') {
-    // ⚡ 总 REMIX = 排版模板 01 (构图) + 滤镜模板 01 (电光虎纹风格)
-    applyLayoutTemplate01(images, isReset, false);
-    applyFilterTemplate01(false);
+  function applyLayoutTemplate02(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null;
+    const previousPoster = motion.capture();
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
 
-    document.querySelectorAll('.poster-template-card[data-poster-template="template-01-richman"]').forEach(c => c.classList.add('is-active'));
-    document.querySelectorAll('.poster-filter-template-card[data-poster-filter-template="template-01-electric"]').forEach(c => c.classList.add('is-active'));
+    state.main = {
+      id: 'main-image',
+      x: 60, y: 110, w: 780, h: 870,
+      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
+      layoutMode: 'DOMINANT EVIDENCE'
+    };
+
+    state.secondaries = [
+      { id: makeId(), imageId: slot0Id, x: 45, y: 760, w: 240, h: 290, rotation: -2.5, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 615, y: 740, w: 240, h: 300, rotation: 2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 615, y: 150, w: 230, h: 270, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 45, y: 160, w: 220, h: 260, rotation: 2.5, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
+    ];
+
+    const f1 = makeFrame(1, { sourceId: 'main', x: 220, y: 260, w: 160, h: 110, color: '#c32631' });
+    const d1 = makeDetail(f1, 0, { x: 280, y: 290, w: 150, h: 110, color: '#c32631', filterType: 'color_halftone' });
+    const f2 = makeFrame(2, { sourceId: 'main', x: 380, y: 520, w: 150, h: 100, color: '#c32631' });
+    const d2 = makeDetail(f2, 1, { x: 480, y: 540, w: 160, h: 80, color: '#c32631', filterType: 'color_halftone' });
+    state.frames = [f1, f2];
+    state.details = [d1, d2];
+    state.fragments = [];
+
+    state.texts = [
+      { id: makeId(), kind: 'hero', content: 'ARCHIVE // 02', x: 450, y: 75, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
+      { id: makeId(), kind: 'subtitle', content: 'EVIDENCE LOG SYSTEM', x: 450, y: 115, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#c32631', opacity: 90 },
+      { id: makeId(), kind: 'badge', content: 'CASE: 02-B', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#111111', opacity: 100 }
+    ];
+
+    state.layers = [
+      { type: 'main', id: state.main.id },
+      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
+      ...state.frames.map(f => ({ type: 'frame', id: f.id })),
+      ...state.details.map(d => ({ type: 'detail', id: d.id })),
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
+    ];
+
+    state.remixInfo = {
+      anchorZh: '排版 REMIX [2/6] · 主体证物档案',
+      anchorEn: 'Layout REMIX [2/6] · Dominant Evidence',
+      mainLayoutZh: '大体量主图构建基底 · 4角平衡卡片',
+      mainLayoutEn: 'Large Dominant Base · 4 Corner Cards',
+      typographyZh: '证据系统档案排版',
+      typographyEn: 'Evidence Log Hierarchy',
+      backgroundZh: state.backgroundStyle,
+      backgroundEn: state.backgroundStyle,
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    status.textContent = `LAYOUT [2/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
+    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '📐 排版 REMIX [2/6]：主体证物档案构图');
+  }
+
+  function applyLayoutTemplate03(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null;
+    const previousPoster = motion.capture();
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
+
+    state.main = {
+      id: 'main-image',
+      x: 180, y: 190, w: 540, h: 690,
+      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
+      layoutMode: 'MOODBOARD FOCUS'
+    };
+
+    state.secondaries = [
+      { id: makeId(), imageId: slot0Id, x: 35, y: 150, w: 280, h: 350, rotation: -3.5, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 580, y: 620, w: 290, h: 360, rotation: 3, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 580, y: 150, w: 270, h: 320, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 40, y: 670, w: 260, h: 310, rotation: 2.5, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() }
+    ];
+
+    state.frames = [];
+    state.details = [];
+    state.fragments = [];
+
+    state.texts = [
+      { id: makeId(), kind: 'hero', content: 'MOODBOARD', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
+      { id: makeId(), kind: 'subtitle', content: 'VISUAL JOURNAL NO.03', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#1f54bd', opacity: 90 },
+      { id: makeId(), kind: 'badge', content: 'ISSUE: 03', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#1f54bd', opacity: 100 }
+    ];
+
+    state.layers = [
+      { type: 'main', id: state.main.id },
+      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
+    ];
+
+    state.remixInfo = {
+      anchorZh: '排版 REMIX [3/6] · 情绪画板画报',
+      anchorEn: 'Layout REMIX [3/6] · Moodboard Focus',
+      mainLayoutZh: '多图错落层叠 · 视觉中心明确',
+      mainLayoutEn: 'Editorial Layering · Balanced Center',
+      typographyZh: '画报排版文字',
+      typographyEn: 'Journal Typography',
+      backgroundZh: state.backgroundStyle,
+      backgroundEn: state.backgroundStyle,
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    status.textContent = `LAYOUT [3/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
+    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '📐 排版 REMIX [3/6]：情绪画板画报构图');
+  }
+
+  function applyLayoutTemplate04(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null;
+    const previousPoster = motion.capture();
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
+
+    state.main = {
+      id: 'main-image',
+      x: 40, y: 170, w: 400, h: 630,
+      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
+      layoutMode: 'DUAL COMPARISON'
+    };
+
+    state.secondaries = [
+      { id: makeId(), imageId: slot0Id, x: 460, y: 170, w: 400, h: 630, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 40, y: 825, w: 255, h: 265, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 322, y: 825, w: 255, h: 265, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 605, y: 825, w: 255, h: 265, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
+    ];
+
+    state.frames = [];
+    state.details = [];
+    state.fragments = [];
+
+    state.texts = [
+      { id: makeId(), kind: 'hero', content: 'DIALOGUE', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
+      { id: makeId(), kind: 'subtitle', content: 'DUAL PERSPECTIVE // 04', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#2355b7', opacity: 90 },
+      { id: makeId(), kind: 'badge', content: 'PARALLEL', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#2355b7', opacity: 100 }
+    ];
+
+    state.layers = [
+      { type: 'main', id: state.main.id },
+      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
+    ];
+
+    state.remixInfo = {
+      anchorZh: '排版 REMIX [4/6] · 双核对照画报',
+      anchorEn: 'Layout REMIX [4/6] · Pair Comparison',
+      mainLayoutZh: '主辅双核分立对照 · 底部安全区三联',
+      mainLayoutEn: 'Dual-image dialogue · 3 Bottom Cards',
+      typographyZh: '立面对照文字排版',
+      typographyEn: 'Dual Perspective Typography',
+      backgroundZh: state.backgroundStyle,
+      backgroundEn: state.backgroundStyle,
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    status.textContent = `LAYOUT [4/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
+    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '📐 排版 REMIX [4/6]：双核对照画报构图');
+  }
+
+  function applyLayoutTemplate05(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null;
+    const previousPoster = motion.capture();
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
+
+    state.main = {
+      id: 'main-image',
+      x: 140, y: 160, w: 620, h: 720,
+      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
+      layoutMode: 'HERO FLANKED'
+    };
+
+    state.secondaries = [
+      { id: makeId(), imageId: slot0Id, x: 35, y: 150, w: 230, h: 280, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 635, y: 150, w: 230, h: 280, rotation: 2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 35, y: 730, w: 230, h: 280, rotation: 2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 635, y: 730, w: 230, h: 280, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
+    ];
+
+    state.frames = [];
+    state.details = [];
+    state.fragments = [];
+
+    state.texts = [
+      { id: makeId(), kind: 'hero', content: 'PANORAMA', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#ffffff', strokeWidth: 0, opacity: 100 },
+      { id: makeId(), kind: 'subtitle', content: 'FOUR CORNERS // 05', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#00f0ff', opacity: 90 },
+      { id: makeId(), kind: 'badge', content: 'AXIS: 05', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#0b1220', badgeColor: '#00f0ff', opacity: 100 }
+    ];
+
+    state.layers = [
+      { type: 'main', id: state.main.id },
+      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
+    ];
+
+    state.remixInfo = {
+      anchorZh: '排版 REMIX [5/6] · 主辅环绕画报',
+      anchorEn: 'Layout REMIX [5/6] · Hero Flanked',
+      mainLayoutZh: '核心主图居中 · 四角辅图平衡环绕',
+      mainLayoutEn: 'Primary Hero Center · 4 Flanking Cards',
+      typographyZh: '全景环绕文字',
+      typographyEn: 'Panorama Axis Typography',
+      backgroundZh: state.backgroundStyle,
+      backgroundEn: state.backgroundStyle,
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    status.textContent = `LAYOUT [5/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
+    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '📐 排版 REMIX [5/6]：主辅环绕画报构图');
+  }
+
+  function applyLayoutTemplate06(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null;
+    const previousPoster = motion.capture();
+    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
+
+    state.main = {
+      id: 'main-image',
+      x: 220, y: 140, w: 460, h: 650,
+      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
+      layoutMode: 'DETAIL CHAIN'
+    };
+
+    state.secondaries = [
+      { id: makeId(), imageId: slot0Id, x: 35, y: 190, w: 240, h: 270, rotation: -2, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 625, y: 370, w: 240, h: 270, rotation: 2.5, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 35, y: 560, w: 240, h: 270, rotation: 2, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 625, y: 750, w: 240, h: 270, rotation: -2, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
+    ];
+
+    state.frames = [];
+    state.details = [];
+    state.fragments = [];
+
+    state.texts = [
+      { id: makeId(), kind: 'hero', content: 'NARRATIVE', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
+      { id: makeId(), kind: 'subtitle', content: 'CHRONO CHAIN // 06', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#111111', opacity: 90 },
+      { id: makeId(), kind: 'badge', content: 'FLOW: 06', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#111111', opacity: 100 }
+    ];
+
+    state.layers = [
+      { type: 'main', id: state.main.id },
+      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
+      ...state.texts.map(t => ({ type: 'text', id: t.id }))
+    ];
+
+    state.remixInfo = {
+      anchorZh: '排版 REMIX [6/6] · 线索链条解构',
+      anchorEn: 'Layout REMIX [6/6] · Detail Chain',
+      mainLayoutZh: '主辅图平衡分布 · 左右交替串联脉络',
+      mainLayoutEn: 'Linked Narrative Chain · Balanced Alternation',
+      typographyZh: '链条流动文字',
+      typographyEn: 'Narrative Flow Typography',
+      backgroundZh: state.backgroundStyle,
+      backgroundEn: state.backgroundStyle,
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
+      isManuallyEdited: false
+    };
+
+    state.selected = null;
+    status.textContent = `LAYOUT [6/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
+    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
+    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
+    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '📐 排版 REMIX [6/6]：线索链条解构构图');
+  }
+
+  const layoutRemixList = [
+    { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 },
+    { id: 'layout-02', nameZh: '主体证物档案构图', apply: applyLayoutTemplate02 },
+    { id: 'layout-03', nameZh: '情绪画板画报构图', apply: applyLayoutTemplate03 },
+    { id: 'layout-04', nameZh: '双核对照画报构图', apply: applyLayoutTemplate04 },
+    { id: 'layout-05', nameZh: '主辅环绕画报构图', apply: applyLayoutTemplate05 },
+    { id: 'layout-06', nameZh: '线索链条解构构图', apply: applyLayoutTemplate06 }
+  ];
+
+  const masterRemixList = [
+    { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 },
+    { nameZh: '主体证物 · 红色胶印', shortZh: '证物胶印', layoutIdx: 1, filterIdx: 1 },
+    { nameZh: '情绪画板 · 蔚蓝网格', shortZh: '画板网格', layoutIdx: 2, filterIdx: 2 },
+    { nameZh: '双核对照 · 杂志半调', shortZh: '双核半调', layoutIdx: 3, filterIdx: 3 },
+    { nameZh: '主辅环绕 · 酸性水银', shortZh: '环绕水银', layoutIdx: 4, filterIdx: 4 },
+    { nameZh: '线索链条 · 街头复印', shortZh: '线索复印', layoutIdx: 5, filterIdx: 5 }
+  ];
+
+  let currentLayoutIndex = 0;
+  let currentFilterIndex = 0;
+  let currentMasterIndex = -1;
+
+  function cycleLayoutRemix() {
+    currentLayoutIndex = (currentLayoutIndex + 1) % layoutRemixList.length;
+    const item = layoutRemixList[currentLayoutIndex];
+    item.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/6]：${item.nameZh}`);
+  }
+
+  function cycleFilterRemix() {
+    currentFilterIndex = (currentFilterIndex + 1) % filterRemixList.length;
+    const item = filterRemixList[currentFilterIndex];
+    item.apply(true, `🎨 滤镜 REMIX [${currentFilterIndex + 1}/6]：${item.nameZh}`);
+  }
+
+  function applyMasterRemixByIndex(index, images, isReset = false, customMsg = '') {
+    const resolvedIndex = isReset ? 0 : (((index % masterRemixList.length) + masterRemixList.length) % masterRemixList.length);
+    const m = masterRemixList[resolvedIndex];
+    currentMasterIndex = isReset ? -1 : resolvedIndex;
+    currentLayoutIndex = m.layoutIdx;
+    currentFilterIndex = m.filterIdx;
+
+    layoutRemixList[m.layoutIdx].apply(images, isReset, false);
+    filterRemixList[m.filterIdx].apply(false);
+
+    const dockSub = document.querySelector('#posterMasterRemixSub');
+    if (dockSub) dockSub.textContent = `[${resolvedIndex + 1}/6] 排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1}`;
+    const dockTag = document.querySelector('#posterMasterRemixTag');
+    if (dockTag) dockTag.textContent = `[${resolvedIndex + 1}/6] ↻`;
+    const toplineText = document.querySelector('#posterMasterRemixToplineText');
+    if (toplineText) toplineText.textContent = `[${resolvedIndex + 1}/6] ${m.shortZh}`;
 
     const isUserMode = !isReset && hasUserUploadedImages();
-    status.textContent = isUserMode
-      ? `TEMPLATE 01 · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'TEMPLATE 01 / AESPA RICH MAN (MULTI-IMAGE)';
-    updateRemixCard();
-    const resolvedToast = toastMsg || (isUserMode
-      ? '⚡ 总 REMIX 已生效：已为您的图片应用模板 01 (排版模板 01 + 滤镜模板 01)'
-      : '⚡ 总 REMIX 已生效：已应用 排版模板 01 (构图) + 滤镜模板 01 (电光虎纹)');
+    const resolvedToast = customMsg || (isUserMode
+      ? `⚡ 总 REMIX [${resolvedIndex + 1}/6] 已生效：已为您的图片应用模板 01 (${m.nameZh})`
+      : `⚡ 总 REMIX [${resolvedIndex + 1}/6] 已生效：${m.nameZh} (排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1})`);
     toast(resolvedToast);
+  }
+
+  function cycleMasterRemix() {
+    const nextIndex = (currentMasterIndex + 1 + masterRemixList.length) % masterRemixList.length;
+    applyMasterRemixByIndex(nextIndex, null, false);
+  }
+
+  function applyTemplate01(images, isReset = false, toastMsg = '') {
+    applyMasterRemixByIndex(0, images, isReset, toastMsg);
   }
 
   function applyDemo(image) {
     ensureKarinaMultiAssets(images => {
-      applyTemplate01(images, true);
+      applyMasterRemixByIndex(0, images, true);
     });
   }
 
   function loadDemo(show = true) {
     if (show && hasSecondaryImages() && !window.confirm('恢复示范模板会替换当前海报及历史记录。确定恢复吗？')) return;
     ensureKarinaMultiAssets(images => {
-      applyTemplate01(images, true, show ? '示范模板已恢复为 Aespa 多图精选档案。' : '');
+      applyMasterRemixByIndex(0, images, true, show ? '示范模板已恢复为 Aespa 多图精选档案。' : '');
     });
   }
 
   function preset(name) {
-    if (name === 'template-01-electric') {
-      applyFilterTemplate01(true);
-      return;
+    if (name === 'electric' || name === 'template-01-electric') {
+      currentFilterIndex = 0; applyFilterTemplate01(true); return;
     }
-    const all = {
-      red:{background:'#d8d6d0',accent:'#c32631',border:'#fff',filters:{bw:0,brightness:-5,contrast:32,halftone:0,halftoneSize:9,halftoneDensity:58,halftoneAngle:15,grain:14,rough:0,outline:0,scan:22,scanAngle:0,paper:16,dirty:12,compression:0,invert:0,posterize:0},crop:['color_halftone','duotone','mosaic_sharp']},
-      blue:{background:'#dbe3e9',accent:'#1f54bd',border:'#171717',filters:{bw:0,brightness:0,contrast:25,halftone:0,halftoneSize:7,halftoneDensity:62,halftoneAngle:-15,grain:10,rough:0,outline:0,scan:12,scanAngle:90,paper:8,dirty:0,compression:0,invert:0,posterize:0},crop:['glass','gradient_map','mosaic_tile']},
-      editorial:{background:'#e4dfd3',accent:'#2355b7',border:'#fff',filters:{bw:0,brightness:2,contrast:28,halftone:0,halftoneSize:12,halftoneDensity:63,halftoneAngle:22,grain:18,rough:0,outline:0,scan:10,scanAngle:0,paper:35,dirty:12,compression:0,invert:0,posterize:0},crop:['color_halftone','original','circle_halftone']},
-      y2k:{background:'#e5e2ef',accent:'#765fc2',border:'#fff',filters:{bw:0,brightness:8,contrast:12,halftone:0,halftoneSize:5,halftoneDensity:65,halftoneAngle:0,grain:4,rough:0,outline:0,scan:0,scanAngle:0,paper:4,dirty:0,compression:0,invert:0,posterize:0},crop:['glass','duotone','mosaic_sharp']},
-      xerox:{background:'#d8d5cc',accent:'#111',border:'#111',filters:{bw:100,brightness:2,contrast:95,halftone:80,halftoneSize:15,halftoneDensity:48,halftoneAngle:-18,grain:65,rough:50,outline:0,scan:55,scanAngle:0,paper:65,dirty:70,compression:25,invert:0,posterize:45},crop:['threshold','dither','circle_halftone']},
-    };
-    const p = all[name]; if (!p) return;
-    state.background = p.background;
-    state.backgroundStyle = 'solid';
-    state.borderColor = p.border;
-    state.filters = {...p.filters};
-    state.frames.forEach((f) => {f.color=p.accent;f.tagBackground=p.accent;});
-    state.details.forEach((d,i)=>{d.color=p.accent;d.lineColor=p.accent;d.filterType=p.crop[i%p.crop.length];if(name==='xerox')d.rotation=[-8,6,11][i%3];});
-    state.fragments.forEach((f,i)=>{f.color=p.accent;f.filterType=p.crop[(i+1)%p.crop.length];});
-    state.texts.forEach((t)=>{if(t.kind==='repeat')t.color=p.accent;});
-    document.querySelectorAll('.poster-filter-template-card').forEach(card => card.classList.remove('is-active'));
-    document.querySelectorAll('[data-poster-preset]').forEach(card => {
-      card.classList.toggle('is-active', card.dataset.posterPreset === name);
-    });
-    setSelected(null,null);
-    render();
-    commit();
-    markManuallyEdited();
-    toast(`已应用 ${name==='xerox'?'XEROX / PUNK':name.toUpperCase()} 视觉系统。`);
+    if (name === 'red') {
+      currentFilterIndex = 1; applyFilterTemplate02(true); return;
+    }
+    if (name === 'blue') {
+      currentFilterIndex = 2; applyFilterTemplate03(true); return;
+    }
+    if (name === 'editorial') {
+      currentFilterIndex = 3; applyFilterTemplate04(true); return;
+    }
+    if (name === 'chrome') {
+      currentFilterIndex = 4; applyFilterTemplate05(true); return;
+    }
+    if (name === 'xerox') {
+      currentFilterIndex = 5; applyFilterTemplate06(true); return;
+    }
   }
 
   function applyPosterBackground(style) {
@@ -2918,832 +3379,35 @@
     setSelected(null,null); renderInspector(); render(); commit(); markManuallyEdited(); toast(`背景已切换 · ${style.toUpperCase()}`);
   }
 
-  // REMIX keeps every object, then recomposes it inside a family of editorial
-  // layouts. Copy can join the shuffle without removing the option to preserve it.
-  const remixClamp = (value, min, max) => Math.max(min, Math.min(max, value));
-  const remixBetween = (min, max) => min + Math.random() * (max - min);
-  const remixPick = (items) => items[Math.floor(Math.random() * items.length)];
-  const remixShuffle = (items) => {
-    const copy = [...items];
-    for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; }
-    return copy;
-  };
-  const remixNudge = (value, amount) => value + remixBetween(-amount, amount);
-
-  function makeMainFragment(index, main, strength) {
-    const types = ['OFFSET SLICE','ENLARGED DETAIL','DUPLICATED BLOCK','STYLIZED FRAGMENT'];
-    const type = types[index % types.length], wild = strength === 'wild';
-    const zones = [
-      { x:.2, y:.08, w:.55, h:.2 }, { x:.28, y:.14, w:.42, h:.32 },
-      { x:.38, y:.28, w:.42, h:.3 }, { x:.12, y:.5, w:.66, h:.24 },
-      { x:.18, y:.68, w:.62, h:.25 },
-    ];
-    const source = { ...remixPick(zones) };
-    source.x = remixClamp(source.x + remixBetween(-.07,.07), 0, 1 - source.w);
-    source.y = remixClamp(source.y + remixBetween(-.07,.07), 0, 1 - source.h);
-    const placements = [
-      { x:main.x - main.w * .06, y:main.y + main.h * .22, w:main.w * .72, h:main.h * .16 },
-      { x:main.x + main.w * .58, y:main.y + main.h * .08, w:main.w * .34, h:main.h * .38 },
-      { x:main.x + main.w * .05, y:main.y + main.h * .67, w:main.w * .42, h:main.h * .27 },
-      { x:main.x + main.w * .48, y:main.y + main.h * .52, w:main.w * .48, h:main.h * .22 },
-    ];
-    const p = placements[index % placements.length], drift = wild ? 65 : 28;
-    const filters = wild ? ['color_halftone','duotone','mosaic_sharp','glass','original'] : ['original','original','color_halftone','duotone'];
-    return { id:makeId(), fragmentType:type, source, x:remixClamp(p.x + remixBetween(-drift,drift), -80, W - 90), y:remixClamp(p.y + remixBetween(-drift,drift), -80, H - 90), w:remixClamp(p.w * remixBetween(.88,1.16), 120, 430), h:remixClamp(p.h * remixBetween(.86,1.18), 85, 360), rotation:remixBetween(wild ? -12 : -6, wild ? 12 : 6), color:'#fff', lineWidth:remixPick([0,0,2,3]), backingColor:'#fff', opacity:Math.round(remixBetween(wild ? 72 : 84,100)), filterType:remixPick(filters), contrast:Math.round(remixBetween(0,wild ? 42 : 22)), brightness:0, saturation:100, grain:Math.round(remixBetween(0,wild ? 45 : 18)), halftoneSize:Math.round(remixBetween(6,wild ? 22 : 13)), halftoneDensity:Math.round(remixBetween(45,76)), halftoneAngle:Math.round(remixBetween(-35,35)), halftoneStrength:Math.round(remixBetween(58,96)) };
-  }
-
-  function makeOverlapCompanion(main, strength) {
-    const wild = strength === 'wild', side = Math.random() < .5 ? -1 : 1;
-    const w = main.w * remixBetween(.82,.91), h = main.h * remixBetween(.84,.94), sourceX = remixBetween(0,.045), sourceY = remixBetween(0,.04);
-    return {
-      id:makeId(), fragmentType:'OVERLAP PLATE', fragmentRole:'companion',
-      source:{ x:sourceX, y:sourceY, w:remixBetween(.93,1-sourceX), h:remixBetween(.94,1-sourceY) },
-      x:remixClamp(main.x + side * remixBetween(main.w*.08,main.w*.16), -65, W-w+65),
-      y:remixClamp(main.y + remixBetween(-main.h*.035,main.h*.07), -45, H-h+55),
-      w, h, rotation:(main.rotation||0) + side * remixBetween(wild?4.5:2.4,wild?8:5.2),
-      color:wild?'#171717':'#fff', lineWidth:remixPick(wild?[2,3,5]:[2,3]), backingColor:'#fff',
-      opacity:Math.round(remixBetween(wild?74:84,96)), filterType:remixPick(wild?['original','color_halftone','duotone','glass']:['original','original','color_halftone']),
-      contrast:Math.round(remixBetween(0,wild?34:16)), brightness:0, saturation:100,
-      grain:Math.round(remixBetween(0,wild?24:9)), halftoneSize:Math.round(remixBetween(7,15)),
-      halftoneDensity:58, halftoneAngle:15, halftoneStrength:Math.round(remixBetween(55,82)),
-    };
-  }
-
-  function remixOverlap(a, b) {
-    const width = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
-    const height = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-    return width * height / Math.max(1, Math.min(a.w * a.h, b.w * b.h));
-  }
-
-
-  const narrativeTemplates = [
-    {
-      id: 'hero-support',
-      zh: '主辅环绕',
-      en: 'Hero + Support',
-      descZh: '主图占据视觉核心，辅图卡片环绕平衡',
-      descEn: 'Primary hero center, secondary cards flanking',
-      cropLimit: 2,
-      apply(p, s) {
-        p.x = 130 + remixBetween(-20, 20);
-        p.y = 140 + remixBetween(-20, 20);
-        p.w = 580 + remixBetween(-30, 30);
-        p.h = 720 + remixBetween(-30, 30);
-        p.rotation = remixBetween(-1.5, 1.5);
-        p.layoutMode = 'HERO CENTER';
-        const secSlots = [
-          { x: 35, y: 720, w: 250, h: 300, rot: -4 },
-          { x: 610, y: 160, w: 250, h: 310, rot: 3 },
-          { x: 600, y: 740, w: 260, h: 320, rot: -3 },
-          { x: 40, y: 180, w: 240, h: 290, rot: 4 },
-        ];
-        s.forEach((sec, idx) => {
-          const slot = secSlots[idx % secSlots.length];
-          sec.x = slot.x + remixBetween(-15, 15);
-          sec.y = slot.y + remixBetween(-15, 15);
-          sec.w = slot.w; sec.h = slot.h;
-          sec.rotation = slot.rot + remixBetween(-1.5, 1.5);
-        });
-      }
-    },
-    {
-      id: 'main-evidence',
-      zh: '主体证物',
-      en: 'Main + Evidence',
-      descZh: '大体量主图构建基底，高对比证据图深挖细节',
-      descEn: 'Large primary base, strong evidence crops',
-      cropLimit: 3,
-      apply(p, s) {
-        p.x = 60 + remixBetween(-20, 20);
-        p.y = 120 + remixBetween(-20, 20);
-        p.w = 720 + remixBetween(-30, 30);
-        p.h = 880 + remixBetween(-30, 30);
-        p.rotation = remixBetween(-1, 1);
-        p.layoutMode = 'DOMINANT BASE';
-        const secSlots = [
-          { x: 45, y: 780, w: 240, h: 280, rot: -3 },
-          { x: 615, y: 760, w: 240, h: 290, rot: 2 },
-          { x: 610, y: 150, w: 230, h: 270, rot: -2 },
-        ];
-        s.forEach((sec, idx) => {
-          const slot = secSlots[idx % secSlots.length];
-          sec.x = slot.x + remixBetween(-15, 15);
-          sec.y = slot.y + remixBetween(-15, 15);
-          sec.w = slot.w; sec.h = slot.h;
-          sec.rotation = slot.rot + remixBetween(-1.5, 1.5);
-        });
-      }
-    },
-    {
-      id: 'moodboard',
-      zh: '情绪画板',
-      en: 'Moodboard Focus',
-      descZh: '多图错落层叠如艺术画报，视觉中心明确',
-      descEn: 'Editorial layering, balanced visual rhythm',
-      cropLimit: 2,
-      apply(p, s) {
-        p.x = 180 + remixBetween(-25, 25);
-        p.y = 200 + remixBetween(-25, 25);
-        p.w = 520 + remixBetween(-30, 30);
-        p.h = 660 + remixBetween(-30, 30);
-        p.rotation = remixBetween(-1.5, 1.5);
-        p.layoutMode = 'MOODBOARD ANCHOR';
-        const secSlots = [
-          { x: 35, y: 160, w: 280, h: 340, rot: -4 },
-          { x: 575, y: 640, w: 290, h: 360, rot: 3 },
-          { x: 580, y: 160, w: 270, h: 320, rot: -2 },
-          { x: 40, y: 680, w: 260, h: 310, rot: 3 },
-        ];
-        s.forEach((sec, idx) => {
-          const slot = secSlots[idx % secSlots.length];
-          sec.x = slot.x + remixBetween(-15, 15);
-          sec.y = slot.y + remixBetween(-15, 15);
-          sec.w = slot.w; sec.h = slot.h;
-          sec.rotation = slot.rot + remixBetween(-1.5, 1.5);
-        });
-      }
-    },
-    {
-      id: 'pair-compare',
-      zh: '双核对照',
-      en: 'Pair Comparison',
-      descZh: '主图与辅图左右分立对照，证据图置于底部安全区',
-      descEn: 'Dual-image dialogue, comparative evidence',
-      cropLimit: 2,
-      apply(p, s) {
-        p.x = 40 + remixBetween(-10, 10);
-        p.y = 180 + remixBetween(-15, 15);
-        p.w = 400 + remixBetween(-15, 15);
-        p.h = 620 + remixBetween(-15, 15);
-        p.rotation = remixBetween(-1, 1);
-        p.layoutMode = 'LEFT COMPARISON';
-        if (s.length) {
-          s[0].x = 470 + remixBetween(-10, 10);
-          s[0].y = 200 + remixBetween(-15, 15);
-          s[0].w = 390 + remixBetween(-15, 15);
-          s[0].h = 600 + remixBetween(-15, 15);
-          s[0].rotation = remixBetween(-1.5, 1.5);
-        }
-        const otherSlots = [
-          { x: 40, y: 830, w: 210, h: 250, rot: -2 },
-          { x: 640, y: 830, w: 210, h: 250, rot: 2 },
-        ];
-        s.slice(1).forEach((sec, idx) => {
-          const slot = otherSlots[idx % otherSlots.length];
-          sec.x = slot.x + remixBetween(-10, 10);
-          sec.y = slot.y + remixBetween(-10, 10);
-          sec.w = slot.w; sec.h = slot.h;
-          sec.rotation = slot.rot + remixBetween(-1.5, 1.5);
-        });
-      }
-    },
-    {
-      id: 'detail-chain',
-      zh: '线索链条',
-      en: 'Detail Chain',
-      descZh: '主辅图平衡分布，证据图左右交替串联形成清晰脉络',
-      descEn: 'Cross-image evidence chain, linked narrative',
-      cropLimit: 3,
-      apply(p, s) {
-        p.x = 220 + remixBetween(-15, 15);
-        p.y = 140 + remixBetween(-15, 15);
-        p.w = 480 + remixBetween(-20, 20);
-        p.h = 580 + remixBetween(-20, 20);
-        p.rotation = remixBetween(-1, 1);
-        p.layoutMode = 'EVIDENCE HUB';
-        const secSlots = [
-          { x: 35, y: 440, w: 230, h: 280, rot: 3 },
-          { x: 635, y: 440, w: 230, h: 280, rot: -3 },
-          { x: 340, y: 770, w: 250, h: 300, rot: 2 },
-          { x: 35, y: 130, w: 200, h: 240, rot: -2 },
-        ];
-        s.forEach((sec, idx) => {
-          const slot = secSlots[idx % secSlots.length];
-          sec.x = slot.x + remixBetween(-10, 10);
-          sec.y = slot.y + remixBetween(-10, 10);
-          sec.w = slot.w; sec.h = slot.h;
-          sec.rotation = slot.rot + remixBetween(-1, 1);
-        });
-      }
-    }
-  ];
-
   const layoutTemplates = [
-    {
-      id: 'template-01-richman',
-      nameZh: '排版模板 01 · Aespa 电光档案',
-      nameEn: 'Layout T01 · Rich Man Electric Archive',
-      badge: 'Aespa 档案构图',
-      descZh: '内嵌留白主图 · 4张多图拼贴卡片 · 唇眼三路微距特写 · 黄金半调色块',
-      apply() {
-        if (hasUserUploadedImages()) {
-          applyLayoutTemplate01(null, false, true);
-        } else {
-          ensureKarinaMultiAssets(images => {
-            applyLayoutTemplate01(images, false, true);
-          });
-        }
-      }
-    }
+    { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
+    { id: 'template-02-red-cctv', nameZh: '模板 02 · 红色监控纪实', apply: applyLayoutTemplate02 },
+    { id: 'template-03-blue-monitor', nameZh: '模板 03 · 赛博监控蓝标', apply: applyLayoutTemplate03 },
+    { id: 'template-04-halftone-split', nameZh: '模板 04 · 半调分割杂志', apply: applyLayoutTemplate04 },
+    { id: 'template-05-liquid-metal', nameZh: '模板 05 · 液态金属档案', apply: applyLayoutTemplate05 },
+    { id: 'template-06-xerox-punk', nameZh: '模板 06 · 影印撕裂朋克', apply: applyLayoutTemplate06 }
   ];
 
   function applyLayoutTemplate(templateId) {
-    const t = layoutTemplates.find(item => item.id === templateId) || layoutTemplates[0];
-    if (t) {
-      document.querySelectorAll('.poster-template-card').forEach(card => {
-        card.classList.toggle('is-active', card.dataset.posterTemplate === t.id);
-      });
-      t.apply();
+    const idx = layoutRemixList.findIndex(x => x.id === templateId || x.nameZh.includes(templateId));
+    if (idx !== -1) {
+      currentLayoutIndex = idx;
+      layoutRemixList[idx].apply(null, false, true);
+    } else {
+      cycleLayoutRemix();
     }
   }
 
   function triggerMasterRemix() {
-    const grid = document.getElementById('posterTemplateGrid');
-    const templateGroup = grid?.closest('details');
-    if (templateGroup) {
-      templateGroup.open = true;
-    }
-    if (hasUserUploadedImages()) {
-      applyTemplate01(null, false);
-    } else {
-      ensureKarinaMultiAssets(images => {
-        applyTemplate01(images, false);
-      });
-    }
-    const card = document.querySelector(`[data-poster-template="template-01-richman"]`);
-    if (card) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    cycleMasterRemix();
   }
 
   function remixLayout(strength = 'medium') {
-    if (!state.image) return toast('请先上传主图。');
-    render(false);
-    const previousPoster = motion.capture();
-    if (!state.main) state.main = makeMain();
-    commit(); // capture a pending inspector edit before REMIX becomes one undo step
-    const currentSnapshot = snapshot();
-
-    // 捕获并严格保留当前所有滤镜、底纸、背景、透明度等视觉参数，保证排版变化绝不影响调色与视觉风格
-    const currentFilters = JSON.parse(JSON.stringify(state.filters || cleanFilters()));
-    const currentMainOpacity = state.main?.opacity ?? 100;
-    const currentBg = state.background;
-    const currentBgStyle = state.backgroundStyle;
-    const currentBgTextureOpacity = state.backgroundTextureOpacity;
-    const currentBgImageId = state.backgroundImageId;
-    const currentBgImageOpacity = state.backgroundImageOpacity;
-    const currentBgFit = state.backgroundImageFit;
-    const currentBorder = state.border;
-    const currentBorderColor = state.borderColor;
-    const currentBorderWidth = state.borderWidth;
-    const currentSecMap = new Map((state.secondaries || []).map((sec) => [sec.id, {
-      filters: sec.filters ? JSON.parse(JSON.stringify(sec.filters)) : null,
-      appearance: sec.appearance,
-      opacity: sec.opacity ?? 100
-    }]));
-    const currentDetailMap = new Map((state.details || []).map((d) => [d.id, {
-      filterType: d.filterType,
-      duotoneDark: d.duotoneDark,
-      duotoneLight: d.duotoneLight
-    }]));
-
-    if (remixBaseSnapshot && remixLastResultSnapshot && currentSnapshot === remixLastResultSnapshot) {
-      const image = state.image;
-      Object.assign(state, JSON.parse(remixBaseSnapshot), { image });
-    } else {
-      // 首次排版或手动调整/滤镜变化后，保存基础布局底稿，用于连续点击排版 REMIX 时在此基底上变换，绝不清空滤镜！
-      const cleanBase = JSON.parse(currentSnapshot);
-      if (cleanBase.main) {
-        cleanBase.main.zoom = 1;
-        cleanBase.main.panX = 0;
-        cleanBase.main.panY = 0;
-        cleanBase.main.rotation = 0;
-      }
-      remixBaseSnapshot = JSON.stringify(cleanBase);
-    }
-
-    // 严密保护当前用户在右侧调整的所有滤镜调色与视觉底纸
-    state.filters = currentFilters;
-    state.background = currentBg;
-    state.backgroundStyle = currentBgStyle;
-    state.backgroundTextureOpacity = currentBgTextureOpacity;
-    state.backgroundImageId = currentBgImageId;
-    state.backgroundImageOpacity = currentBgImageOpacity;
-    state.backgroundImageFit = currentBgFit;
-    state.border = currentBorder;
-    state.borderColor = currentBorderColor;
-    state.borderWidth = currentBorderWidth;
-
-    if (!state.main) state.main = makeMain();
-    state.main.opacity = currentMainOpacity;
-    state.main.zoom = 1;
-    state.main.panX = 0;
-    state.main.panY = 0;
-    state.main.rotation = 0;
-
-    (state.secondaries || []).forEach((sec) => {
-      const v = currentSecMap.get(sec.id);
-      if (v) {
-        sec.opacity = v.opacity;
-        if (v.filters) sec.filters = v.filters;
-        if (v.appearance) sec.appearance = v.appearance;
-      } else if (!sec.filters) {
-        sec.filters = cleanFilters();
-      }
-    });
-
-    (state.details || []).forEach((d) => {
-      const dv = currentDetailMap.get(d.id);
-      if (dv) {
-        if (dv.filterType) d.filterType = dv.filterType;
-        if (dv.duotoneDark) d.duotoneDark = dv.duotoneDark;
-        if (dv.duotoneLight) d.duotoneLight = dv.duotoneLight;
-      }
-    });
-    // Auxiliary REMIX frames are regenerated each round. If the user has turned
-    // one into a real crop, preserve it as a normal frame instead.
-    const removableAuxIds = new Set(state.frames.filter((frame) => frame.remixAux && !state.details.some((detail) => detail.frameId === frame.id)).map((frame) => frame.id));
-    state.frames.forEach((frame) => { if (frame.remixAux && !removableAuxIds.has(frame.id)) frame.remixAux = false; });
-    state.frames = state.frames.filter((frame) => !removableAuxIds.has(frame.id));
-    state.layers = state.layers.filter((layer) => !(layer.type === 'frame' && removableAuxIds.has(layer.id)));
-    const levels = {
-      light: { drift: 34, scale: .09, turn: 5, style: .12, bleed: .06 },
-      medium: { drift: 82, scale: .2, turn: 12, style: .34, bleed: .13 },
-      wild: { drift: 145, scale: .34, turn: 24, style: .62, bleed: .2 },
-    };
-    const power = levels[strength] || levels.medium;
-    const compositionMode = $('#posterCompositionMode')?.value || 'balanced';
-    const experimental = compositionMode === 'experimental';
-    const anchorModes = [
-      { id:'main', name:'MAIN IMAGE STABLE' },
-      { id:'hero', name:'HERO TITLE STABLE' },
-      ...(state.details.length ? [{ id:'detail', name:'DETAIL CROP STABLE' }] : []),
-      { id:'quiet', name:'QUIET SPACE STABLE' },
-    ];
-    const anchorPool = anchorModes.filter((item) => item.name !== lastRemixAnchorName);
-    const anchorMode = remixPick(anchorPool.length ? anchorPool : anchorModes); lastRemixAnchorName = anchorMode.name;
-    const anchorDetail = anchorMode.id === 'detail' ? remixPick(state.details) : null;
-    const budgetsByAnchor = {
-      main:{ main:'stable', hero:'medium', detail:'medium', fragment:'stable', frame:'medium', tertiary:'wild', texture:'medium' },
-      hero:{ main:'medium', hero:'stable', detail:'medium', fragment:'medium', frame:'medium', tertiary:'wild', texture:'medium' },
-      detail:{ main:'medium', hero:'medium', detail:'medium', fragment:'stable', frame:'medium', tertiary:'wild', texture:'medium' },
-      quiet:{ main:'medium', hero:'stable', detail:'medium', fragment:'stable', frame:'medium', tertiary:'medium', texture:'stable' },
-    };
-    const budgets = budgetsByAnchor[anchorMode.id];
-    const budgetScale = (level) => level === 'stable' ? .18 : level === 'medium' ? (experimental ? .68 : .5) : (experimental ? 1 : .72);
-    const previousMain = { ...(state.main || makeMain()) };
-
-    let selectedNarrative = null;
-    if (hasSecondaryImages()) {
-      selectedNarrative = remixPick(narrativeTemplates);
-      selectedNarrative.apply(state.main, state.secondaries || []);
-      state.fragments = [];
-      state.layers = state.layers.filter((layer) => layer.type !== 'fragment');
-
-      if (state.details.length === 0) {
-        const f1 = makeFrame(1, {
-          sourceId: 'main',
-          labelPrefix: 'EVID',
-          x: Math.round(state.main.x + state.main.w * 0.25),
-          y: Math.round(state.main.y + state.main.h * 0.2),
-          w: Math.round(Math.min(180, state.main.w * 0.3)),
-          h: Math.round(Math.min(200, state.main.h * 0.3)),
-        });
-        state.frames.push(f1);
-        addLayer('frame', f1.id);
-        const d1 = makeDetail(f1, 0, { x: 45, y: 720, w: 220, h: 250 });
-        state.details.push(d1);
-        addLayer('connector', d1.id);
-        addLayer('detail', d1.id);
-        if (state.secondaries && state.secondaries.length > 0) {
-          const s0 = state.secondaries[0];
-          const f2 = makeFrame(2, {
-            sourceId: s0.id,
-            labelPrefix: 'EVID',
-            x: Math.round(s0.x + s0.w * 0.2),
-            y: Math.round(s0.y + s0.h * 0.2),
-            w: Math.round(Math.min(160, s0.w * 0.6)),
-            h: Math.round(Math.min(180, s0.h * 0.6)),
-            rotation: s0.rotation || 0,
-          });
-          state.frames.push(f2);
-          addLayer('frame', f2.id);
-          const d2 = makeDetail(f2, 1, { x: 620, y: 720, w: 220, h: 250 });
-          state.details.push(d2);
-          addLayer('connector', d2.id);
-          addLayer('detail', d2.id);
-        }
-      }
-    } else {
-      const prevOpacity = state.main?.opacity ?? currentMainOpacity;
-      state.main = makeMain();
-      state.main.opacity = prevOpacity;
-      state.main.layoutMode = 'EDITORIAL BASE';
-      state.fragments = [];
-      state.layers = state.layers.filter(layer => layer.type !== 'fragment');
-      if (strength !== 'light' && anchorMode.id !== 'main' && Math.random() < .35) {
-        state.fragments.push(makeOverlapCompanion(state.main, strength));
-      }
-      if (experimental && strength === 'wild' && Math.random() < .35) {
-        state.fragments.push(makeMainFragment(0,state.main,'medium'));
-      }
-    }
-    // The same composition owns photography, evidence and typography.
-    const layout = window.posterComposition.choose(anchorMode.id);
-
-    const copySets = [
-      { name:'SIGNAL LOST', hero:'SIGNAL LOST', subtitle:'SUBJECT INDEX / 07', caption:'IMAGE FOUND BETWEEN TWO TRANSMISSIONS', micro:'FILE 0707 / SIGNAL INTERRUPTED / KEEP WATCH', repeat:'NO SIGNAL' },
-      { name:'SOFT EVIDENCE', hero:'SOFT EVIDENCE', subtitle:'BODY STUDY / SPRING 01', caption:'A SOFT GESTURE RECORDED AS HARD DATA', micro:'ARCHIVE 0318 / HUMAN TRACE / FIELD COPY', repeat:'STILL HERE' },
-      { name:'AFTER IMAGE', hero:'AFTER IMAGE', subtitle:'MEMORY BUFFER / 02', caption:'THE IMAGE REMAINS AFTER THE MOMENT', micro:'CACHE 0021 / FRAME DELAY / TRACE ACTIVE', repeat:'LOOK AGAIN' },
-      { name:'OBJECT IN FRAME', hero:'OBJECT IN FRAME', subtitle:'VISUAL INVENTORY / 05', caption:'FACE · HAND · FLOWER · UNRESOLVED OBJECT', micro:'CAMERA 01 / OBJECT LOCK / DATA UPDATED', repeat:'IN FRAME' },
-      { name:'NO FIXED IDENTITY', hero:'NO FIXED IDENTITY', subtitle:'PORTRAIT ERROR / EDITION 03', caption:'IDENTITY SHIFTS WHEN THE FRAME MOVES', micro:'ID NULL / SUBJECT PRESENT / MATCH FAILED', repeat:'WHO IS SHE' },
-      { name:'FIELD RECORD', hero:'FIELD RECORD', subtitle:'OUTDOOR INDEX / 04', caption:'WIND · COLOR · SKIN · TEMPORARY LIGHT', micro:'SITE 24A / WEATHER SOFT / CAMERA READY', repeat:'FIELD NOTE' },
-      { name:'IMAGE UNDER REVIEW', hero:'UNDER REVIEW', subtitle:'ANALYSIS FRAME / 09', caption:'EVERY DETAIL BECOMES A SECOND IMAGE', micro:'REVIEW 0009 / CROP ACTIVE / STATUS OPEN', repeat:'REVIEW' },
-      { name:'COPY SCAN', hero:'COPY / SCAN', subtitle:'SECOND GENERATION IMAGE', caption:'PRINTED ONCE · SCANNED TWICE · SAVED AGAIN', micro:'DPI 300 / COPY 02 / DUST ACCEPTED', repeat:'COPY COPY' },
-      { name:'TRACE FILE', hero:'TRACE FILE', subtitle:'VISIBLE REMAINS / 12', caption:'SMALL DETAILS LEAVE THE LOUDEST TRACE', micro:'TRACE 1204 / LAYER OPEN / MARK FOUND', repeat:'TRACE' },
-      { name:'SPRING ERROR', hero:'SPRING ERROR', subtitle:'COLOR INCIDENT / 01', caption:'A FLOWER INTERRUPTS THE PORTRAIT SYSTEM', micro:'YELLOW HIT / FRAME 03 / ERROR BEAUTIFUL', repeat:'BLOOM ERROR' },
-      { name:'MEMORY BUFFER', hero:'MEMORY BUFFER', subtitle:'TEMPORARY ARCHIVE / 06', caption:'NOTHING IS LOST · EVERYTHING IS DELAYED', micro:'BUFFER 62% / IMAGE HELD / DO NOT CLEAR', repeat:'REMEMBER' },
-      { name:'PRIVATE SIGNAL', hero:'PRIVATE SIGNAL', subtitle:'PERSONAL TRANSMISSION / 08', caption:'A QUIET MESSAGE HIDING INSIDE THE IMAGE', micro:'CHANNEL 08 / LOW VOICE / RECEIVED ONCE', repeat:'KEEP CLOSE' },
-      { name:'PROOF OF LIFE', hero:'PROOF OF LIFE', subtitle:'HUMAN INDEX / 11', caption:'GESTURE IS EVIDENCE · COLOR IS MEMORY', micro:'SUBJECT LIVE / TIME UNKNOWN / FRAME TRUE', repeat:'I AM HERE' },
-      { name:'BEAUTIFUL DAMAGE', hero:'BEAUTIFUL DAMAGE', subtitle:'XEROX STUDY / 13', caption:'NOISE BECOMES TEXTURE WHEN WE KEEP IT', micro:'COPY 13 / TONER LOW / SURFACE DAMAGED', repeat:'PRINT AGAIN' },
-    ];
-    const copyPool = copySets.filter((item) => item.name !== lastRemixCopyName);
-    const copySet = remixPick(copyPool.length ? copyPool : copySets); lastRemixCopyName = copySet.name;
-    const remixCopyEnabled = $('#posterRemixCopy')?.checked !== false;
-    // 排版 REMIX：专注版式架构、网格构图与文字层级，严格保留底纸、背景色、外框与调色滤镜
-    const currentAccent = state.frames?.[0]?.color || '#c32631';
-    const currentInk = state.texts?.find((t) => t.kind === 'hero')?.color || '#151515';
-    const palette = {
-      bg: state.background || '#efeee8',
-      accent: currentAccent,
-      border: state.borderColor || '#ffffff',
-      ink: currentInk
-    };
-
-    // 局部特写滤镜保持不变，仅同步连线与框线点缀色
-    state.details.forEach((detail) => {
-      if (strength !== 'light') { detail.color = palette.accent; detail.lineColor = palette.accent; }
-    });
-
-    if (!hasSecondaryImages()) {
-      const targetFrameCount = strength === 'light' ? 5 : experimental && strength === 'wild' ? 7 : 6;
-      const auxPrefixes = ['TRACE','AREA','SCAN','ID'];
-      for (let i = state.frames.length; i < targetFrameCount; i++) {
-        state.frames.push(makeFrame(i + 1, {
-          remixAux:true, x:state.main.x, y:state.main.y, w:remixBetween(72,108), h:remixBetween(58,116), rotation:0,
-          labelPrefix:auxPrefixes[(i - 3 + auxPrefixes.length) % auxPrefixes.length], labelNumber:i + 1,
-          lineWidth:remixPick([1,2,2]), labelSize:9, frameStyle:remixPick(['corner','corner','full']),
-          strokeStyle:remixPick(['solid','dashed']), strokeOpacity:Math.round(remixBetween(58,88)), tagStyle:remixPick(['plain','outline']),
-        }));
-      }
-    }
-    const perimeterZones = [
-      {x:.15,y:.16,scale:.58},{x:.84,y:.18,scale:.6},{x:.13,y:.45,scale:.62},{x:.86,y:.48,scale:.58},
-      {x:.18,y:.78,scale:.68},{x:.81,y:.8,scale:.64},{x:.5,y:.9,scale:.56},{x:.5,y:.1,scale:.55},
-    ];
-    const framePatterns = [
-      { name:'PERIMETER CLOCKWISE', order:[0,3,4,1,5,2,6] },
-      { name:'PERIMETER CROSS', order:[1,2,5,0,3,4,6] },
-      { name:'PERIMETER LOW', order:[4,1,3,5,0,2,6] },
-      { name:'PERIMETER HIGH', order:[0,1,5,2,3,4,6] },
-      { name:'PERIMETER SPLIT', order:[2,5,0,3,4,1,6] },
-      { name:'PERIMETER OFFSET', order:[3,0,4,1,2,5,6] },
-    ].map((pattern) => ({...pattern, zones:pattern.order.map((zoneIndex) => perimeterZones[zoneIndex])}));
-    const freshFramePatterns = framePatterns.filter((pattern) => pattern.name !== lastRemixFramePatternName);
-    const framePattern = remixPick(freshFramePatterns.length ? freshFramePatterns : framePatterns); lastRemixFramePatternName = framePattern.name;
-    const stableFrameId = anchorDetail?.frameId || null;
-    const placedFrames = [];
-    state.frames.forEach((frame, index) => {
-      const frameIsAnchor = stableFrameId === frame.id;
-      const frameChaos = budgetScale(frameIsAnchor ? 'stable' : budgets.frame);
-
-      const targetCard = frame.sourceId && frame.sourceId !== 'main'
-        ? (state.secondaries || []).find((s) => s.id === frame.sourceId)
-        : null;
-
-      if (targetCard) {
-        frame.w = remixClamp(frame.w, 48, Math.min(180, targetCard.w * 0.72));
-        frame.h = remixClamp(frame.h, 44, Math.min(190, targetCard.h * 0.72));
-        frame.x = remixClamp(targetCard.x + targetCard.w * 0.18 + remixBetween(-10, 10), targetCard.x, targetCard.x + targetCard.w - frame.w);
-        frame.y = remixClamp(targetCard.y + targetCard.h * 0.18 + remixBetween(-10, 10), targetCard.y, targetCard.y + targetCard.h - frame.h);
-        frame.rotation = targetCard.rotation || 0;
-        frame.lineWidth = remixClamp(Math.round(remixNudge(frame.lineWidth || 2, 1.1 * frameChaos)), 1, 4);
-        frame.labelSize = remixClamp(frame.labelSize || 10, 8, 12);
-        if (strength !== 'light') { frame.color = palette.accent; frame.tagBackground = palette.accent; }
-        placedFrames.push({ x: frame.x, y: frame.y, w: frame.w, h: frame.h });
-        return;
-      }
-
-      const oldCenterX = frame.x + frame.w / 2, oldCenterY = frame.y + frame.h / 2;
-      const normalizedX = (oldCenterX - previousMain.x) / Math.max(1, previousMain.w), normalizedY = (oldCenterY - previousMain.y) / Math.max(1, previousMain.h);
-      const followScale = Math.min(state.main.w / Math.max(1, previousMain.w), state.main.h / Math.max(1, previousMain.h));
-      frame.w *= followScale; frame.h *= followScale;
-      frame.x = state.main.x + normalizedX * state.main.w - frame.w / 2;
-      frame.y = state.main.y + normalizedY * state.main.h - frame.h / 2;
-      // Crops keep their meaningful source; only unlinked annotation frames roam the perimeter.
-      if (state.details.some(detail => detail.frameId === frame.id)) {
-        frame.w = remixClamp(frame.w,48,state.main.w*.34);
-        frame.h = remixClamp(frame.h,44,state.main.h*.36);
-        const drift = strength === 'light' ? .004 : strength === 'wild' ? .015 : .008;
-        frame.x = remixClamp(frame.x+remixBetween(-1,1)*state.main.w*drift,state.main.x,state.main.x+state.main.w-frame.w);
-        frame.y = remixClamp(frame.y+remixBetween(-1,1)*state.main.h*drift,state.main.y,state.main.y+state.main.h-frame.h);
-        frame.color = palette.accent; frame.tagBackground = palette.accent;
-        return;
-      }
-      const zone = framePattern.zones[index % framePattern.zones.length];
-      const frameScaleRange = strength === 'light' ? .08 : strength === 'wild' ? .28 : .18;
-      const sizeFactor = (1 + remixBetween(-frameScaleRange, frameScaleRange) * frameChaos) * (frameIsAnchor ? .68 : zone.scale);
-      const centerX = frame.x + frame.w / 2, centerY = frame.y + frame.h / 2;
-      frame.w = remixClamp(frame.w * sizeFactor, 48, Math.min(172,state.main.w*.24)); frame.h = remixClamp(frame.h * sizeFactor, 44, Math.min(188,state.main.h*.22));
-      const targetCenterX = state.main.x + state.main.w * zone.x, targetCenterY = state.main.y + state.main.h * zone.y;
-      const targetInfluence = frameIsAnchor ? .3 : strength === 'light' ? .55 : experimental && strength === 'wild' ? .98 : experimental ? .94 : strength === 'wild' ? .92 : .86;
-      const driftX = state.main.w * (frameIsAnchor ? .018 : experimental ? .035 : .025);
-      const driftY = state.main.h * (frameIsAnchor ? .018 : experimental ? .035 : .025);
-      const remixedCenterX = centerX + (targetCenterX - centerX) * targetInfluence + remixBetween(-driftX,driftX);
-      const remixedCenterY = centerY + (targetCenterY - centerY) * targetInfluence + remixBetween(-driftY,driftY);
-      frame.x = remixClamp(remixedCenterX - frame.w / 2, state.main.x - frame.w * .16, state.main.x + state.main.w - frame.w * .84);
-      frame.y = remixClamp(remixedCenterY - frame.h / 2, state.main.y - frame.h * .16, state.main.y + state.main.h - frame.h * .84);
-      frame.rotation = remixNudge(frame.rotation || 0, power.turn * .72 * frameChaos);
-      frame.lineWidth = remixClamp(Math.round(remixNudge(frame.lineWidth || 2, 1.1 * frameChaos)), 1, 4);
-      frame.labelSize = remixClamp(frame.labelSize || 10, 8, 12);
-      if (strength !== 'light') { frame.color = palette.accent; frame.tagBackground = palette.accent; }
-      if (strength === 'wild' || (strength === 'medium' && index % 2)) frame.frameStyle = Math.random() < .48 ? 'corner' : 'full';
-      frame.tagStyle = remixPick(strength === 'light' ? [frame.tagStyle || 'solid','plain'] : ['solid','plain','outline']);
-      frame.strokeStyle = Math.random() < power.style ? 'dashed' : 'solid';
-      if (placedFrames.some((other) => remixOverlap(frame, other) > .64)) {
-        frame.x = remixClamp(frame.x + (index % 2 ? state.main.w*.08 : -state.main.w*.08), state.main.x - frame.w * .16, state.main.x + state.main.w - frame.w * .84);
-        frame.y = remixClamp(frame.y + (index % 2 ? -state.main.h*.06 : state.main.h*.06), state.main.y - frame.h * .16, state.main.y + state.main.h - frame.h * .84);
-      }
-      if (frameIsAnchor) { frame.rotation = remixClamp(frame.rotation, -1.5, 1.5); frame.lineWidth = remixClamp(frame.lineWidth, 2, 4); frame.frameStyle = 'full'; frame.tagStyle = 'solid'; frame.strokeStyle = 'solid'; }
-      placedFrames.push({x:frame.x,y:frame.y,w:frame.w,h:frame.h});
-    });
-
-    state.texts.forEach(text => {
-      if (remixCopyEnabled && copySet[text.kind]) text.content = copySet[text.kind];
-    });
-    const typographyMode = layout;
-
-    // Preserve frame source coordinates as the shared composition moves its image.
-    state.frames.forEach(syncFrameRelativeToParent);
-    window.posterComposition.apply(state,layout,textBounds,strength,experimental,palette);
-    state.main.layoutMode = layout.name;
-    state.main.fragmented = false;
-
-    const anchorZhMap = {
-      'MAIN IMAGE STABLE': '主图锁定',
-      'HERO TITLE STABLE': '主标题锁定',
-      'DETAIL CROP STABLE': '局部特写锁定',
-      'QUIET SPACE STABLE': '留白空间锁定',
-    };
-    const anchorEnMap = {
-      'MAIN IMAGE STABLE': 'Main Stable',
-      'HERO TITLE STABLE': 'Hero Stable',
-      'DETAIL CROP STABLE': 'Detail Stable',
-      'QUIET SPACE STABLE': 'Quiet Space',
-    };
-    const typographyZhMap = {
-      'BOTTOM LOCK': '底部沉底',
-      'TOP EDITORIAL': '顶部报刊',
-      'SIDE SPINE': '侧边书脊',
-      'SPLIT AXIS': '双轴对齐',
-      'IMAGE OVERLAP': '图文穿插',
-      'QUIET CORNER': '角隅留白',
-      'CONTACT SHEET': '底部索引带',
-      'OFFSET COVER': '侧栏封面',
-    };
-    const bgZhMap = {
-      solid: '纯色基底',
-      grid: '坐标网格',
-      chrome: '金属渐变',
-      scan: '复印扫描纸',
-      dots: '点阵印刷',
-      'soft-y2k': '柔和 Y2K',
-      blueprint: '工程蓝图',
-    };
-    const bgEnMap = {
-      solid: 'Solid',
-      grid: 'Index Grid',
-      chrome: 'Chrome',
-      scan: 'Scan Paper',
-      dots: 'Dot Matrix',
-      'soft-y2k': 'Soft Y2K',
-      blueprint: 'Blueprint',
-    };
-    const strengthZhMap = {
-      light: '克制微调',
-      medium: '标准平衡',
-      wild: '大胆实验',
-    };
-    const strengthEnMap = {
-      light: 'Light Drift',
-      medium: 'Balanced',
-      wild: 'Wild Expressive',
-    };
-
-    let mainZh = state.main.layoutMode || '完整底图';
-    if (mainZh.includes('FULL BASE')) mainZh = '完整底图';
-    else if (mainZh.includes('TIGHT CROP')) mainZh = '特写裁切';
-    else if (mainZh.includes('OFFSET BASE')) mainZh = '偏心底图';
-    else if (mainZh.includes('FRAGMENTED BASE')) mainZh = '解构底图';
-    if (state.main.layoutMode.includes('LEFT')) mainZh += ' · 偏左';
-    if (state.main.layoutMode.includes('RIGHT')) mainZh += ' · 偏右';
-    if (state.main.layoutMode.includes('LOW')) mainZh += ' · 偏下';
-    if (state.main.layoutMode.includes('OVERLAP')) mainZh += ' · 重叠层';
-
-    state.remixInfo = {
-      anchorZh: anchorZhMap[anchorMode.name] || anchorMode.name,
-      anchorEn: anchorEnMap[anchorMode.name] || anchorMode.name,
-      mainLayoutZh: mainZh,
-      mainLayoutEn: state.main.layoutMode,
-      typographyZh: typographyZhMap[typographyMode.name] || typographyMode.name,
-      typographyEn: typographyMode.name,
-      backgroundZh: bgZhMap[state.backgroundStyle] || '纸张',
-      backgroundEn: bgEnMap[state.backgroundStyle] || 'Paper',
-      strengthZh: strengthZhMap[strength] || strength,
-      strengthEn: strengthEnMap[strength] || strength,
-      isManuallyEdited: false,
-    };
-    if (hasSecondaryImages() && selectedNarrative) {
-      const secCount = state.secondaries?.length || 0;
-      const evidCount = state.details.length;
-      state.remixInfo.narrativeZh = selectedNarrative.zh;
-      state.remixInfo.narrativeEn = selectedNarrative.en;
-      state.remixInfo.rolesZh = `1主图 · ${secCount}辅图 · ${evidCount}证据图`;
-      state.remixInfo.rolesEn = `1 Primary · ${secCount} Secondary · ${evidCount} Evidence`;
-    }
-    updateRemixCard();
-
-    state.selected = null;
-    syncAllChildFramesOf('main');
-    (state.secondaries || []).forEach((s) => syncAllChildFramesOf(s.id));
-    renderImageTray(); renderInspector(); render(); commit(); remixLastResultSnapshot = snapshot();
-    motion.play(previousPoster);
-    if (hasSecondaryImages() && selectedNarrative) {
-      toast(`NEW · 多图叙事: ${selectedNarrative.zh} (${selectedNarrative.en}) · ${anchorMode.name} · ${strength.toUpperCase()}`);
-    } else {
-      const backgroundLabel = ({solid:'SOLID',grid:'INDEX GRID',chrome:'CHROME',scan:'SCAN PAPER',dots:'DOT MATRIX','soft-y2k':'SOFT Y2K',blueprint:'BLUE PRINT'})[state.backgroundStyle] || 'PAPER';
-      const pairLabel = state.fragments.some((fragment)=>fragment.fragmentRole==='companion') ? ' · OVERLAP PAIR' : '';
-      toast(`NEW · ${anchorMode.name} · ${layout.name} / ${typographyMode.name}${pairLabel} · ${backgroundLabel} · ${strength.toUpperCase()}`);
-    }
+    cycleLayoutRemix();
   }
 
-  let lastRemixFilterPresetName = '';
   function remixFilters(strength = 'medium') {
-    const previousPoster = motion.capture();
-    const filterPresets = [
-      {
-        nameZh: 'CCTV 红标 · 印刷报刊',
-        nameEn: 'CCTV Red Editorial',
-        bg: '#d8d6d0',
-        bgStyle: 'scan',
-        accent: '#c32631',
-        border: '#ffffff',
-        borderWidth: 7,
-        ink: '#111111',
-        filters: { bw: 0, brightness: -2, contrast: 28, saturation: 110, halftone: 0, halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15, grain: 12, rough: 0, outline: 0, scan: 18, scanAngle: 0, paper: 16, dirty: 8, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['color_halftone', 'duotone', 'mosaic_sharp', 'circle_halftone'],
-        duotoneDark: '#1a1020',
-        duotoneLight: '#fca311'
-      },
-      {
-        nameZh: 'CCTV 蓝标 · 坐标网格',
-        nameEn: 'CCTV Blue Index',
-        bg: '#dbe3e9',
-        bgStyle: 'grid',
-        accent: '#1f54bd',
-        border: '#171717',
-        borderWidth: 6,
-        ink: '#0a1931',
-        filters: { bw: 0, brightness: 2, contrast: 24, saturation: 105, halftone: 0, halftoneSize: 7, halftoneDensity: 62, halftoneAngle: -15, grain: 8, rough: 0, outline: 0, scan: 12, scanAngle: 90, paper: 6, dirty: 0, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['glass', 'gradient_map', 'mosaic_tile', 'color_halftone'],
-        duotoneDark: '#0a1931',
-        duotoneLight: '#93c5fd'
-      },
-      {
-        nameZh: '半调杂志 · 编辑风',
-        nameEn: 'Halftone Editorial',
-        bg: '#e4dfd3',
-        bgStyle: 'scan',
-        accent: '#2355b7',
-        border: '#ffffff',
-        borderWidth: 8,
-        ink: '#181818',
-        filters: { bw: 0, brightness: 2, contrast: 26, saturation: 95, halftone: 26, halftoneSize: 10, halftoneDensity: 62, halftoneAngle: 22, grain: 16, rough: 0, outline: 0, scan: 8, scanAngle: 0, paper: 24, dirty: 6, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['color_halftone', 'circle_halftone', 'original', 'mosaic_sharp'],
-        duotoneDark: '#1e3a8a',
-        duotoneLight: '#fed7aa'
-      },
-      {
-        nameZh: '柔和 Y2K · 金属渐变',
-        nameEn: 'Soft Y2K Chrome',
-        bg: '#e5e2ef',
-        bgStyle: 'soft-y2k',
-        accent: '#765fc2',
-        border: '#ffffff',
-        borderWidth: 6,
-        ink: '#23153c',
-        filters: { bw: 0, brightness: 6, contrast: 16, saturation: 115, halftone: 0, halftoneSize: 5, halftoneDensity: 65, halftoneAngle: 0, grain: 4, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 3, dirty: 0, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['glass', 'gradient_map', 'duotone', 'circle_halftone'],
-        duotoneDark: '#4c1d95',
-        duotoneLight: '#f472b6'
-      },
-      {
-        nameZh: '复印朋克 · 黑白高反差',
-        nameEn: 'Xerox Punk Mono',
-        bg: '#d8d5cc',
-        bgStyle: 'scan',
-        accent: '#111111',
-        border: '#111111',
-        borderWidth: 8,
-        ink: '#111111',
-        filters: { bw: 100, brightness: 4, contrast: 72, saturation: 0, halftone: 45, halftoneSize: 12, halftoneDensity: 52, halftoneAngle: -15, grain: 38, rough: 25, outline: 0, scan: 32, scanAngle: 0, paper: 42, dirty: 35, compression: 8, invert: 0, posterize: 25 },
-        cropFilters: ['threshold', 'dither', 'circle_halftone', 'rough'],
-        duotoneDark: '#000000',
-        duotoneLight: '#ffffff'
-      },
-      {
-        nameZh: '克莱因纯色 · 极简画册',
-        nameEn: 'Klein Pure Editorial',
-        bg: '#f0efe9',
-        bgStyle: 'solid',
-        accent: '#002FA7',
-        border: '#002FA7',
-        borderWidth: 5,
-        ink: '#111111',
-        filters: { bw: 0, brightness: 1, contrast: 16, saturation: 108, halftone: 0, halftoneSize: 6, halftoneDensity: 60, halftoneAngle: 0, grain: 6, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 4, dirty: 0, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['mosaic_sharp', 'color_halftone', 'duotone', 'original'],
-        duotoneDark: '#002FA7',
-        duotoneLight: '#e0e7ff'
-      },
-      {
-        nameZh: '工程蓝图 · 数据点阵',
-        nameEn: 'Blueprint Data Matrix',
-        bg: '#b9cbed',
-        bgStyle: 'blueprint',
-        accent: '#0284c7',
-        border: '#0f172a',
-        borderWidth: 6,
-        ink: '#0f172a',
-        filters: { bw: 0, brightness: 2, contrast: 20, saturation: 105, halftone: 0, halftoneSize: 8, halftoneDensity: 60, halftoneAngle: 45, grain: 8, rough: 0, outline: 0, scan: 14, scanAngle: 0, paper: 10, dirty: 0, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['glass', 'mosaic_tile', 'dither', 'color_halftone'],
-        duotoneDark: '#0c4a6e',
-        duotoneLight: '#bae6fd'
-      },
-      {
-        nameZh: '暖调波点 · 实体刊物',
-        nameEn: 'Warm Tangerine Dots',
-        bg: '#fbf5eb',
-        bgStyle: 'dots',
-        accent: '#ea580c',
-        border: '#ffffff',
-        borderWidth: 7,
-        ink: '#292524',
-        filters: { bw: 0, brightness: 3, contrast: 18, saturation: 112, halftone: 0, halftoneSize: 7, halftoneDensity: 60, halftoneAngle: 15, grain: 9, rough: 0, outline: 0, scan: 6, scanAngle: 0, paper: 12, dirty: 0, compression: 0, invert: 0, posterize: 0 },
-        cropFilters: ['duotone', 'circle_halftone', 'color_halftone', 'mosaic_sharp'],
-        duotoneDark: '#7c2d12',
-        duotoneLight: '#fed7aa'
-      }
-    ];
-
-    const pool = filterPresets.filter(p => p.nameEn !== lastRemixFilterPresetName);
-    const p = pool[Math.floor(Math.random() * pool.length)];
-    lastRemixFilterPresetName = p.nameEn;
-
-    state.background = p.bg;
-    state.backgroundStyle = p.bgStyle;
-    state.borderColor = p.border;
-    state.borderWidth = p.borderWidth;
-    state.filters = { ...p.filters };
-
-    (state.frames || []).forEach(f => {
-      f.color = p.accent;
-      f.tagBackground = p.accent;
-    });
-    (state.texts || []).forEach(t => {
-      if (['subtitle', 'repeat'].includes(t.kind)) {
-        t.color = p.accent;
-      } else {
-        t.color = p.ink;
-      }
-    });
-
-    (state.details || []).forEach((d, i) => {
-      d.color = p.accent;
-      d.lineColor = p.accent;
-      const ft = p.cropFilters[i % p.cropFilters.length];
-      d.filterType = ft;
-      if (ft === 'duotone' || ft === 'gradient_map') {
-        d.duotoneDark = p.duotoneDark;
-        d.duotoneLight = p.duotoneLight;
-      }
-    });
-
-    render();
-    renderInspector();
-    commit();
-    markManuallyEdited();
-    motion.play(previousPoster);
-    toast(`已应用滤镜 REMIX：${p.nameZh} (${p.nameEn})`);
+    cycleFilterRemix();
   }
 
   function exportPoster() {
@@ -3783,6 +3447,7 @@
     if (a === 'redo') redo();
     if (a === 'duplicate') duplicateSelected();
     if (a === 'master-remix') { triggerMasterRemix(); return; }
+    if (a === 'filter-remix') { remixFilters(); return; }
     if (a === 'remix') remixLayout($('#posterRemixStrength')?.value || 'medium');
     if (['hero', 'subtitle', 'caption', 'micro', 'repeat'].includes(a)) addText(a);
     if (a === 'select-main') {
@@ -4207,23 +3872,7 @@
     spaceDown=false; pan=null; viewport.classList.remove('is-panning');
     if(drag){drag=null;commit();renderInspector();}
   });
-  document.addEventListener('click', (e) => {
-    const masterRemixBtn = e.target.closest('[data-poster-action="master-remix"]');
-    if (masterRemixBtn) {
-      triggerMasterRemix();
-      return;
-    }
-    const tBtn = e.target.closest('[data-poster-template]');
-    if (tBtn) {
-      applyLayoutTemplate(tBtn.dataset.posterTemplate);
-      return;
-    }
-    const ftBtn = e.target.closest('[data-poster-filter-template]');
-    if (ftBtn) {
-      applyFilterTemplate01(true);
-      return;
-    }
-  });
+
 
   function setupPosterResizers() {
     const workspace = $('#posterWorkspace');
