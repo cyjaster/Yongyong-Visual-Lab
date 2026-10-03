@@ -431,6 +431,8 @@
           </section>
         </aside>
 
+        <div class="poster-resizer poster-resizer-left" id="posterResizerLeft" role="separator" aria-orientation="vertical" tabindex="0" title="拖拽调整左侧栏宽度（双击复位）"></div>
+
         <section class="poster-stage" aria-label="海报编辑画布">
           <div class="poster-stage-topline">
             <span id="posterStatus">上传主图后开始索引</span>
@@ -440,7 +442,19 @@
               <span class="master-template">模板 01 · Aespa</span>
               <span class="master-badge">1-CLICK</span>
             </button>
-            <span>900 × 1200 / PNG</span>
+            <div class="poster-resolution-badge-wrap" title="切换海报分辨率 (当前默认 1.2K 推荐)">
+              <select id="posterResolutionSelect" class="poster-resolution-select" aria-label="海报导出分辨率">
+                <option value="1200x1600" selected>1200 × 1600 (1.2K 推荐)</option>
+                <option value="1080x1440">1080 × 1440 (1K 社媒)</option>
+                <option value="1500x2000">1500 × 2000 (1.5K 高清)</option>
+                <option value="1800x2400">1800 × 2400 (2K 超清)</option>
+                <option value="2400x3200">2400 × 3200 (3K 大海报)</option>
+                <option value="3000x4000">3000 × 4000 (4K 艺术印刷)</option>
+              </select>
+              <span class="poster-resolution-display" id="posterResolutionDisplay">1200 × 1600 / PNG</span>
+              <span class="poster-resolution-tag" id="posterResolutionTag">1.2K</span>
+              <span class="poster-resolution-caret">▾</span>
+            </div>
           </div>
           <div class="poster-viewport" id="posterViewport">
             <div class="poster-canvas-wrap" id="posterCanvasWrap">
@@ -459,6 +473,8 @@
             </div>
           </div>
         </section>
+
+        <div class="poster-resizer poster-resizer-right" id="posterResizerRight" role="separator" aria-orientation="vertical" tabindex="0" title="拖拽调整右侧栏宽度（双击复位）"></div>
 
         <aside class="poster-inspector" aria-label="拼贴海报滤镜面板">
           <div class="poster-inspector-heading">

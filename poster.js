@@ -30,6 +30,7 @@
 
   const state = {
     image: null, imageName: '', mainImageId: '', assets: [], secondaries: [],
+    exportResolution: [1200, 1600],
     main: makeMain(), fragments: [], frames: [], details: [], texts: [], layers: [], selected: null,
     background: '#efeee8', backgroundStyle:'solid', backgroundTextureOpacity: 80, backgroundImageId:null, backgroundImageOpacity:48, backgroundImageFit:'cover', border: true, borderColor: '#fff', borderWidth: 5,
     filters: { bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 },
@@ -3511,7 +3512,30 @@
     toast(`已应用滤镜 REMIX：${p.nameZh} (${p.nameEn})`);
   }
 
-  function exportPoster() { if (!state.image) return toast('请先上传主图。'); try { render(false); const out = document.createElement('canvas'); out.width=W;out.height=H;out.getContext('2d').drawImage(canvas,0,0,W,H);const link=document.createElement('a');link.download=`collage-poster-${Date.now()}.png`;link.href=out.toDataURL('image/png');link.click();render();toast(`PNG 海报已导出 · ${W} × ${H}`); } catch(e){render();console.error(e);toast('导出失败，请通过 localhost 打开或重新上传图片。');} }
+  function exportPoster() {
+    if (!state.image) return toast('请先上传主图。');
+    try {
+      render(false);
+      const [targetW, targetH] = state.exportResolution || [1200, 1600];
+      const out = document.createElement('canvas');
+      out.width = targetW;
+      out.height = targetH;
+      const outCtx = out.getContext('2d');
+      outCtx.imageSmoothingEnabled = true;
+      outCtx.imageSmoothingQuality = 'high';
+      outCtx.drawImage(canvas, 0, 0, targetW, targetH);
+      const link = document.createElement('a');
+      link.download = `collage-poster-${targetW}x${targetH}-${Date.now()}.png`;
+      link.href = out.toDataURL('image/png');
+      link.click();
+      render();
+      toast(`PNG 海报已导出 · ${targetW} × ${targetH}`);
+    } catch(e) {
+      render();
+      console.error(e);
+      toast('导出失败，请通过 localhost 打开或重新上传图片。');
+    }
+  }
 
   $('.poster-tools').addEventListener('click', (e) => {
     const targetItem = e.target.closest('[data-poster-action]');
@@ -3560,6 +3584,24 @@
   document.querySelectorAll('[data-poster-background]').forEach((b) => b.addEventListener('click', () => applyPosterBackground(b.dataset.posterBackground)));
   $('#posterBackgroundClear')?.addEventListener('click', () => { state.backgroundImageId = null; renderInspector(); render(); commit(); markManuallyEdited(); toast('自定义背景图已移除。'); });
   $('#posterExportButton').addEventListener('click', exportPoster);
+  const resSelect = $('#posterResolutionSelect');
+  const resDisplay = $('#posterResolutionDisplay');
+  const resTag = $('#posterResolutionTag');
+  const exportBtn = $('#posterExportButton');
+  if (resSelect) {
+    resSelect.addEventListener('change', () => {
+      const [w, h] = resSelect.value.split('x').map(Number);
+      if (w && h) {
+        state.exportResolution = [w, h];
+        if (resDisplay) resDisplay.textContent = `${w} × ${h} / PNG`;
+        const tagMap = { '1080x1440': '1K', '1200x1600': '1.2K', '1500x2000': '1.5K', '1800x2400': '2K', '2400x3200': '3K', '3000x4000': '4K' };
+        const tag = tagMap[resSelect.value] || `${Math.round(w / 1000 * 10) / 10}K`;
+        if (resTag) resTag.textContent = tag;
+        if (exportBtn) exportBtn.title = `导出高清 PNG (${w} × ${h} · ${tag})`;
+        toast(`海报导出分辨率已设为 ${w} × ${h} (${tag})`);
+      }
+    });
+  }
   function handleInspectorInput(e) {
     const c = e.target, p = c.dataset.prop || c.dataset.global;
     if (!p) return;
@@ -3938,6 +3980,133 @@
     }
   });
 
+  function setupPosterResizers() {
+    const workspace = $('#posterWorkspace');
+    const resizerLeft = $('#posterResizerLeft');
+    const resizerRight = $('#posterResizerRight');
+    if (!workspace || !resizerLeft || !resizerRight) return;
+
+    const DEFAULT_LEFT = 220;
+    const DEFAULT_RIGHT = 260;
+    const MIN_LEFT = 170;
+    const MIN_RIGHT = 200;
+
+    try {
+      const savedLeft = parseInt(localStorage.getItem('yongyong_poster_left_width'), 10);
+      const savedRight = parseInt(localStorage.getItem('yongyong_poster_right_width'), 10);
+      if (savedLeft && savedLeft >= MIN_LEFT && savedLeft <= 650) {
+        workspace.style.setProperty('--poster-left-width', `${savedLeft}px`);
+      }
+      if (savedRight && savedRight >= MIN_RIGHT && savedRight <= 650) {
+        workspace.style.setProperty('--poster-right-width', `${savedRight}px`);
+      }
+    } catch (_) {}
+
+    function initDrag(resizer, isLeft) {
+      let isDragging = false;
+      let startX = 0;
+      let startWidth = 0;
+
+      resizer.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        isDragging = true;
+        startX = e.clientX;
+        const currentStyle = getComputedStyle(workspace);
+        const currentProp = isLeft ? currentStyle.getPropertyValue('--poster-left-width') : currentStyle.getPropertyValue('--poster-right-width');
+        startWidth = parseInt(currentProp, 10) || (isLeft ? DEFAULT_LEFT : DEFAULT_RIGHT);
+
+        resizer.classList.add('is-dragging');
+        document.body.classList.add('is-resizing-poster');
+        resizer.setPointerCapture(e.pointerId);
+      });
+
+      resizer.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const maxW = Math.min(650, Math.floor(window.innerWidth * 0.45));
+        let nextW;
+        if (isLeft) {
+          nextW = Math.max(MIN_LEFT, Math.min(maxW, Math.round(startWidth + dx)));
+          workspace.style.setProperty('--poster-left-width', `${nextW}px`);
+        } else {
+          nextW = Math.max(MIN_RIGHT, Math.min(maxW, Math.round(startWidth - dx)));
+          workspace.style.setProperty('--poster-right-width', `${nextW}px`);
+        }
+        if (zoomMode === 'fit') {
+          fitWorkspace();
+        }
+      });
+
+      function stopDrag(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        resizer.classList.remove('is-dragging');
+        document.body.classList.remove('is-resizing-poster');
+        try { resizer.releasePointerCapture(e.pointerId); } catch (_) {}
+
+        const finalStyle = getComputedStyle(workspace);
+        const finalProp = isLeft ? finalStyle.getPropertyValue('--poster-left-width') : finalStyle.getPropertyValue('--poster-right-width');
+        const finalW = parseInt(finalProp, 10);
+        if (finalW) {
+          try {
+            localStorage.setItem(isLeft ? 'yongyong_poster_left_width' : 'yongyong_poster_right_width', finalW);
+          } catch (_) {}
+        }
+        if (zoomMode === 'fit') {
+          fitWorkspace();
+        }
+      }
+
+      resizer.addEventListener('pointerup', stopDrag);
+      resizer.addEventListener('pointercancel', stopDrag);
+
+      resizer.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        const defaultW = isLeft ? DEFAULT_LEFT : DEFAULT_RIGHT;
+        workspace.style.setProperty(isLeft ? '--poster-left-width' : '--poster-right-width', `${defaultW}px`);
+        try {
+          localStorage.removeItem(isLeft ? 'yongyong_poster_left_width' : 'yongyong_poster_right_width');
+        } catch (_) {}
+        if (zoomMode === 'fit') {
+          fitWorkspace();
+        }
+        toast(isLeft ? `左侧栏已恢复默认宽度 (${defaultW}px)` : `右侧栏已恢复默认宽度 (${defaultW}px)`);
+      });
+
+      resizer.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          const currentStyle = getComputedStyle(workspace);
+          const currentProp = isLeft ? currentStyle.getPropertyValue('--poster-left-width') : currentStyle.getPropertyValue('--poster-right-width');
+          let currentW = parseInt(currentProp, 10) || (isLeft ? DEFAULT_LEFT : DEFAULT_RIGHT);
+          const delta = (e.key === 'ArrowRight' ? 1 : -1) * (isLeft ? 15 : -15);
+          const maxW = Math.min(650, Math.floor(window.innerWidth * 0.45));
+          const minW = isLeft ? MIN_LEFT : MIN_RIGHT;
+          const nextW = Math.max(minW, Math.min(maxW, currentW + delta));
+          workspace.style.setProperty(isLeft ? '--poster-left-width' : '--poster-right-width', `${nextW}px`);
+          try {
+            localStorage.setItem(isLeft ? 'yongyong_poster_left_width' : 'yongyong_poster_right_width', nextW);
+          } catch (_) {}
+          if (zoomMode === 'fit') fitWorkspace();
+        } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'Home') {
+          e.preventDefault();
+          const defaultW = isLeft ? DEFAULT_LEFT : DEFAULT_RIGHT;
+          workspace.style.setProperty(isLeft ? '--poster-left-width' : '--poster-right-width', `${defaultW}px`);
+          try {
+            localStorage.removeItem(isLeft ? 'yongyong_poster_left_width' : 'yongyong_poster_right_width');
+          } catch (_) {}
+          if (zoomMode === 'fit') fitWorkspace();
+          toast(isLeft ? `左侧栏已恢复默认宽度 (${defaultW}px)` : `右侧栏已恢复默认宽度 (${defaultW}px)`);
+        }
+      });
+    }
+
+    initDrag(resizerLeft, true);
+    initDrag(resizerRight, false);
+  }
+
   window.posterState = state;
   window.posterImageAssets = imageAssets;
   window.posterSetMainImage = setMainImage;
@@ -3954,7 +4123,8 @@
   window.posterApplyTemplate = applyLayoutTemplate;
   window.posterTriggerMasterRemix = triggerMasterRemix;
   window.posterLayoutTemplates = layoutTemplates;
+  window.posterSetupResizers = setupPosterResizers;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
-  renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();
+  renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
 })();
