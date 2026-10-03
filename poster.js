@@ -1364,7 +1364,23 @@
     const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'detail' && state.selected.id === d.id;
     const opts = isTargetBefore ? { bw:0, brightness:0, contrast:0, saturation:100, grain:0, rough:0, outline:0, invert:0, posterize:0, compression:0, scan:0, paper:0, dirty:0, halftone:0 } : detailOptions(d);
     const cut = filteredImage(srcImg, rect, d.w, d.h, opts);
-    ctx.save(); ctx.globalAlpha = (d.opacity ?? 100) / 100; transformBox(ctx, d); ctx.fillStyle = d.backingColor || '#fff'; ctx.fillRect(-3, -3, d.w + 6, d.h + 6); ctx.drawImage(cut, 0, 0, d.w, d.h); ctx.strokeStyle = d.color; ctx.lineWidth = d.lineWidth; ctx.strokeRect(0, 0, d.w, d.h);
+    ctx.save(); ctx.globalAlpha = (d.opacity ?? 100) / 100; transformBox(ctx, d);
+    if (d.hasShadow) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
+      ctx.shadowBlur = d.shadowBlur || 14;
+      ctx.shadowOffsetX = d.shadowOffsetX || 2;
+      ctx.shadowOffsetY = d.shadowOffsetY || 6;
+      ctx.fillStyle = '#0a0c10';
+      ctx.fillRect(0, 0, d.w, d.h);
+      ctx.restore();
+    }
+    if (d.backingColor && d.backingColor !== 'transparent') {
+      ctx.fillStyle = d.backingColor;
+      ctx.fillRect(-2, -2, d.w + 4, d.h + 4);
+    }
+    ctx.drawImage(cut, 0, 0, d.w, d.h);
+    ctx.strokeStyle = d.color; ctx.lineWidth = d.lineWidth; ctx.strokeRect(0, 0, d.w, d.h);
     if (d.showHandles) {
       const handleSize = d.handleSize || 7;
       const half = handleSize / 2;
@@ -1380,6 +1396,25 @@
         ctx.fillRect(hx - half, hy - half, handleSize, handleSize);
         ctx.strokeRect(hx - half, hy - half, handleSize, handleSize);
       });
+    }
+    if (d.tape) {
+      ctx.save();
+      ctx.fillStyle = d.tapeColor || 'rgba(255, 255, 255, 0.38)';
+      const tw = d.tapeWidth || 44, th = d.tapeHeight || 16;
+      if (d.tape === 'top') {
+        ctx.translate(d.w / 2 - tw / 2, -th * 0.55);
+        ctx.rotate(-0.03);
+        ctx.fillRect(0, 0, tw, th);
+      } else if (d.tape === 'corner-left') {
+        ctx.translate(-tw * 0.3, -th * 0.4);
+        ctx.rotate(-0.4);
+        ctx.fillRect(0, 0, tw, th);
+      } else if (d.tape === 'corner-right') {
+        ctx.translate(d.w - tw * 0.7, -th * 0.4);
+        ctx.rotate(0.4);
+        ctx.fillRect(0, 0, tw, th);
+      }
+      ctx.restore();
     }
     if (d.showTag !== false && (d.tagText || (f && f.showLabel && labelText(f)))) {
       const text = d.tagText || (f ? labelText(f) : '');
@@ -2944,7 +2979,7 @@
       state.borderWidth = 0;
     }
 
-    // 1. 主图空间定位 (居中微调模特暗调底图，面部完全露空绝不遮挡)
+    // 1. 主图空间定位 (居中微调模特暗调底图，面部完全留空绝不遮挡)
     state.main = {
       id: 'main-image',
       x: 45,
@@ -2963,125 +2998,132 @@
 
     // 2. 多图辅图卡片结构 (兼容多图用户与回归测试)
     state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 52, y: 405, w: 185, h: 160, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 655, y: 195, w: 200, h: 190, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 52, y: 695, w: 165, h: 160, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 635, y: 535, w: 220, h: 130, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() }
+      { id: makeId(), imageId: slot0Id, x: 92, y: 385, w: 215, h: 170, rotation: 2.6, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 620, y: 175, w: 235, h: 215, rotation: -2.8, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 42, y: 675, w: 185, h: 175, rotation: 4.0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 575, y: 510, w: 260, h: 135, rotation: 3.2, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() }
     ];
 
     state.fragments = [];
 
-    // 3. 七大选区特效视窗 (就地取样＋环绕四周排布，面部完全露空绝不遮挡！)
-    // 视窗 1：左上侧马赛克像素化 (Top-Left Mosaic)
+    // 3. 七大选区特效视窗 (充满拼贴感：微角度倾斜、有机错落穿插、纸张立体阴影、磨砂胶带)
+    // 视窗 1：左上发侧马赛克像素化 (Top-Left Mosaic, 倾斜 -3.2°)
     const f1 = makeFrame(1, {
       sourceId: 'main',
-      x: 52, y: 165, w: 175, h: 140,
+      x: 58, y: 160, w: 185, h: 140,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d1 = makeDetail(f1, 0, {
-      x: 52, y: 165, w: 175, h: 140, rotation: 0,
+      x: 58, y: 160, w: 185, h: 140, rotation: -3.2,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 25, brightness: 5,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'corner-left'
     });
 
-    // 视窗 2：中左侧肩部同心圆半调 (Mid-Left Shoulder Concentric Halftone)
+    // 视窗 2：中左肩部同心圆水波半调 (Mid-Left Shoulder Concentric, 内推错位 x:92, 倾斜 +2.6°)
     const f2 = makeFrame(2, {
       sourceId: (isUserMode && slot2Id) ? slot2Id : 'main',
-      x: 52, y: 405, w: 185, h: 160,
+      x: 92, y: 385, w: 215, h: 170,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d2 = makeDetail(f2, 1, {
-      x: 52, y: 405, w: 185, h: 160, rotation: 0,
+      x: 92, y: 385, w: 215, h: 170, rotation: 2.6,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
       duotoneDark: '#0b1a3d', duotoneLight: '#9cb3ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'top'
     });
 
-    // 视窗 3：右上侧钴蓝双色调彩色半调 (Top-Right Flank Cobalt Halftone - HERO)
+    // 视窗 3：右上侧钴蓝双色调半调 (Top-Right Flank Cobalt Halftone - HERO, 倾斜 -2.8°)
     const f3 = makeFrame(3, {
       sourceId: (isUserMode && slot1Id) ? slot1Id : 'main',
-      x: 655, y: 195, w: 200, h: 190,
+      x: 620, y: 175, w: 235, h: 215,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d3 = makeDetail(f3, 2, {
-      x: 655, y: 195, w: 200, h: 190, rotation: 0,
+      x: 620, y: 175, w: 235, h: 215, rotation: -2.8,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 64, halftoneSize: 6,
       duotoneDark: '#122db5', duotoneLight: '#dbe8ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'corner-right'
     });
 
-    // 视窗 4：下左侧 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither)
+    // 视窗 4：下左手部 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither, 倾斜 +4.0°)
     const f4 = makeFrame(4, {
       sourceId: (isUserMode && slot3Id) ? slot3Id : 'main',
-      x: 52, y: 695, w: 165, h: 160,
+      x: 42, y: 675, w: 185, h: 175,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d4 = makeDetail(f4, 3, {
-      x: 52, y: 695, w: 165, h: 160, rotation: 0,
+      x: 42, y: 675, w: 185, h: 175, rotation: 4.0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dither', ditherStep: 5, contrast: 28,
       duotoneDark: '#141d38', duotoneLight: '#9ab0ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'corner-left'
     });
 
-    // 视窗 5：左下底角斜向点状半调 (Bottom-Left Corner Slanted Dot)
+    // 视窗 5：左下底角斜向点状半调 (Bottom-Left Corner Slanted Dot, 倾斜 -3.5°)
     const f5 = makeFrame(5, {
       sourceId: 'main',
-      x: 52, y: 955, w: 165, h: 100,
+      x: 75, y: 940, w: 185, h: 105,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d5 = makeDetail(f5, 4, {
-      x: 52, y: 955, w: 165, h: 100, rotation: 0,
+      x: 75, y: 940, w: 185, h: 105, rotation: -3.5,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: -18, halftoneDensity: 60, halftoneSize: 6,
       duotoneDark: '#162878', duotoneLight: '#b8d0ff',
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'corner-left'
     });
 
-    // 视窗 6：胸腹部服饰 2 阶调阈值与手绘颗粒 (Torso Fabric Threshold Graphic)
+    // 视窗 6：胸腹部服饰 2 阶调阈值与手绘颗粒 (Torso Threshold Graphic, 纵长居中穿插, 倾斜 -2.4°)
     const f6 = makeFrame(6, {
       sourceId: 'main',
-      x: 435, y: 705, w: 185, h: 350,
+      x: 325, y: 660, w: 220, h: 360,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d6 = makeDetail(f6, 5, {
-      x: 435, y: 705, w: 185, h: 350, rotation: 0,
+      x: 325, y: 660, w: 220, h: 360, rotation: -2.4,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'threshold', thresholdLevel: 132, grain: 32,
       duotoneDark: '#0b1632', duotoneLight: '#eef3ff',
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'top'
     });
 
-    // 视窗 7：右侧腰线线性半调与水平动感扫描 (Right Waist Scanline Halftone)
+    // 视窗 7：右侧腰线线性半调与水平动感扫描 (Right Waist Scanline, 内推错位 x:575, 倾斜 +3.2°)
     const f7 = makeFrame(7, {
       sourceId: 'main',
-      x: 635, y: 535, w: 220, h: 130,
+      x: 575, y: 510, w: 260, h: 135,
       strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d7 = makeDetail(f7, 6, {
-      x: 635, y: 535, w: 220, h: 130, rotation: 0,
+      x: 575, y: 510, w: 260, h: 135, rotation: 3.2,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 58,
       duotoneDark: '#14225a', duotoneLight: '#6ba0ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0, connectorType: 'none'
+      showTag: false, lineOpacity: 0, connectorType: 'none',
+      hasShadow: true, tape: 'top'
     });
 
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
     state.details = [d1, d2, d3, d4, d5, d6, d7];
 
-    // 4. 排版文字 (无 PS 徽标，纯粹专业日系标题与配方说明)
+    // 4. 排版文字 (随视窗微角呼应，充满手作拼贴律动)
     state.texts = [
-      // 主标题：画像エフェクトの組み合わせ例 7選 (左侧整洁对齐)
+      // 主标题：画像エフェクトの組み合わせ例 7選
       {
         id: 't-title-main', kind: 'hero', content: '画像エフェクトの組み合わせ例 7選',
         x: 52, y: 44, size: 36, weight: 900,
@@ -3099,7 +3141,7 @@
       {
         id: 't-recipe-1', kind: 'micro',
         content: 'モザイク（ピクセレート）\nMosaic (Pixelate)\n+\nカラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)',
-        x: 52, y: 315, size: 10.5, weight: 600,
+        x: 52, y: 318, size: 10, weight: 600, rotation: -3.2,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#dbeafe', align: 'left', lineHeight: 1.22, opacity: 95
       },
@@ -3107,7 +3149,7 @@
       {
         id: 't-recipe-2', kind: 'micro',
         content: 'ハーフトーンパターン「円」（フィルターギャラリー）\nHalftone Pattern \'Circle\' (Filter Gallery)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 52, y: 575, size: 9.5, weight: 600,
+        x: 92, y: 570, size: 9.5, weight: 600, rotation: 2.6,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
       },
@@ -3115,15 +3157,15 @@
       {
         id: 't-recipe-3', kind: 'micro',
         content: 'カラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 855, y: 395, size: 10.5, weight: 600,
+        x: 855, y: 405, size: 10.5, weight: 600, rotation: -2.8,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#dbeafe', align: 'right', lineHeight: 1.22, opacity: 95
       },
-      // 标注 4 (下左臂位图点阵)
+      // 标注 4 (下左手部位图点阵)
       {
         id: 't-recipe-4', kind: 'micro',
-        content: 'モノクロ 2 阶调 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
-        x: 52, y: 865, size: 9.5, weight: 600,
+        content: 'モノクロ 2 階調 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 42, y: 865, size: 9.5, weight: 600, rotation: 4.0,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
       },
@@ -3131,7 +3173,7 @@
       {
         id: 't-recipe-5', kind: 'micro',
         content: 'ハーフトーンパターン「ドット」（フィルターギャラリー）\nHalftone Pattern \'Dot\' (Filter Gallery)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
-        x: 52, y: 1065, size: 9, weight: 600,
+        x: 75, y: 1060, size: 9, weight: 600, rotation: -3.5,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#b0c4de', align: 'left', lineHeight: 1.22, opacity: 85
       },
@@ -3139,7 +3181,7 @@
       {
         id: 't-recipe-6', kind: 'micro',
         content: '2 階調化（調整レイヤー）\nThreshold (Adjustment Layer)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 855, y: 885, size: 9.5, weight: 600,
+        x: 855, y: 885, size: 9.5, weight: 600, rotation: -2.4,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
       },
@@ -3147,7 +3189,7 @@
       {
         id: 't-recipe-7', kind: 'micro',
         content: 'ハーフトーンパターン「線」\n（フィルターギャラリー）\nHalftone Pattern \'Line\' (Filter Gallery)\n+\nぼかし（移動）\nMotion Blur\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 855, y: 675, size: 9.5, weight: 600,
+        x: 855, y: 660, size: 9.5, weight: 600, rotation: 3.2,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
       },
@@ -3174,16 +3216,16 @@
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '排版 REMIX [2/2] · 图像选区采样 7 选 (用户图片)' : '排版 REMIX [2/2] · 图像选区采样 7 选',
-      anchorEn: 'Layout REMIX [2/2] · 7 Effect Showcase',
-      mainLayoutZh: '面部无遮挡模特底图 · 7 处环绕式选区视窗',
-      mainLayoutEn: 'Unobstructed Face Portrait · 7 Perimeter Specimen Windows',
-      typographyZh: '纯净日文字体排印与特效配方标注',
-      typographyEn: 'Clean Japanese Editorial & Recipe Annotation',
+      anchorZh: isUserMode ? '排版 REMIX [2/2] · 图像选区采样 7 选 (拼贴版)' : '排版 REMIX [2/2] · 图像选区采样 7 选 (拼贴版)',
+      anchorEn: 'Layout REMIX [2/2] · Dynamic Collage Showcase',
+      mainLayoutZh: '面部净空 · 有机微旋错落拼贴视窗',
+      mainLayoutEn: 'Face Clear · Staggered Rotated Collage Windows',
+      typographyZh: '倾角呼应日系排印与特效配方标注',
+      typographyEn: 'Harmonized Angle Typography & Recipe Annotation',
       backgroundZh: '深邃暗夜影棚微光',
       backgroundEn: 'Deep Studio Dark Vignette',
-      strengthZh: isUserMode ? '专属图片应用' : '选区教程排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Selection Specimen Layout',
+      strengthZh: isUserMode ? '专属图片应用' : '选区拼贴排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Collage Specimen Layout',
       isManuallyEdited: false
     };
 
@@ -3191,7 +3233,7 @@
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
       ? `LAYOUT [2/2] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'LAYOUT [2/2] / 7 IMAGE EFFECTS';
+      : 'LAYOUT [2/2] / DYNAMIC COLLAGE 7';
 
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
@@ -3202,8 +3244,8 @@
     motion.play(previousPoster);
     if (showToast) {
       const resolvedToast = toastMsg || (isUserMode
-        ? '📐 排版 REMIX [2/2] (排版模板 02)：已应用图像选区采样 7 选构图 (面部无遮挡)'
-        : '📐 排版 REMIX [2/2] (排版模板 02)：图像选区采样 7 选构图 (面部无遮挡)');
+        ? '📐 排版 REMIX [2/2] (排版模板 02)：已应用错落微旋拼贴构图 (面部留空)'
+        : '📐 排版 REMIX [2/2] (排版模板 02)：错落微旋拼贴构图 (面部留空)');
       toast(resolvedToast);
     }
   }
