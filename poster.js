@@ -2244,188 +2244,12 @@
     });
     document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'electric'));
     render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [1/6] (滤镜模板 01)：Aespa 电光虎纹与胶印色彩');
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [1/1] (滤镜模板 01)：Aespa 电光虎纹与胶印色彩');
   }
 
-  function applyFilterTemplate02(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
-    state.background = '#d8d6d0';
-    state.backgroundStyle = 'scan';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = '#ffffff';
-    state.borderWidth = 7;
-    state.filters = {
-      bw: 0, brightness: -2, contrast: 32, saturation: 110,
-      halftone: 0, halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15,
-      grain: 14, rough: 0, outline: 0, scan: 20, scanAngle: 0, paper: 16, dirty: 10,
-      compression: 0, invert: 0, posterize: 0
-    };
-    (state.secondaries || []).forEach((sec) => {
-      sec.color = '#ffffff'; sec.lineWidth = 2; sec.backingColor = '#ffffff';
-      sec.filters = cleanFilters();
-    });
-    (state.fragments || []).forEach(frag => {
-      frag.color = '#c32631'; frag.backingColor = 'rgba(195,38,49,0.3)'; frag.opacity = 90;
-      frag.filterType = 'duotone'; frag.duotoneDark = '#1a1020'; frag.duotoneLight = '#fca311';
-      frag.contrast = 35; frag.brightness = 15; frag.grain = 10;
-    });
-    (state.frames || []).forEach(f => { f.color = '#c32631'; f.tagBackground = '#c32631'; f.tagTextColor = '#ffffff'; });
-    (state.details || []).forEach(d => { d.color = '#c32631'; d.lineColor = '#c32631'; d.filterType = 'color_halftone'; });
-    (state.texts || []).forEach(t => {
-      if (t.kind === 'hero' || t.kind === 'repeat') t.color = '#c32631';
-      else t.color = '#111111';
-    });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'red'));
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [2/6]：CCTV 绯红胶印报刊');
-  }
-
-  function applyFilterTemplate03(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
-    state.background = '#dbe3e9';
-    state.backgroundStyle = 'grid';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = '#171717';
-    state.borderWidth = 6;
-    state.filters = {
-      bw: 0, brightness: 2, contrast: 25, saturation: 105,
-      halftone: 0, halftoneSize: 7, halftoneDensity: 62, halftoneAngle: -15,
-      grain: 10, rough: 0, outline: 0, scan: 12, scanAngle: 90, paper: 8, dirty: 0,
-      compression: 0, invert: 0, posterize: 0
-    };
-    (state.secondaries || []).forEach((sec) => {
-      sec.color = '#171717'; sec.lineWidth = 2.5; sec.backingColor = '#dbe3e9';
-      sec.filters = cleanFilters();
-    });
-    (state.fragments || []).forEach(frag => {
-      frag.color = '#1f54bd'; frag.backingColor = 'rgba(31,84,189,0.3)'; frag.opacity = 90;
-      frag.filterType = 'duotone'; frag.duotoneDark = '#0a1931'; frag.duotoneLight = '#93c5fd';
-      frag.contrast = 25; frag.brightness = 10;
-    });
-    (state.frames || []).forEach(f => { f.color = '#1f54bd'; f.tagBackground = '#1f54bd'; f.tagTextColor = '#ffffff'; });
-    (state.details || []).forEach(d => { d.color = '#1f54bd'; d.lineColor = '#1f54bd'; d.filterType = 'gradient_map'; });
-    (state.texts || []).forEach(t => {
-      if (t.kind === 'hero' || t.kind === 'repeat') t.color = '#1f54bd';
-      else t.color = '#0a1931';
-    });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'blue'));
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [3/6]：CCTV 蔚蓝坐标网格');
-  }
-
-  function applyFilterTemplate04(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
-    state.background = '#e4dfd3';
-    state.backgroundStyle = 'scan';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = '#ffffff';
-    state.borderWidth = 8;
-    state.filters = {
-      bw: 0, brightness: 2, contrast: 28, saturation: 95,
-      halftone: 26, halftoneSize: 10, halftoneDensity: 62, halftoneAngle: 22,
-      grain: 16, rough: 0, outline: 0, scan: 8, scanAngle: 0, paper: 24, dirty: 6,
-      compression: 0, invert: 0, posterize: 0
-    };
-    (state.secondaries || []).forEach((sec) => {
-      sec.color = '#2355b7'; sec.lineWidth = 2; sec.backingColor = '#ffffff';
-      sec.filters = cleanFilters();
-    });
-    (state.fragments || []).forEach(frag => {
-      frag.color = '#2355b7'; frag.backingColor = 'rgba(35,85,183,0.3)'; frag.opacity = 90;
-      frag.filterType = 'duotone'; frag.duotoneDark = '#1e3a8a'; frag.duotoneLight = '#fed7aa';
-      frag.contrast = 30; frag.brightness = 15;
-    });
-    (state.frames || []).forEach(f => { f.color = '#2355b7'; f.tagBackground = '#2355b7'; f.tagTextColor = '#ffffff'; });
-    (state.details || []).forEach(d => { d.color = '#2355b7'; d.lineColor = '#2355b7'; d.filterType = 'circle_halftone'; });
-    (state.texts || []).forEach(t => {
-      if (t.kind === 'hero') t.color = '#181818';
-      else if (t.kind === 'repeat' || t.kind === 'subtitle') t.color = '#2355b7';
-      else t.color = '#222222';
-    });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'editorial'));
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [4/6]：半调杂志复古编辑');
-  }
-
-  function applyFilterTemplate05(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
-    state.background = '#0b1220';
-    state.backgroundStyle = 'liquid-chrome';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = '#ffffff';
-    state.borderWidth = 4;
-    state.filters = {
-      bw: 0, brightness: 4, contrast: 30, saturation: 120,
-      halftone: 0, halftoneSize: 6, halftoneDensity: 60, halftoneAngle: 0,
-      grain: 10, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
-      compression: 0, invert: 0, posterize: 0
-    };
-    (state.secondaries || []).forEach((sec) => {
-      sec.color = '#00f0ff'; sec.lineWidth = 2.5; sec.backingColor = '#0b1220';
-      sec.filters = cleanFilters();
-    });
-    (state.fragments || []).forEach(frag => {
-      frag.color = '#00f0ff'; frag.backingColor = 'rgba(0,240,255,0.25)'; frag.opacity = 90;
-      frag.filterType = 'duotone'; frag.duotoneDark = '#021b2b'; frag.duotoneLight = '#00f0ff';
-      frag.contrast = 35; frag.brightness = 20;
-    });
-    (state.frames || []).forEach(f => { f.color = '#00f0ff'; f.tagBackground = '#00f0ff'; f.tagTextColor = '#0b1220'; });
-    (state.details || []).forEach(d => { d.color = '#00f0ff'; d.lineColor = '#00f0ff'; d.filterType = 'original'; });
-    (state.texts || []).forEach(t => {
-      if (['#111111', '#151515', '#161616', '#171717', '#000000', '#181818', '#222222'].includes(t.color)) {
-        t.color = '#ffffff';
-      }
-      if (t.kind === 'hero') t.color = '#ffffff';
-      else if (t.kind === 'repeat' || t.kind === 'subtitle') t.color = '#00f0ff';
-    });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'chrome'));
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [5/6]：酸性全息流体水银');
-  }
-
-  function applyFilterTemplate06(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
-    state.background = '#d8d5cc';
-    state.backgroundStyle = 'solid';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = '#111111';
-    state.borderWidth = 10;
-    state.filters = {
-      bw: 100, brightness: 2, contrast: 95, saturation: 0,
-      halftone: 80, halftoneSize: 15, halftoneDensity: 48, halftoneAngle: -18,
-      grain: 65, rough: 50, outline: 0, scan: 55, scanAngle: 0, paper: 65, dirty: 70,
-      compression: 25, invert: 0, posterize: 45
-    };
-    (state.secondaries || []).forEach((sec) => {
-      sec.color = '#111111'; sec.lineWidth = 3; sec.backingColor = '#d8d5cc';
-      sec.filters = { ...cleanFilters(), bw: 100, contrast: 90 };
-    });
-    (state.fragments || []).forEach(frag => {
-      frag.color = '#111111'; frag.backingColor = 'rgba(17,17,17,0.3)'; frag.opacity = 95;
-      frag.filterType = 'dither'; frag.contrast = 80; frag.brightness = 0;
-    });
-    (state.frames || []).forEach(f => { f.color = '#111111'; f.tagBackground = '#111111'; f.tagTextColor = '#ffffff'; });
-    (state.details || []).forEach(d => { d.color = '#111111'; d.lineColor = '#111111'; d.filterType = 'threshold'; });
-    (state.texts || []).forEach(t => {
-      t.color = '#111111'; t.strokeColor = '#ffffff';
-    });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'xerox'));
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [6/6]：XEROX 街头重墨复印');
-  }
 
   const filterRemixList = [
-    { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 },
-    { id: 'filter-02', nameZh: 'CCTV 绯红胶印报刊', apply: applyFilterTemplate02 },
-    { id: 'filter-03', nameZh: 'CCTV 蔚蓝坐标网格', apply: applyFilterTemplate03 },
-    { id: 'filter-04', nameZh: '半调杂志复古编辑', apply: applyFilterTemplate04 },
-    { id: 'filter-05', nameZh: '酸性全息流体水银', apply: applyFilterTemplate05 },
-    { id: 'filter-06', nameZh: 'XEROX 街头重墨复印', apply: applyFilterTemplate06 }
+    { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 }
   ];
 
   // ==========================================
@@ -2896,8 +2720,8 @@
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '排版 REMIX [1/6] · Aespa 电光档案 (用户图片)' : '排版 REMIX [1/6] · Aespa 电光档案 (多图版)',
-      anchorEn: 'Layout REMIX [1/6] · Electric Archive',
+      anchorZh: isUserMode ? '排版 REMIX [1/1] · Aespa 电光档案 (用户图片)' : '排版 REMIX [1/1] · Aespa 电光档案 (多图版)',
+      anchorEn: 'Layout REMIX [1/1] · Electric Archive',
       mainLayoutZh: '原色缩放主图 · 镂空电光虎纹底纸',
       mainLayoutEn: 'Scaled True-Color Main · Electric Tiger Base',
       typographyZh: '电光涂鸦与三行叠字',
@@ -2924,324 +2748,19 @@
     motion.play(previousPoster);
     if (showToast) {
       const resolvedToast = toastMsg || (isUserMode
-        ? '📐 排版 REMIX [1/6] (排版模板 01)：已应用 Aespa 电光档案构图 (已适配您的专属图片)'
-        : '📐 排版 REMIX [1/6] (排版模板 01)：Aespa 电光档案构图');
+        ? '📐 排版 REMIX [1/1] (排版模板 01)：已应用 Aespa 电光档案构图 (已适配您的专属图片)'
+        : '📐 排版 REMIX [1/1] (排版模板 01)：Aespa 电光档案构图');
       toast(resolvedToast);
     }
   }
 
-  function applyLayoutTemplate02(images, isReset = false, showToast = true, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null;
-    const previousPoster = motion.capture();
-    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
-
-    state.main = {
-      id: 'main-image',
-      x: 60, y: 110, w: 780, h: 870,
-      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
-      layoutMode: 'DOMINANT EVIDENCE'
-    };
-
-    state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 45, y: 760, w: 240, h: 290, rotation: -2.5, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 615, y: 740, w: 240, h: 300, rotation: 2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 615, y: 150, w: 230, h: 270, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 45, y: 160, w: 220, h: 260, rotation: 2.5, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
-    ];
-
-    const f1 = makeFrame(1, { sourceId: 'main', x: 220, y: 260, w: 160, h: 110, color: '#c32631' });
-    const d1 = makeDetail(f1, 0, { x: 280, y: 290, w: 150, h: 110, color: '#c32631', filterType: 'color_halftone' });
-    const f2 = makeFrame(2, { sourceId: 'main', x: 380, y: 520, w: 150, h: 100, color: '#c32631' });
-    const d2 = makeDetail(f2, 1, { x: 480, y: 540, w: 160, h: 80, color: '#c32631', filterType: 'color_halftone' });
-    state.frames = [f1, f2];
-    state.details = [d1, d2];
-    state.fragments = [];
-
-    state.texts = [
-      { id: makeId(), kind: 'hero', content: 'ARCHIVE // 02', x: 450, y: 75, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
-      { id: makeId(), kind: 'subtitle', content: 'EVIDENCE LOG SYSTEM', x: 450, y: 115, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#c32631', opacity: 90 },
-      { id: makeId(), kind: 'badge', content: 'CASE: 02-B', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#111111', opacity: 100 }
-    ];
-
-    state.layers = [
-      { type: 'main', id: state.main.id },
-      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
-      ...state.frames.map(f => ({ type: 'frame', id: f.id })),
-      ...state.details.map(d => ({ type: 'detail', id: d.id })),
-      ...state.texts.map(t => ({ type: 'text', id: t.id }))
-    ];
-
-    state.remixInfo = {
-      anchorZh: '排版 REMIX [2/6] · 主体证物档案',
-      anchorEn: 'Layout REMIX [2/6] · Dominant Evidence',
-      mainLayoutZh: '大体量主图构建基底 · 4角平衡卡片',
-      mainLayoutEn: 'Large Dominant Base · 4 Corner Cards',
-      typographyZh: '证据系统档案排版',
-      typographyEn: 'Evidence Log Hierarchy',
-      backgroundZh: state.backgroundStyle,
-      backgroundEn: state.backgroundStyle,
-      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
-      isManuallyEdited: false
-    };
-
-    state.selected = null;
-    status.textContent = `LAYOUT [2/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
-    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
-    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
-    motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '📐 排版 REMIX [2/6]：主体证物档案构图');
-  }
-
-  function applyLayoutTemplate03(images, isReset = false, showToast = true, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null;
-    const previousPoster = motion.capture();
-    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
-
-    state.main = {
-      id: 'main-image',
-      x: 180, y: 190, w: 540, h: 690,
-      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
-      layoutMode: 'MOODBOARD FOCUS'
-    };
-
-    state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 35, y: 150, w: 280, h: 350, rotation: -3.5, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 580, y: 620, w: 290, h: 360, rotation: 3, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 580, y: 150, w: 270, h: 320, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 40, y: 670, w: 260, h: 310, rotation: 2.5, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() }
-    ];
-
-    state.frames = [];
-    state.details = [];
-    state.fragments = [];
-
-    state.texts = [
-      { id: makeId(), kind: 'hero', content: 'MOODBOARD', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
-      { id: makeId(), kind: 'subtitle', content: 'VISUAL JOURNAL NO.03', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#1f54bd', opacity: 90 },
-      { id: makeId(), kind: 'badge', content: 'ISSUE: 03', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#1f54bd', opacity: 100 }
-    ];
-
-    state.layers = [
-      { type: 'main', id: state.main.id },
-      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
-      ...state.texts.map(t => ({ type: 'text', id: t.id }))
-    ];
-
-    state.remixInfo = {
-      anchorZh: '排版 REMIX [3/6] · 情绪画板画报',
-      anchorEn: 'Layout REMIX [3/6] · Moodboard Focus',
-      mainLayoutZh: '多图错落层叠 · 视觉中心明确',
-      mainLayoutEn: 'Editorial Layering · Balanced Center',
-      typographyZh: '画报排版文字',
-      typographyEn: 'Journal Typography',
-      backgroundZh: state.backgroundStyle,
-      backgroundEn: state.backgroundStyle,
-      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
-      isManuallyEdited: false
-    };
-
-    state.selected = null;
-    status.textContent = `LAYOUT [3/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
-    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
-    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
-    motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '📐 排版 REMIX [3/6]：情绪画板画报构图');
-  }
-
-  function applyLayoutTemplate04(images, isReset = false, showToast = true, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null;
-    const previousPoster = motion.capture();
-    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
-
-    state.main = {
-      id: 'main-image',
-      x: 40, y: 170, w: 400, h: 630,
-      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
-      layoutMode: 'DUAL COMPARISON'
-    };
-
-    state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 460, y: 170, w: 400, h: 630, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 4, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 40, y: 825, w: 255, h: 265, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 322, y: 825, w: 255, h: 265, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 605, y: 825, w: 255, h: 265, rotation: 0, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
-    ];
-
-    state.frames = [];
-    state.details = [];
-    state.fragments = [];
-
-    state.texts = [
-      { id: makeId(), kind: 'hero', content: 'DIALOGUE', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
-      { id: makeId(), kind: 'subtitle', content: 'DUAL PERSPECTIVE // 04', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#2355b7', opacity: 90 },
-      { id: makeId(), kind: 'badge', content: 'PARALLEL', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#2355b7', opacity: 100 }
-    ];
-
-    state.layers = [
-      { type: 'main', id: state.main.id },
-      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
-      ...state.texts.map(t => ({ type: 'text', id: t.id }))
-    ];
-
-    state.remixInfo = {
-      anchorZh: '排版 REMIX [4/6] · 双核对照画报',
-      anchorEn: 'Layout REMIX [4/6] · Pair Comparison',
-      mainLayoutZh: '主辅双核分立对照 · 底部安全区三联',
-      mainLayoutEn: 'Dual-image dialogue · 3 Bottom Cards',
-      typographyZh: '立面对照文字排版',
-      typographyEn: 'Dual Perspective Typography',
-      backgroundZh: state.backgroundStyle,
-      backgroundEn: state.backgroundStyle,
-      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
-      isManuallyEdited: false
-    };
-
-    state.selected = null;
-    status.textContent = `LAYOUT [4/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
-    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
-    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
-    motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '📐 排版 REMIX [4/6]：双核对照画报构图');
-  }
-
-  function applyLayoutTemplate05(images, isReset = false, showToast = true, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null;
-    const previousPoster = motion.capture();
-    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
-
-    state.main = {
-      id: 'main-image',
-      x: 140, y: 160, w: 620, h: 720,
-      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
-      layoutMode: 'HERO FLANKED'
-    };
-
-    state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 35, y: 150, w: 230, h: 280, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 635, y: 150, w: 230, h: 280, rotation: 2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 35, y: 730, w: 230, h: 280, rotation: 2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 635, y: 730, w: 230, h: 280, rotation: -2, opacity: 100, color: '#ffffff', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
-    ];
-
-    state.frames = [];
-    state.details = [];
-    state.fragments = [];
-
-    state.texts = [
-      { id: makeId(), kind: 'hero', content: 'PANORAMA', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#ffffff', strokeWidth: 0, opacity: 100 },
-      { id: makeId(), kind: 'subtitle', content: 'FOUR CORNERS // 05', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#00f0ff', opacity: 90 },
-      { id: makeId(), kind: 'badge', content: 'AXIS: 05', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#0b1220', badgeColor: '#00f0ff', opacity: 100 }
-    ];
-
-    state.layers = [
-      { type: 'main', id: state.main.id },
-      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
-      ...state.texts.map(t => ({ type: 'text', id: t.id }))
-    ];
-
-    state.remixInfo = {
-      anchorZh: '排版 REMIX [5/6] · 主辅环绕画报',
-      anchorEn: 'Layout REMIX [5/6] · Hero Flanked',
-      mainLayoutZh: '核心主图居中 · 四角辅图平衡环绕',
-      mainLayoutEn: 'Primary Hero Center · 4 Flanking Cards',
-      typographyZh: '全景环绕文字',
-      typographyEn: 'Panorama Axis Typography',
-      backgroundZh: state.backgroundStyle,
-      backgroundEn: state.backgroundStyle,
-      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
-      isManuallyEdited: false
-    };
-
-    state.selected = null;
-    status.textContent = `LAYOUT [5/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
-    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
-    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
-    motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '📐 排版 REMIX [5/6]：主辅环绕画报构图');
-  }
-
-  function applyLayoutTemplate06(images, isReset = false, showToast = true, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null;
-    const previousPoster = motion.capture();
-    const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
-
-    state.main = {
-      id: 'main-image',
-      x: 220, y: 140, w: 460, h: 650,
-      zoom: 1.0, panX: 0, panY: 0, rotation: 0, opacity: 100,
-      layoutMode: 'DETAIL CHAIN'
-    };
-
-    state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 35, y: 190, w: 240, h: 270, rotation: -2, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 625, y: 370, w: 240, h: 270, rotation: 2.5, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 35, y: 560, w: 240, h: 270, rotation: 2, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 625, y: 750, w: 240, h: 270, rotation: -2, opacity: 100, color: '#111111', lineWidth: 3, backingColor: '#ffffff', filters: cleanFilters() }
-    ];
-
-    state.frames = [];
-    state.details = [];
-    state.fragments = [];
-
-    state.texts = [
-      { id: makeId(), kind: 'hero', content: 'NARRATIVE', x: 450, y: 80, font: 'ui-sans-serif, sans-serif', size: 68, weight: 900, color: '#111111', strokeWidth: 0, opacity: 100 },
-      { id: makeId(), kind: 'subtitle', content: 'CHRONO CHAIN // 06', x: 450, y: 120, font: 'ui-monospace, monospace', size: 16, weight: 700, color: '#111111', opacity: 90 },
-      { id: makeId(), kind: 'badge', content: 'FLOW: 06', x: 80, y: 80, font: 'ui-monospace, monospace', size: 12, weight: 800, color: '#ffffff', badgeColor: '#111111', opacity: 100 }
-    ];
-
-    state.layers = [
-      { type: 'main', id: state.main.id },
-      ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
-      ...state.texts.map(t => ({ type: 'text', id: t.id }))
-    ];
-
-    state.remixInfo = {
-      anchorZh: '排版 REMIX [6/6] · 线索链条解构',
-      anchorEn: 'Layout REMIX [6/6] · Detail Chain',
-      mainLayoutZh: '主辅图平衡分布 · 左右交替串联脉络',
-      mainLayoutEn: 'Linked Narrative Chain · Balanced Alternation',
-      typographyZh: '链条流动文字',
-      typographyEn: 'Narrative Flow Typography',
-      backgroundZh: state.backgroundStyle,
-      backgroundEn: state.backgroundStyle,
-      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
-      isManuallyEdited: false
-    };
-
-    state.selected = null;
-    status.textContent = `LAYOUT [6/6] · ${(state.imageName || 'IMAGE').toUpperCase()}`;
-    syncAllChildFramesOf('main'); (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
-    renderImageTray(); renderInspector(); render(); commit(); updateRemixCard();
-    if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
-    motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '📐 排版 REMIX [6/6]：线索链条解构构图');
-  }
 
   const layoutRemixList = [
-    { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 },
-    { id: 'layout-02', nameZh: '主体证物档案构图', apply: applyLayoutTemplate02 },
-    { id: 'layout-03', nameZh: '情绪画板画报构图', apply: applyLayoutTemplate03 },
-    { id: 'layout-04', nameZh: '双核对照画报构图', apply: applyLayoutTemplate04 },
-    { id: 'layout-05', nameZh: '主辅环绕画报构图', apply: applyLayoutTemplate05 },
-    { id: 'layout-06', nameZh: '线索链条解构构图', apply: applyLayoutTemplate06 }
+    { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 }
   ];
 
   const masterRemixList = [
-    { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 },
-    { nameZh: '主体证物 · 红色胶印', shortZh: '证物胶印', layoutIdx: 1, filterIdx: 1 },
-    { nameZh: '情绪画板 · 蔚蓝网格', shortZh: '画板网格', layoutIdx: 2, filterIdx: 2 },
-    { nameZh: '双核对照 · 杂志半调', shortZh: '双核半调', layoutIdx: 3, filterIdx: 3 },
-    { nameZh: '主辅环绕 · 酸性水银', shortZh: '环绕水银', layoutIdx: 4, filterIdx: 4 },
-    { nameZh: '线索链条 · 街头复印', shortZh: '线索复印', layoutIdx: 5, filterIdx: 5 }
+    { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 }
   ];
 
   let currentLayoutIndex = 0;
@@ -3310,21 +2829,33 @@
     if (name === 'electric' || name === 'template-01-electric') {
       currentFilterIndex = 0; applyFilterTemplate01(true); return;
     }
-    if (name === 'red') {
-      currentFilterIndex = 1; applyFilterTemplate02(true); return;
-    }
-    if (name === 'blue') {
-      currentFilterIndex = 2; applyFilterTemplate03(true); return;
-    }
-    if (name === 'editorial') {
-      currentFilterIndex = 3; applyFilterTemplate04(true); return;
-    }
-    if (name === 'chrome') {
-      currentFilterIndex = 4; applyFilterTemplate05(true); return;
-    }
-    if (name === 'xerox') {
-      currentFilterIndex = 5; applyFilterTemplate06(true); return;
-    }
+    const all = {
+      red:      { background:'#d8d6d0', backgroundStyle:'scan',  accent:'#c32631', border:'#ffffff', borderWidth:7,
+                  filters:{bw:0,brightness:-2,contrast:32,saturation:110,halftone:0,halftoneSize:9,halftoneDensity:58,halftoneAngle:15,grain:14,rough:0,outline:0,scan:20,scanAngle:0,paper:16,dirty:10,compression:0,invert:0,posterize:0} },
+      blue:     { background:'#dbe3e9', backgroundStyle:'grid',  accent:'#1f54bd', border:'#171717', borderWidth:5,
+                  filters:{bw:0,brightness:0,contrast:25,saturation:100,halftone:0,halftoneSize:7,halftoneDensity:62,halftoneAngle:-15,grain:10,rough:0,outline:0,scan:12,scanAngle:90,paper:8,dirty:0,compression:0,invert:0,posterize:0} },
+      editorial:{ background:'#e4dfd3', backgroundStyle:'paper', accent:'#2355b7', border:'#ffffff', borderWidth:6,
+                  filters:{bw:0,brightness:2,contrast:28,saturation:100,halftone:0,halftoneSize:12,halftoneDensity:63,halftoneAngle:22,grain:18,rough:0,outline:0,scan:10,scanAngle:0,paper:35,dirty:12,compression:0,invert:0,posterize:0} },
+      chrome:   { background:'#0b1220', backgroundStyle:'liquid-chrome', accent:'#c8d8ff', border:'#ffffff', borderWidth:4,
+                  filters:{bw:0,brightness:5,contrast:30,saturation:80,halftone:0,halftoneSize:8,halftoneDensity:55,halftoneAngle:0,grain:18,rough:0,outline:0,scan:8,scanAngle:0,paper:0,dirty:0,compression:0,invert:0,posterize:0} },
+      xerox:    { background:'#d8d5cc', backgroundStyle:'solid', accent:'#111111', border:'#111111', borderWidth:0,
+                  filters:{bw:100,brightness:2,contrast:95,saturation:0,halftone:80,halftoneSize:15,halftoneDensity:48,halftoneAngle:-18,grain:65,rough:50,outline:0,scan:55,scanAngle:0,paper:65,dirty:70,compression:25,invert:0,posterize:45} }
+    };
+    const p = all[name]; if (!p) return;
+    const previousPoster = motion.capture();
+    state.background = p.background;
+    state.backgroundStyle = p.backgroundStyle || 'solid';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = p.border;
+    state.borderWidth = p.borderWidth;
+    state.filters = { ...cleanFilters(), ...p.filters };
+    (state.frames || []).forEach(f => { f.color = p.accent; f.tagBackground = p.accent; f.tagTextColor = '#ffffff'; });
+    (state.details || []).forEach(d => { d.color = p.accent; d.lineColor = p.accent; });
+    (state.texts || []).forEach(t => { if (t.kind === 'hero' || t.kind === 'repeat') t.color = p.accent; });
+    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === name));
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    toast(`🎨 风格预设已应用：${name.toUpperCase()}`);
   }
 
   function applyPosterBackground(style) {
@@ -3380,12 +2911,7 @@
   }
 
   const layoutTemplates = [
-    { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
-    { id: 'template-02-red-cctv', nameZh: '模板 02 · 红色监控纪实', apply: applyLayoutTemplate02 },
-    { id: 'template-03-blue-monitor', nameZh: '模板 03 · 赛博监控蓝标', apply: applyLayoutTemplate03 },
-    { id: 'template-04-halftone-split', nameZh: '模板 04 · 半调分割杂志', apply: applyLayoutTemplate04 },
-    { id: 'template-05-liquid-metal', nameZh: '模板 05 · 液态金属档案', apply: applyLayoutTemplate05 },
-    { id: 'template-06-xerox-punk', nameZh: '模板 06 · 影印撕裂朋克', apply: applyLayoutTemplate06 }
+    { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 }
   ];
 
   function applyLayoutTemplate(templateId) {
