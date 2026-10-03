@@ -3036,7 +3036,7 @@
       imageId: slot0Id || state.mainImageId,
       x: 620, y: 175, w: 235, h: 215,
       rotation: 0, opacity: 0,
-      color: '#ffffff', lineWidth: 2.5, backingColor: '#ffffff',
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filters: cleanFilters()
     };
     const secConcentric = {
@@ -3044,7 +3044,7 @@
       imageId: slot1Id || state.mainImageId,
       x: 92, y: 385, w: 215, h: 170,
       rotation: 0, opacity: 0,
-      color: '#ffffff', lineWidth: 2.5, backingColor: '#ffffff',
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filters: cleanFilters()
     };
     const secScanline = {
@@ -3053,7 +3053,7 @@
       x: 575, y: 490, w: 260, h: 175,
       rotation: 0, opacity: 0,
       panY: 55,
-      color: '#ffffff', lineWidth: 2.5, backingColor: '#ffffff',
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filters: cleanFilters()
     };
     const secDither = {
@@ -3062,7 +3062,7 @@
       x: 42, y: 675, w: 185, h: 175,
       zoom: 1.8, panY: -10,
       rotation: 0, opacity: 0,
-      color: '#ffffff', lineWidth: 2, backingColor: '#ffffff',
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filters: cleanFilters()
     };
 
@@ -3085,7 +3085,7 @@
       hasShadow: true, tape: 'corner-left'
     });
 
-    // 视窗 2：中左蹲姿相片剪影 (Mid-Left Crouch Pose Photo Specimen, 倾斜 +2.6°)
+    // 视窗 2：中左蹲姿相片 · 同心圆水波半调 (Mid-Left Concentric Circle Halftone, 倾斜 +2.6°)
     const f2 = makeFrame(2, {
       sourceId: hasMultipleAssets ? secConcentric.id : 'main',
       x: 92, y: 385, w: 215, h: 170,
@@ -3093,18 +3093,15 @@
     });
     const d2 = makeDetail(f2, 1, {
       x: 92, y: 385, w: 215, h: 170, rotation: 2.6,
-      color: '#ffffff', lineWidth: 2.5, backingColor: '#ffffff',
-      filterType: hasMultipleAssets ? 'original' : 'circle_halftone',
-      contrast: hasMultipleAssets ? 12 : 0,
-      saturation: hasMultipleAssets ? 112 : 100,
-      halftoneStrength: 85, grain: hasMultipleAssets ? 0 : 24,
-      duotoneDark: '#0b1a3d', duotoneLight: '#9cb3ff', duotone: !hasMultipleAssets,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#60a5fa', handleSize: 7,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
+      duotoneDark: '#0b1a3d', duotoneLight: '#9cb3ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'top', tapeColor: 'rgba(255, 255, 255, 0.45)'
+      hasShadow: true, tape: 'top'
     });
 
-    // 视窗 3：右上双手持花相片剪影 (Top-Right Hands Photo Specimen - HERO, 倾斜 -2.8°)
+    // 视窗 3：右上双手持花相片 · 钴蓝彩色半调 (Top-Right Flank Cobalt Halftone - HERO, 倾斜 -2.8°)
     const f3 = makeFrame(3, {
       sourceId: hasMultipleAssets ? secHero.id : 'main',
       x: 620, y: 175, w: 235, h: 215,
@@ -3112,18 +3109,15 @@
     });
     const d3 = makeDetail(f3, 2, {
       x: 620, y: 175, w: 235, h: 215, rotation: -2.8,
-      color: '#ffffff', lineWidth: 2.5, backingColor: '#ffffff',
-      filterType: hasMultipleAssets ? 'original' : 'color_halftone',
-      contrast: hasMultipleAssets ? 14 : 18,
-      saturation: hasMultipleAssets ? 115 : 100,
-      halftoneStrength: 90, halftoneDensity: 64, halftoneSize: 6,
-      duotoneDark: '#122db5', duotoneLight: '#dbe8ff', duotone: !hasMultipleAssets,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#60a5fa', handleSize: 7,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 64, halftoneSize: 6,
+      duotoneDark: '#122db5', duotoneLight: '#dbe8ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'corner-right', tapeColor: 'rgba(255, 255, 255, 0.45)'
+      hasShadow: true, tape: 'corner-right'
     });
 
-    // 视窗 4：下左特写局部相片剪影 (Lower-Left Detail Specimen, 倾斜 +4.0°)
+    // 视窗 4：下左蒲公英微距 · 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither, 倾斜 +4.0°)
     const f4 = makeFrame(4, {
       sourceId: hasMultipleAssets ? secDither.id : 'main',
       x: 42, y: 675, w: 185, h: 175,
@@ -3131,15 +3125,12 @@
     });
     const d4 = makeDetail(f4, 3, {
       x: 42, y: 675, w: 185, h: 175, rotation: 4.0,
-      color: '#ffffff', lineWidth: 2, backingColor: '#ffffff',
-      filterType: hasMultipleAssets ? 'original' : 'dither',
-      contrast: hasMultipleAssets ? 14 : 28,
-      saturation: hasMultipleAssets ? 110 : 100,
-      ditherStep: 5,
-      duotoneDark: '#141d38', duotoneLight: '#9ab0ff', duotone: !hasMultipleAssets,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#60a5fa', handleSize: 7,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'dither', ditherStep: 5, contrast: 28,
+      duotoneDark: '#141d38', duotoneLight: '#9ab0ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'corner-left', tapeColor: 'rgba(255, 255, 255, 0.45)'
+      hasShadow: true, tape: 'corner-left'
     });
 
     // 视窗 5：左下底角斜向点状半调 (Bottom-Left Corner Slanted Dot, 倾斜 -3.5°)
@@ -3174,7 +3165,7 @@
       hasShadow: true, tape: 'top'
     });
 
-    // 视窗 7：右侧蓝天外景相片剪影 (Right Skyline View Photo Specimen, 倾斜 +3.2°)
+    // 视窗 7：右侧蓝天外景相片 · 线性半调与水平动感扫描 (Right Waist Scanline, 倾斜 +3.2°)
     const f7 = makeFrame(7, {
       sourceId: hasMultipleAssets ? secScanline.id : 'main',
       x: 575, y: 490, w: 260, h: 175,
@@ -3182,15 +3173,12 @@
     });
     const d7 = makeDetail(f7, 6, {
       x: 575, y: 490, w: 260, h: 175, rotation: 3.2,
-      color: '#ffffff', lineWidth: 2.5, backingColor: '#ffffff',
-      filterType: hasMultipleAssets ? 'original' : 'line_halftone',
-      contrast: hasMultipleAssets ? 10 : 0,
-      saturation: hasMultipleAssets ? 110 : 100,
-      halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 58,
-      duotoneDark: '#14225a', duotoneLight: '#6ba0ff', duotone: !hasMultipleAssets,
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#60a5fa', handleSize: 7,
+      color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
+      filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 58,
+      duotoneDark: '#14225a', duotoneLight: '#6ba0ff', duotone: true,
+      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
       showTag: false, lineOpacity: 0, connectorType: 'none',
-      hasShadow: true, tape: 'top', tapeColor: 'rgba(255, 255, 255, 0.45)'
+      hasShadow: true, tape: 'top'
     });
 
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
@@ -3225,37 +3213,31 @@
       // 标注 1 (左上马赛克)
       {
         id: 't-recipe-1', kind: 'micro',
-        content: 'FIG. 01 // PIXELATE MOSAIC\nSCALE: 10PX · CONTRAST +25',
+        content: 'FIG. 01 // MOSAIC (PIXELATE)\nSCALE: 10PX · CONTRAST +25',
         x: 52, y: 318, size: 9.5, weight: 600, rotation: -3.2,
         font: 'ui-monospace, Consolas, monospace',
         color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
       },
-      // 标注 2 (中左蹲姿相片)
+      // 标注 2 (中左蹲姿相片 · 同心圆水波半调)
       {
         id: 't-recipe-2', kind: 'micro',
-        content: hasMultipleAssets
-          ? 'FIG. 02 // PHOTO SPECIMEN · CROUCH POSE\nCOLOR PRINT · POLAROID CUT'
-          : 'FIG. 02 // CONCENTRIC RIPPLE\nRADIAL WAVE · COBALT MAP',
-        x: 92, y: 575, size: 9.5, weight: 600, rotation: 2.6,
+        content: 'FIG. 02 // HALFTONE PATTERN \'CIRCLE\'\nRADIAL WAVE · CROUCH SPECIMEN',
+        x: 92, y: 570, size: 9.5, weight: 600, rotation: 2.6,
         font: 'ui-monospace, Consolas, monospace',
         color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
       },
-      // 标注 3 (右上双手持花相片 - HERO)
+      // 标注 3 (右上双手持花相片 · 钴蓝彩色半调 - HERO)
       {
         id: 't-recipe-3', kind: 'micro',
-        content: hasMultipleAssets
-          ? 'FIG. 03 // PHOTO SPECIMEN · HANDS & DANDELION\nCOLOR PRINT · HERO SPECIMEN'
-          : 'FIG. 03 // COBALT HALFTONE\nSCREEN ANGLE 64° · HERO SPECIMEN',
-        x: 855, y: 410, size: 10, weight: 700, rotation: -2.8,
+        content: 'FIG. 03 // COLOR HALFTONE (PIXELATE)\nSCREEN ANGLE 64° · HANDS SPECIMEN',
+        x: 855, y: 405, size: 10, weight: 700, rotation: -2.8,
         font: 'ui-monospace, Consolas, monospace',
         color: '#60a5fa', align: 'right', lineHeight: 1.3, opacity: 95
       },
-      // 标注 4 (下左蒲公英微距特写)
+      // 标注 4 (下左蒲公英微距 · 20 像素 Bayer 位图点阵)
       {
         id: 't-recipe-4', kind: 'micro',
-        content: hasMultipleAssets
-          ? 'FIG. 04 // DETAIL CROP · FLOWER MACRO\n200% OPTICAL ZOOM · TEXTURE STUDY'
-          : 'FIG. 04 // BAYER BITMAP DITHER\nMATRIX 20PX · STEP 5',
+        content: 'FIG. 04 // BITMAP 20PX · DITHER\nMATRIX 20PX · FLOWER MACRO',
         x: 42, y: 865, size: 9.5, weight: 600, rotation: 4.0,
         font: 'ui-monospace, Consolas, monospace',
         color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 90
@@ -3263,7 +3245,7 @@
       // 标注 5 (底左角点状半调)
       {
         id: 't-recipe-5', kind: 'micro',
-        content: 'FIG. 05 // ANGULAR DOT MATRIX\nVECTOR -18° · DENSITY 60',
+        content: 'FIG. 05 // HALFTONE PATTERN \'DOT\'\nVECTOR -18° · DENSITY 60',
         x: 75, y: 1060, size: 9.5, weight: 600, rotation: -3.5,
         font: 'ui-monospace, Consolas, monospace',
         color: '#93c5fd', align: 'left', lineHeight: 1.3, opacity: 85
@@ -3271,18 +3253,16 @@
       // 标注 6 (胸腹服饰手绘图案)
       {
         id: 't-recipe-6', kind: 'micro',
-        content: 'FIG. 06 // THRESHOLD XEROX\nHIGH-PASS 132 · GRAIN 32',
+        content: 'FIG. 06 // THRESHOLD + GRAIN\nHIGH-PASS 132 · TORSO XEROX',
         x: 855, y: 885, size: 9.5, weight: 600, rotation: -2.4,
         font: 'ui-monospace, Consolas, monospace',
         color: '#93c5fd', align: 'right', lineHeight: 1.3, opacity: 90
       },
-      // 标注 7 (右腰蓝天外景相片)
+      // 标注 7 (右腰蓝天外景相片 · 线性半调)
       {
         id: 't-recipe-7', kind: 'micro',
-        content: hasMultipleAssets
-          ? 'FIG. 07 // PHOTO SPECIMEN · SKYLINE VIEW\nCOLOR PRINT · HORIZON CUT'
-          : 'FIG. 07 // HORIZONTAL SCANLINE\nMOTION BLUR · FREQUENCY 58',
-        x: 835, y: 685, size: 9.5, weight: 600, rotation: 3.2,
+        content: 'FIG. 07 // HALFTONE PATTERN \'LINE\'\nMOTION BLUR · SKYLINE SPECIMEN',
+        x: 835, y: 680, size: 9.5, weight: 600, rotation: 3.2,
         font: 'ui-monospace, Consolas, monospace',
         color: '#93c5fd', align: 'right', lineHeight: 1.3, opacity: 90
       },

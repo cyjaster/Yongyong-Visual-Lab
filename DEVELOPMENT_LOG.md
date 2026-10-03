@@ -1,5 +1,24 @@
 # Yongyong Visual Lab 开发记录
 
+## 2026-10-03｜原汁原味：多图视窗精准融合模板 02 参考图专属 Photoshop 特效
+
+- **用户痛点与核心诉求**：
+  - 用户反馈：「其他图片就也要用到我们模板二参考图片的效果」，并在截图中以红框特别圈出了 4 组辅图视窗；
+  - 核心诉求：辅图在装填不同素材（`karina-hands.jpg`、`karina-crouch.jpg`、`karina-sky.jpg`）的同时，必须忠实继承并呈现原参考图中对应的经典 Photoshop 工艺（彩色半调+阶调映射、同心圆水波半调、水平扫描线、20px 位图点刻抖动），并保持自由变换粉色细框与 8 个白色变换控制手柄的原生 PS 质感。
+
+- **多图与 PS 特效深度融合方案**：
+  1. **辅图视窗精准搭载参考图 Photoshop 特效**：
+     - 视窗 3（右上 HERO 展位）：绑定辅图 1（`karina-hands.jpg` 手部捧花覆面写真），呈现 `Color Halftone (Pixelate) + Gradient Map`（钴蓝彩色半调分色网屏）；
+     - 视窗 2（中左展位）：绑定辅图 2（`karina-crouch.jpg` 蹲姿甜美写真），呈现 `Halftone Pattern 'Circle' + Grain`（同心水波半调与颗粒波纹）；
+     - 视窗 7（右腰展位）：绑定辅图 3（`karina-sky.jpg` 蓝天青草地写真），向上平移定格蓝天与笑容，呈现 `Halftone Pattern 'Line' + Motion Blur`（水平运动模糊扫描线）；
+     - 视窗 4（左下展位）：绑定辅图 1 蒲公英微距（`karina-hands.jpg`），呈现 `Bitmap 20px + Diffusion Dither`（Bayer 8x8 纯硬位图点刻抖动）；
+  2. **复刻参考图 PS 自由变换边框与控制手柄**：
+     - 剔除厚重纯白相纸包边，全面还原参考图标志性的 Photoshop Free Transform 粉色选区细线框（`#fbcfe8`，1.2px）与 8 个白色方形变换锚点手柄（`#ffffff`）；
+     - 保留 3D 纸张立体浮凸阴影与和纸半透明贴胶，完美融合「多素材装填」与「参考图特效拆解」；
+  3. **图题排版精准呼应**：
+     - 各视窗标号与图题精准对齐参考图专业配方（如 `FIG. 03 // COLOR HALFTONE (PIXELATE) · HANDS SPECIMEN`、`FIG. 02 // HALFTONE PATTERN 'CIRCLE' · CROUCH SPECIMEN` 等）；
+  4. **全套自动化测试回归通过**。
+
 ## 2026-10-03｜多图显影突破：告别重度半调粉碎，以真实相片剪影呈现 4 张专属人像
 
 - **用户痛点与核心诊断**：
