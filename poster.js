@@ -2408,11 +2408,7 @@
     });
 
     (state.texts || []).forEach(t => {
-      if (t.id === 't-ps-icon' || t.badgeShape === 'ps-icon') {
-        t.color = '#31a8ff';
-        t.badgeColor = '#001e36';
-        t.badgeBorderColor = '#1473e6';
-      } else if (t.id === 't-title-main') {
+      if (t.id === 't-title-main') {
         t.color = '#ffffff';
       } else if (t.id === 't-title-sub') {
         t.color = '#b8c4d8';
@@ -2422,12 +2418,12 @@
     });
 
     render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [2/2] (滤镜模板 02)：Photoshop 教程深邃暗调与多维色度');
+    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [2/2] (滤镜模板 02)：多维色度与深邃暗调滤镜');
   }
 
   const filterRemixList = [
     { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 },
-    { id: 'filter-02', nameZh: 'Photoshop 教程深邃暗调与多维色度', apply: applyFilterTemplate02 }
+    { id: 'filter-02', nameZh: '多维色度与深邃暗调滤镜', apply: applyFilterTemplate02 }
   ];
 
   // ==========================================
@@ -2948,7 +2944,7 @@
       state.borderWidth = 0;
     }
 
-    // 1. 主图空间定位 (居中微调模特暗调底图)
+    // 1. 主图空间定位 (居中微调模特暗调底图，面部完全露空绝不遮挡)
     state.main = {
       id: 'main-image',
       x: 45,
@@ -2962,226 +2958,196 @@
       panY: 0,
       lineWidth: 0,
       color: '#ffffff',
-      layoutMode: 'PHOTOSHOP EFFECT TUTORIAL'
+      layoutMode: '7 IMAGE EFFECT SHOWCASE'
     };
 
     // 2. 多图辅图卡片结构 (兼容多图用户与回归测试)
     state.secondaries = [
-      { id: makeId(), imageId: slot0Id, x: 134, y: 318, w: 256, h: 186, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot1Id, x: 500, y: 298, w: 344, h: 254, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot2Id, x: 52, y: 694, w: 150, h: 184, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
-      { id: makeId(), imageId: slot3Id, x: 580, y: 656, w: 250, h: 122, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() }
+      { id: makeId(), imageId: slot0Id, x: 52, y: 405, w: 185, h: 160, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot1Id, x: 655, y: 195, w: 200, h: 190, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot2Id, x: 52, y: 695, w: 165, h: 160, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() },
+      { id: makeId(), imageId: slot3Id, x: 635, y: 535, w: 220, h: 130, rotation: 0, opacity: 0, color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent', filters: cleanFilters() }
     ];
 
     state.fragments = [];
 
-    // 3. 七大 Ps 自由变换选区视窗 (7 Effect Specimen Callouts)
-    // 视窗 1：耳机顶部马赛克像素化 (Headphone Mosaic)
+    // 3. 七大选区特效视窗 (就地取样＋环绕四周排布，面部完全露空绝不遮挡！)
+    // 视窗 1：左上侧马赛克像素化 (Top-Left Mosaic)
     const f1 = makeFrame(1, {
       sourceId: 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 278, y: 194, w: 160, h: 162,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 52, y: 165, w: 175, h: 140,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d1 = makeDetail(f1, 0, {
-      x: 278, y: 194, w: 160, h: 162, rotation: 0,
+      x: 52, y: 165, w: 175, h: 140, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 25, brightness: 5,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
-    // 视窗 2：左肩同心圆半调与颗粒 (Left Shoulder Concentric Halftone)
+    // 视窗 2：中左侧肩部同心圆半调 (Mid-Left Shoulder Concentric Halftone)
     const f2 = makeFrame(2, {
       sourceId: (isUserMode && slot2Id) ? slot2Id : 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 134, y: 318, w: 256, h: 186,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 52, y: 405, w: 185, h: 160,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d2 = makeDetail(f2, 1, {
-      x: 134, y: 318, w: 256, h: 186, rotation: 0,
+      x: 52, y: 405, w: 185, h: 160, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'circle_halftone', halftoneStrength: 85, grain: 24,
       duotoneDark: '#0b1a3d', duotoneLight: '#9cb3ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
-    // 视窗 3：右侧面容与墨镜彩色半调 (Face & Glasses Color Halftone - HERO)
+    // 视窗 3：右上侧钴蓝双色调彩色半调 (Top-Right Flank Cobalt Halftone - HERO)
     const f3 = makeFrame(3, {
       sourceId: (isUserMode && slot1Id) ? slot1Id : 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 500, y: 298, w: 344, h: 254,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 655, y: 195, w: 200, h: 190,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d3 = makeDetail(f3, 2, {
-      x: 500, y: 298, w: 344, h: 254, rotation: 0,
+      x: 655, y: 195, w: 200, h: 190, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'color_halftone', halftoneStrength: 90, halftoneDensity: 64, halftoneSize: 6,
       duotoneDark: '#122db5', duotoneLight: '#dbe8ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
-    // 视窗 4：左臂 20 像素 Bayer 位图点阵 (Arm Bitmap Dither)
+    // 视窗 4：下左侧 20 像素 Bayer 位图点阵 (Lower-Left Bayer Dither)
     const f4 = makeFrame(4, {
       sourceId: (isUserMode && slot3Id) ? slot3Id : 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 52, y: 694, w: 150, h: 184,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 52, y: 695, w: 165, h: 160,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d4 = makeDetail(f4, 3, {
-      x: 52, y: 694, w: 150, h: 184, rotation: 0,
+      x: 52, y: 695, w: 165, h: 160, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dither', ditherStep: 5, contrast: 28,
-      duotoneDark: '#141d38', duotoneLight: '#9ab0ff',
+      duotoneDark: '#141d38', duotoneLight: '#9ab0ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
-    // 视窗 5：左下腹斜向点状半调 (Waist Slanted Dot Halftone)
+    // 视窗 5：左下底角斜向点状半调 (Bottom-Left Corner Slanted Dot)
     const f5 = makeFrame(5, {
       sourceId: 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 68, y: 942, w: 164, h: 98,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 52, y: 955, w: 165, h: 100,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d5 = makeDetail(f5, 4, {
-      x: 68, y: 942, w: 164, h: 98, rotation: 0,
+      x: 52, y: 955, w: 165, h: 100, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: -18, halftoneDensity: 60, halftoneSize: 6,
       duotoneDark: '#162878', duotoneLight: '#b8d0ff',
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
-    // 视窗 6：胸前图案 2 阶调阈值与颗粒 (T-Shirt Graphic Threshold)
+    // 视窗 6：胸腹部服饰 2 阶调阈值与手绘颗粒 (Torso Fabric Threshold Graphic)
     const f6 = makeFrame(6, {
       sourceId: 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 450, y: 684, w: 182, h: 386,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 435, y: 705, w: 185, h: 350,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d6 = makeDetail(f6, 5, {
-      x: 450, y: 684, w: 182, h: 386, rotation: 0,
+      x: 435, y: 705, w: 185, h: 350, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'threshold', thresholdLevel: 132, grain: 32,
       duotoneDark: '#0b1632', duotoneLight: '#eef3ff',
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
-    // 视窗 7：右腰线性半调与水平动感扫描 (Right Waist Scanline Halftone)
+    // 视窗 7：右侧腰线线性半调与水平动感扫描 (Right Waist Scanline Halftone)
     const f7 = makeFrame(7, {
       sourceId: 'main',
-      labelPrefix: '', labelNumber: '',
-      x: 580, y: 656, w: 250, h: 122,
-      color: '#fbcfe8', lineWidth: 1.2, strokeStyle: 'solid', frameStyle: 'full',
-      showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showLabel: false
+      x: 635, y: 535, w: 220, h: 130,
+      strokeOpacity: 0, lineWidth: 0, showLabel: false
     });
     const d7 = makeDetail(f7, 6, {
-      x: 580, y: 656, w: 250, h: 122, rotation: 0,
+      x: 635, y: 535, w: 220, h: 130, rotation: 0,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'line_halftone', halftoneStrength: 85, halftoneAngle: 0, halftoneDensity: 58,
       duotoneDark: '#14225a', duotoneLight: '#6ba0ff', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 7,
-      showTag: false, lineOpacity: 0
+      showTag: false, lineOpacity: 0, connectorType: 'none'
     });
 
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
     state.details = [d1, d2, d3, d4, d5, d6, d7];
 
-    // 4. 排版文字 (Texts)
+    // 4. 排版文字 (无 PS 徽标，纯粹专业日系标题与配方说明)
     state.texts = [
-      // Photoshop 软件徽标 (Ps Icon Badge)
-      {
-        id: 't-ps-icon', kind: 'caption', content: 'Ps',
-        x: 68, y: 46, size: 28, weight: 900,
-        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#31a8ff', align: 'center',
-        badgeShape: 'ps-icon', badgeWidth: 54, badgeHeight: 54,
-        badgeColor: '#001e36', badgeBorderColor: '#1473e6'
-      },
-      // 主标题：画像エフェクトの組み合わせ例 7選
+      // 主标题：画像エフェクトの組み合わせ例 7選 (左侧整洁对齐)
       {
         id: 't-title-main', kind: 'hero', content: '画像エフェクトの組み合わせ例 7選',
-        x: 118, y: 38, size: 36, weight: 900,
+        x: 52, y: 44, size: 36, weight: 900,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#ffffff', letterSpacing: -0.5, opacity: 100
       },
-      // 副标题：7 Photoshop Image Effect Combinations That Work Well Together
+      // 副标题：7 Image Effect Combinations That Work Well Together
       {
-        id: 't-title-sub', kind: 'caption', content: '7 Photoshop Image Effect Combinations That Work Well Together',
-        x: 120, y: 84, size: 14.5, weight: 600,
+        id: 't-title-sub', kind: 'caption', content: '7 Image Effect Combinations That Work Well Together',
+        x: 54, y: 92, size: 14.5, weight: 600,
         font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: '#b8c4d8', letterSpacing: 0.2, opacity: 90
       },
-      // 标注 1 (耳机顶部)
+      // 标注 1 (左上马赛克)
       {
         id: 't-recipe-1', kind: 'micro',
         content: 'モザイク（ピクセレート）\nMosaic (Pixelate)\n+\nカラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)',
-        x: 260, y: 198, size: 11, weight: 600,
+        x: 52, y: 315, size: 10.5, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#dbeafe', align: 'right', lineHeight: 1.22, opacity: 95
+        color: '#dbeafe', align: 'left', lineHeight: 1.22, opacity: 95
       },
-      // 标注 2 (左肩蝴蝶)
+      // 标注 2 (中左肩同心圆)
       {
         id: 't-recipe-2', kind: 'micro',
         content: 'ハーフトーンパターン「円」（フィルターギャラリー）\nHalftone Pattern \'Circle\' (Filter Gallery)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 134, y: 516, size: 10, weight: 600,
+        x: 52, y: 575, size: 9.5, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
       },
-      // 标注 3 (右侧面容 - HERO)
+      // 标注 3 (右上钴蓝半调 - HERO)
       {
         id: 't-recipe-3', kind: 'micro',
-        content: 'カラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)\n+\nグラデーションマップ（调整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 844, y: 192, size: 11, weight: 600,
+        content: 'カラーハーフトーン（ピクセレート）\nColor Halftone (Pixelate)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 855, y: 395, size: 10.5, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#dbeafe', align: 'right', lineHeight: 1.22, opacity: 95
       },
-      // 标注 4 (左臂位图)
+      // 标注 4 (下左臂位图点阵)
       {
         id: 't-recipe-4', kind: 'micro',
-        content: 'モノクロ 2 階調 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
-        x: 214, y: 730, size: 10.5, weight: 600,
+        content: 'モノクロ 2 阶调 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        x: 52, y: 865, size: 9.5, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
       },
-      // 标注 5 (左下腹点状)
+      // 标注 5 (底左角点状半调)
       {
         id: 't-recipe-5', kind: 'micro',
         content: 'ハーフトーンパターン「ドット」（フィルターギャラリー）\nHalftone Pattern \'Dot\' (Filter Gallery)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
-        x: 68, y: 1052, size: 9.5, weight: 600,
+        x: 52, y: 1065, size: 9, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#b0c4de', align: 'left', lineHeight: 1.22, opacity: 85
       },
-      // 标注 6 (T恤图案阈值)
+      // 标注 6 (胸腹服饰手绘图案)
       {
         id: 't-recipe-6', kind: 'micro',
-        content: '2 階調化（調整レイヤー）\nThreshold (Adjustment Layer)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
-        x: 644, y: 888, size: 10, weight: 600,
+        content: '2 階調化（調整レイヤー）\nThreshold (Adjustment Layer)\n+\n粒子（調整レイヤー）\nGrain Effect (Adjustment Layer)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
+        x: 855, y: 885, size: 9.5, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
-        color: '#c7d7f0', align: 'left', lineHeight: 1.22, opacity: 90
+        color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
       },
-      // 标注 7 (右腰线状半调)
+      // 标注 7 (右腰水平动感线状半调)
       {
         id: 't-recipe-7', kind: 'micro',
         content: 'ハーフトーンパターン「線」\n（フィルターギャラリー）\nHalftone Pattern \'Line\' (Filter Gallery)\n+\nぼかし（移動）\nMotion Blur\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
-        x: 844, y: 772, size: 9.5, weight: 600,
+        x: 855, y: 675, size: 9.5, weight: 600,
         font: 'PingFang SC, Source Han Sans SC, "Noto Sans CJK JP", sans-serif',
         color: '#c7d7f0', align: 'right', lineHeight: 1.22, opacity: 90
       },
@@ -3197,23 +3163,23 @@
     state.layers = [
       { type: 'main', id: 'main-image' },
       ...state.secondaries.map(s => ({ type: 'secondary', id: s.id })),
-      { type: 'frame', id: f1.id }, { type: 'detail', id: d1.id }, { type: 'connector', id: d1.id },
-      { type: 'frame', id: f2.id }, { type: 'detail', id: d2.id }, { type: 'connector', id: d2.id },
-      { type: 'frame', id: f3.id }, { type: 'detail', id: d3.id }, { type: 'connector', id: d3.id },
-      { type: 'frame', id: f4.id }, { type: 'detail', id: d4.id }, { type: 'connector', id: d4.id },
-      { type: 'frame', id: f5.id }, { type: 'detail', id: d5.id }, { type: 'connector', id: d5.id },
-      { type: 'frame', id: f6.id }, { type: 'detail', id: d6.id }, { type: 'connector', id: d6.id },
-      { type: 'frame', id: f7.id }, { type: 'detail', id: d7.id }, { type: 'connector', id: d7.id },
+      { type: 'detail', id: d1.id },
+      { type: 'detail', id: d2.id },
+      { type: 'detail', id: d3.id },
+      { type: 'detail', id: d4.id },
+      { type: 'detail', id: d5.id },
+      { type: 'detail', id: d6.id },
+      { type: 'detail', id: d7.id },
       ...state.texts.map(t => ({ type: 'text', id: t.id }))
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '排版 REMIX [2/2] · Photoshop 选区采样 7 选 (用户图片)' : '排版 REMIX [2/2] · Photoshop 选区采样 7 选',
-      anchorEn: 'Layout REMIX [2/2] · Photoshop 7 Effect Showcase',
-      mainLayoutZh: '暗调主图 · 7 处自由变换选区视窗',
-      mainLayoutEn: 'Moody Base · 7 Transform Specimen Windows',
-      typographyZh: 'Ps 软件徽标与特效配方标注',
-      typographyEn: 'Photoshop Badge & Effect Annotation',
+      anchorZh: isUserMode ? '排版 REMIX [2/2] · 图像选区采样 7 选 (用户图片)' : '排版 REMIX [2/2] · 图像选区采样 7 选',
+      anchorEn: 'Layout REMIX [2/2] · 7 Effect Showcase',
+      mainLayoutZh: '面部无遮挡模特底图 · 7 处环绕式选区视窗',
+      mainLayoutEn: 'Unobstructed Face Portrait · 7 Perimeter Specimen Windows',
+      typographyZh: '纯净日文字体排印与特效配方标注',
+      typographyEn: 'Clean Japanese Editorial & Recipe Annotation',
       backgroundZh: '深邃暗夜影棚微光',
       backgroundEn: 'Deep Studio Dark Vignette',
       strengthZh: isUserMode ? '专属图片应用' : '选区教程排版',
@@ -3225,7 +3191,7 @@
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
       ? `LAYOUT [2/2] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'LAYOUT [2/2] / PHOTOSHOP 7 EFFECTS';
+      : 'LAYOUT [2/2] / 7 IMAGE EFFECTS';
 
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
@@ -3236,20 +3202,20 @@
     motion.play(previousPoster);
     if (showToast) {
       const resolvedToast = toastMsg || (isUserMode
-        ? '📐 排版 REMIX [2/2] (排版模板 02)：已应用 Photoshop 选区采样 7 选构图 (已适配您的专属图片)'
-        : '📐 排版 REMIX [2/2] (排版模板 02)：Photoshop 选区采样 7 选构图');
+        ? '📐 排版 REMIX [2/2] (排版模板 02)：已应用图像选区采样 7 选构图 (面部无遮挡)'
+        : '📐 排版 REMIX [2/2] (排版模板 02)：图像选区采样 7 选构图 (面部无遮挡)');
       toast(resolvedToast);
     }
   }
 
   const layoutRemixList = [
     { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 },
-    { id: 'layout-02', nameZh: 'Photoshop 选区采样 7 选构图', apply: applyLayoutTemplate02 }
+    { id: 'layout-02', nameZh: '图像选区采样 7 选构图', apply: applyLayoutTemplate02 }
   ];
 
   const masterRemixList = [
     { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 },
-    { nameZh: 'Photoshop 特效搭配 7 选', shortZh: 'Ps 特效 7 选', layoutIdx: 1, filterIdx: 1 }
+    { nameZh: '图像特效搭配 7 选', shortZh: '特效 7 选', layoutIdx: 1, filterIdx: 1 }
   ];
 
   let currentLayoutIndex = 0;
@@ -3408,7 +3374,7 @@
 
   const layoutTemplates = [
     { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
-    { id: 'template-02-ps7', nameZh: '模板 02 · Photoshop 特效 7 选', apply: applyLayoutTemplate02 }
+    { id: 'template-02-ps7', nameZh: '模板 02 · 图像特效搭配 7 选', apply: applyLayoutTemplate02 }
   ];
 
   function applyLayoutTemplate(templateId) {
