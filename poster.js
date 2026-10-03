@@ -1934,14 +1934,25 @@
         </button>
       </div>`;
 
-      const presetsContent = `<div class="poster-presets">
+      const isFilter01Active = state.backgroundStyle === 'electric-tiger';
+      const presetsContent = `<div class="poster-template-grid" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+        <button type="button" class="poster-template-card poster-filter-template-card ${isFilter01Active ? 'is-active' : ''}" data-poster-filter-template="template-01-electric">
+          <div class="poster-template-card-header">
+            <span class="poster-template-badge" style="background:#001fd4;color:#ffbe0b;border-color:#ffbe0b;">滤镜模板 01</span>
+            <span class="poster-template-tag" style="color:#001fd4;font-weight:700;">Aespa 虎纹调色</span>
+          </div>
+          <div class="poster-template-title" style="color:#001fd4;">滤镜模板一 · Aespa 电光虎纹</div>
+          <p class="poster-template-desc">电光蓝黑虎纹底纸 · 细白描边 · 杂志原色微网点 · 蓝光黑白高反差副图</p>
+        </button>
+      </div>
+      <div class="poster-presets">
         <button type="button" data-poster-preset="red">CCTV<br /><b>RED</b></button>
         <button type="button" data-poster-preset="blue">CCTV<br /><b>BLUE</b></button>
         <button type="button" data-poster-preset="editorial">HALFTONE<br /><b>EDITORIAL</b></button>
         <button type="button" data-poster-preset="y2k">SOFT<br /><b>Y2K</b></button>
         <button class="poster-preset-xerox" type="button" data-poster-preset="xerox">XEROX<br /><b>/ PUNK</b></button>
       </div>`;
-      const presetsAccordion = accordion('风格预设', 'PRESETS', presetsContent, true);
+      const presetsAccordion = accordion('精选滤镜模板', 'FILTER TEMPLATES', presetsContent, true);
 
       const hasBgImage = !!state.backgroundImageId;
       const isPattern = state.backgroundStyle && state.backgroundStyle !== 'solid';
@@ -2183,8 +2194,129 @@
     return hasUserAsset || hasUserMain;
   }
 
-  function applyTemplate01(images, isReset = false, toastMsg = '') {
-    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = ''; lastRemixBackgroundStyle = '';
+  function applyFilterTemplate01(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+
+    // 1. 底图与外框
+    state.background = '#001fd4';
+    state.backgroundStyle = 'electric-tiger';
+    state.backgroundImageId = null;
+    state.border = true;
+    state.borderColor = '#ffffff';
+    state.borderWidth = 4;
+
+    // 2. 主图滤镜：保留原色与毛衣编织细节，辅以轻量杂志印刷网点
+    state.filters = {
+      bw: 0,
+      brightness: 4,
+      contrast: 18,
+      saturation: 110,
+      halftone: 20,
+      halftoneSize: 5,
+      halftoneDensity: 65,
+      halftoneAngle: 15,
+      grain: 12,
+      rough: 0,
+      outline: 0,
+      scan: 0,
+      scanAngle: 0,
+      paper: 0,
+      dirty: 0,
+      compression: 0,
+      invert: 0,
+      posterize: 0
+    };
+
+    // 3. 辅图卡片滤镜与边框风格
+    (state.secondaries || []).forEach((sec, idx) => {
+      if (idx === 1) {
+        // 卡片 2：右侧经典蓝光黑白高反差
+        sec.color = '#002FA7';
+        sec.lineWidth = 3;
+        sec.backingColor = '#002FA7';
+        sec.filters = {
+          ...cleanFilters(),
+          bw: 100,
+          contrast: 45,
+          brightness: -5
+        };
+      } else if (idx === 0) {
+        // 卡片 1：白边原色
+        sec.color = '#ffffff';
+        sec.lineWidth = 2;
+        sec.backingColor = '#ffffff';
+        sec.filters = cleanFilters();
+      } else {
+        // 卡片 3, 4：克莱因蓝细边原色
+        sec.color = '#002FA7';
+        sec.lineWidth = 2.5;
+        sec.backingColor = '#002FA7';
+        sec.filters = cleanFilters();
+      }
+    });
+
+    // 4. 金黄色半透明半调衬块 (Fragments)
+    (state.fragments || []).forEach((frag) => {
+      frag.color = '#ffbe0b';
+      frag.backingColor = 'rgba(255, 190, 11, 0.45)';
+      frag.opacity = 95;
+      frag.filterType = 'duotone';
+      frag.duotoneDark = '#7a5500';
+      frag.duotoneLight = '#ffe600';
+      frag.contrast = 40;
+      frag.brightness = 25;
+      frag.grain = 0;
+      frag.halftoneSize = 9;
+      frag.halftoneDensity = 56;
+      frag.halftoneAngle = 15;
+      frag.halftoneStrength = 82;
+    });
+
+    // 5. 证据框与局部特写色彩
+    (state.frames || []).forEach((f) => {
+      f.color = '#002FA7';
+      f.tagBackground = '#002FA7';
+      f.tagTextColor = '#ffffff';
+    });
+    (state.details || []).forEach((d) => {
+      d.color = '#002FA7';
+      d.lineColor = '#002FA7';
+      d.filterType = 'original';
+    });
+
+    // 6. 排版文字色彩
+    (state.texts || []).forEach((t) => {
+      if (t.id === 't-hero-richman' || (t.kind === 'hero' && t.content?.includes('RICH'))) {
+        t.color = '#ffbe0b';
+        t.strokeColor = '#000000';
+      } else if (t.id === 't-hero-aespa' || (t.kind === 'hero' && t.content?.includes('aespa'))) {
+        t.color = '#e2e8f0';
+        t.strokeColor = '#111111';
+      } else if (t.id === 't-badge') {
+        t.color = '#ffbe0b';
+        t.badgeColor = '#002FA7';
+      }
+    });
+
+    document.querySelectorAll('.poster-filter-template-card').forEach(card => {
+      card.classList.toggle('is-active', card.dataset.posterFilterTemplate === 'template-01-electric');
+    });
+    document.querySelectorAll('[data-poster-preset]').forEach(card => {
+      card.classList.remove('is-active');
+    });
+
+    render();
+    renderInspector();
+    commit();
+    markManuallyEdited();
+    motion.play(previousPoster);
+    if (showToast) {
+      toast(toastMsg || '🎨 已应用：滤镜模板 01 · Aespa 电光虎纹与胶印色彩');
+    }
+  }
+
+  function applyLayoutTemplate01(images, isReset = false, showToast = true, toastMsg = '') {
+    remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
     const previousPoster = motion.capture();
 
     const isUserMode = !isReset && hasUserUploadedImages();
@@ -2201,7 +2333,6 @@
       // Collect all user assets that have valid images
       let userAssets = (state.assets || []).filter(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
 
-      // If the current main image is not yet in userAssets, register it
       if (state.image && !isDemoId(state.mainImageId) && !isDemoName(state.imageName)) {
         const mid = state.mainImageId || makeId();
         if (!imageAssets.has(mid)) {
@@ -2213,7 +2344,6 @@
         state.mainImageId = mid;
       }
 
-      // Determine main asset
       let mainAsset = userAssets.find(a => a.id === state.mainImageId);
       if (!mainAsset && userAssets.length > 0) {
         mainAsset = userAssets[0];
@@ -2228,10 +2358,8 @@
         }
       }
 
-      // Purge old Karina demo assets from state.assets so only user assets remain
       state.assets = userAssets.map(a => ({ id: a.id, name: a.name }));
 
-      // Pick assets for the 4 secondary cards
       const secCandidates = userAssets.filter(a => a.id !== state.mainImageId);
       const getSlotAssetId = (idx) => {
         if (secCandidates.length === 0) return state.mainImageId;
@@ -2246,7 +2374,6 @@
       slot2Id = getSlotAssetId(2);
       slot3Id = getSlotAssetId(3);
     } else {
-      // Demo Mode: Karina 4-image archive
       const imgClose = images?.close || state.image;
       const imgHands = images?.hands || imgClose;
       const imgCrouch = images?.crouch || imgClose;
@@ -2279,14 +2406,16 @@
       slot3Id = assetClose.id;
     }
 
-    // 1. 底图缩放漏出电光虎纹背景 + 保留原图色彩与毛衣细节
-    state.background = '#001fd4';
-    state.backgroundStyle = 'electric-tiger';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = '#ffffff';
-    state.borderWidth = 4;
+    // 默认确保有背景纸张与外框
+    if (!state.backgroundStyle || state.backgroundStyle === 'solid') {
+      state.background = '#001fd4';
+      state.backgroundStyle = 'electric-tiger';
+      state.border = true;
+      state.borderColor = '#ffffff';
+      state.borderWidth = 4;
+    }
 
+    // 1. 主图空间定位
     state.main = {
       id: 'main-image',
       x: 38,
@@ -2301,28 +2430,6 @@
       lineWidth: 2,
       color: '#ffffff',
       layoutMode: 'AESPA RICH MAN ARCHIVE'
-    };
-
-    // 保留真实原色与毛衣编织细节，辅以轻量杂志印刷网点
-    state.filters = {
-      bw: 0,
-      brightness: 4,
-      contrast: 18,
-      saturation: 110,
-      halftone: 20,
-      halftoneSize: 5,
-      halftoneDensity: 65,
-      halftoneAngle: 15,
-      grain: 12,
-      rough: 0,
-      outline: 0,
-      scan: 0,
-      scanAngle: 0,
-      paper: 0,
-      dirty: 0,
-      compression: 0,
-      invert: 0,
-      posterize: 0
     };
 
     // 2. 金黄色半透明半调衬块 (Fragments)
@@ -2375,7 +2482,6 @@
 
     // 3. 多图辅图卡片 (Secondaries)
     state.secondaries = [
-      // 辅图 1: 左上方平视卡片
       {
         id: makeId(),
         imageId: slot0Id,
@@ -2390,7 +2496,6 @@
         backingColor: '#ffffff',
         filters: cleanFilters()
       },
-      // 辅图 2: 右侧蓝光蹲姿卡片位置 (经典赛博黑白高反差)
       {
         id: makeId(),
         imageId: slot1Id,
@@ -2410,7 +2515,6 @@
           brightness: -5
         }
       },
-      // 辅图 3: 右下方仰角卡片
       {
         id: makeId(),
         imageId: slot2Id,
@@ -2425,7 +2529,6 @@
         backingColor: '#002FA7',
         filters: cleanFilters()
       },
-      // 辅图 4: 左下方特写卡片
       {
         id: makeId(),
         imageId: slot3Id,
@@ -2657,24 +2760,24 @@
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '模板 01 · Aespa 电光档案 (用户图片)' : '模板 01 · Aespa 电光档案 (多图版)',
-      anchorEn: isUserMode ? 'Template 01 · Electric Archive (Custom Image)' : 'Template 01 · Electric Archive (Multi-Image)',
+      anchorZh: isUserMode ? '排版模板 01 · Aespa 电光档案 (用户图片)' : '排版模板 01 · Aespa 电光档案 (多图版)',
+      anchorEn: isUserMode ? 'Layout Template 01 · Electric Archive (Custom Image)' : 'Layout Template 01 · Electric Archive (Multi-Image)',
       mainLayoutZh: '原色缩放主图 · 镂空电光虎纹底纸',
       mainLayoutEn: 'Scaled True-Color Main · Electric Tiger Base',
       typographyZh: '电光涂鸦与三行叠字',
       typographyEn: 'Graffiti & Triple Stack',
       backgroundZh: 'Aespa 经典电光蓝黑虎纹',
       backgroundEn: 'Electric Tiger Cyber Noir',
-      strengthZh: isUserMode ? '专属图片应用' : '精选多图模板',
-      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Template',
+      strengthZh: isUserMode ? '专属图片应用' : '精选多图排版',
+      strengthEn: isUserMode ? 'Custom Asset Applied' : 'Curated Multi-Image Layout',
       isManuallyEdited: false
     };
 
     state.selected = null;
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
-      ? `TEMPLATE 01 · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'TEMPLATE 01 / AESPA RICH MAN (MULTI-IMAGE)';
+      ? `LAYOUT 01 · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : 'LAYOUT 01 / AESPA RICH MAN (MULTI-IMAGE)';
     document.querySelectorAll('.poster-template-card').forEach(card => {
       card.classList.toggle('is-active', card.dataset.posterTemplate === 'template-01-richman');
     });
@@ -2691,9 +2794,30 @@
     updateRemixCard();
     if (zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
     motion.play(previousPoster);
+    if (showToast) {
+      const resolvedToast = toastMsg || (isUserMode
+        ? '📐 已应用：排版模板 01 (已适配您的专属图片)'
+        : '📐 已应用：排版模板 01 · Aespa 多图电光档案构图');
+      toast(resolvedToast);
+    }
+  }
+
+  function applyTemplate01(images, isReset = false, toastMsg = '') {
+    // ⚡ 总 REMIX = 排版模板 01 (构图) + 滤镜模板 01 (电光虎纹风格)
+    applyLayoutTemplate01(images, isReset, false);
+    applyFilterTemplate01(false);
+
+    document.querySelectorAll('.poster-template-card[data-poster-template="template-01-richman"]').forEach(c => c.classList.add('is-active'));
+    document.querySelectorAll('.poster-filter-template-card[data-poster-filter-template="template-01-electric"]').forEach(c => c.classList.add('is-active'));
+
+    const isUserMode = !isReset && hasUserUploadedImages();
+    status.textContent = isUserMode
+      ? `TEMPLATE 01 · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : 'TEMPLATE 01 / AESPA RICH MAN (MULTI-IMAGE)';
+    updateRemixCard();
     const resolvedToast = toastMsg || (isUserMode
-      ? '⚡ 总 REMIX 已生效：已为您的图片应用模板 01 (Aespa Rich Man 电光档案)'
-      : '已应用：模板 01 · Aespa 多图电光档案 (Rich Man)');
+      ? '⚡ 总 REMIX 已生效：已为您的图片应用模板 01 (排版模板 01 + 滤镜模板 01)'
+      : '⚡ 总 REMIX 已生效：已应用 排版模板 01 (构图) + 滤镜模板 01 (电光虎纹)');
     toast(resolvedToast);
   }
 
@@ -2711,6 +2835,10 @@
   }
 
   function preset(name) {
+    if (name === 'template-01-electric') {
+      applyFilterTemplate01(true);
+      return;
+    }
     const all = {
       red:{background:'#d8d6d0',accent:'#c32631',border:'#fff',filters:{bw:0,brightness:-5,contrast:32,halftone:0,halftoneSize:9,halftoneDensity:58,halftoneAngle:15,grain:14,rough:0,outline:0,scan:22,scanAngle:0,paper:16,dirty:12,compression:0,invert:0,posterize:0},crop:['color_halftone','duotone','mosaic_sharp']},
       blue:{background:'#dbe3e9',accent:'#1f54bd',border:'#171717',filters:{bw:0,brightness:0,contrast:25,halftone:0,halftoneSize:7,halftoneDensity:62,halftoneAngle:-15,grain:10,rough:0,outline:0,scan:12,scanAngle:90,paper:8,dirty:0,compression:0,invert:0,posterize:0},crop:['glass','gradient_map','mosaic_tile']},
@@ -2718,7 +2846,24 @@
       y2k:{background:'#e5e2ef',accent:'#765fc2',border:'#fff',filters:{bw:0,brightness:8,contrast:12,halftone:0,halftoneSize:5,halftoneDensity:65,halftoneAngle:0,grain:4,rough:0,outline:0,scan:0,scanAngle:0,paper:4,dirty:0,compression:0,invert:0,posterize:0},crop:['glass','duotone','mosaic_sharp']},
       xerox:{background:'#d8d5cc',accent:'#111',border:'#111',filters:{bw:100,brightness:2,contrast:95,halftone:80,halftoneSize:15,halftoneDensity:48,halftoneAngle:-18,grain:65,rough:50,outline:0,scan:55,scanAngle:0,paper:65,dirty:70,compression:25,invert:0,posterize:45},crop:['threshold','dither','circle_halftone']},
     };
-    const p = all[name]; if (!p) return; state.background = p.background; state.borderColor = p.border; state.filters = {...p.filters}; state.frames.forEach((f) => {f.color=p.accent;f.tagBackground=p.accent;}); state.details.forEach((d,i)=>{d.color=p.accent;d.lineColor=p.accent;d.filterType=p.crop[i%p.crop.length];if(name==='xerox')d.rotation=[-8,6,11][i%3];}); state.fragments.forEach((f,i)=>{f.color=p.accent;f.filterType=p.crop[(i+1)%p.crop.length];}); state.texts.forEach((t)=>{if(t.kind==='repeat')t.color=p.accent;}); setSelected(null,null); render(); commit(); markManuallyEdited(); toast(`已应用 ${name==='xerox'?'XEROX / PUNK':name.toUpperCase()} 视觉系统。`);
+    const p = all[name]; if (!p) return;
+    state.background = p.background;
+    state.backgroundStyle = 'solid';
+    state.borderColor = p.border;
+    state.filters = {...p.filters};
+    state.frames.forEach((f) => {f.color=p.accent;f.tagBackground=p.accent;});
+    state.details.forEach((d,i)=>{d.color=p.accent;d.lineColor=p.accent;d.filterType=p.crop[i%p.crop.length];if(name==='xerox')d.rotation=[-8,6,11][i%3];});
+    state.fragments.forEach((f,i)=>{f.color=p.accent;f.filterType=p.crop[(i+1)%p.crop.length];});
+    state.texts.forEach((t)=>{if(t.kind==='repeat')t.color=p.accent;});
+    document.querySelectorAll('.poster-filter-template-card').forEach(card => card.classList.remove('is-active'));
+    document.querySelectorAll('[data-poster-preset]').forEach(card => {
+      card.classList.toggle('is-active', card.dataset.posterPreset === name);
+    });
+    setSelected(null,null);
+    render();
+    commit();
+    markManuallyEdited();
+    toast(`已应用 ${name==='xerox'?'XEROX / PUNK':name.toUpperCase()} 视觉系统。`);
   }
 
   function applyPosterBackground(style) {
@@ -2986,16 +3131,16 @@
   const layoutTemplates = [
     {
       id: 'template-01-richman',
-      nameZh: '模板 01 · Aespa 电光档案',
-      nameEn: 'T01 · Rich Man Electric Archive',
-      badge: 'Y2K 赛博档案',
-      descZh: '全幅黑白粗半调底图 · 唇眼彩色特写 · 电光蓝金标题与三行叠字',
+      nameZh: '排版模板 01 · Aespa 电光档案',
+      nameEn: 'Layout T01 · Rich Man Electric Archive',
+      badge: 'Aespa 档案构图',
+      descZh: '内嵌留白主图 · 4张多图拼贴卡片 · 唇眼三路微距特写 · 黄金半调色块',
       apply() {
         if (hasUserUploadedImages()) {
-          applyTemplate01(null, false);
+          applyLayoutTemplate01(null, false, true);
         } else {
           ensureKarinaMultiAssets(images => {
-            applyTemplate01(images, false);
+            applyLayoutTemplate01(images, false, true);
           });
         }
       }
@@ -3013,15 +3158,19 @@
   }
 
   function triggerMasterRemix() {
-    if (!layoutTemplates || layoutTemplates.length === 0) return;
-    const t = layoutTemplates[0];
     const grid = document.getElementById('posterTemplateGrid');
     const templateGroup = grid?.closest('details');
     if (templateGroup) {
       templateGroup.open = true;
     }
-    applyLayoutTemplate(t.id);
-    const card = document.querySelector(`[data-poster-template="${t.id}"]`);
+    if (hasUserUploadedImages()) {
+      applyTemplate01(null, false);
+    } else {
+      ensureKarinaMultiAssets(images => {
+        applyTemplate01(images, false);
+      });
+    }
+    const card = document.querySelector(`[data-poster-template="template-01-richman"]`);
     if (card) {
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -3778,6 +3927,11 @@
     if (historyTimer) commit();
   });
   inspector.addEventListener('click',(e)=>{
+    const filterTemplateBtn = e.target.closest('[data-poster-filter-template]');
+    if (filterTemplateBtn) {
+      applyFilterTemplate01(true);
+      return;
+    }
     const presetBtn = e.target.closest('[data-poster-preset]');
     if (presetBtn) {
       preset(presetBtn.dataset.posterPreset);
@@ -4062,6 +4216,12 @@
     const tBtn = e.target.closest('[data-poster-template]');
     if (tBtn) {
       applyLayoutTemplate(tBtn.dataset.posterTemplate);
+      return;
+    }
+    const ftBtn = e.target.closest('[data-poster-filter-template]');
+    if (ftBtn) {
+      applyFilterTemplate01(true);
+      return;
     }
   });
 
@@ -4211,6 +4371,8 @@
   window.posterSetupResizers = setupPosterResizers;
   window.posterHasUserUploadedImages = hasUserUploadedImages;
   window.posterApplyTemplate01 = applyTemplate01;
+  window.posterApplyLayoutTemplate01 = applyLayoutTemplate01;
+  window.posterApplyFilterTemplate01 = applyFilterTemplate01;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
   renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();

@@ -163,6 +163,7 @@ vm.runInNewContext(`
   const render = () => {};
   const commit = () => {};
   const updateRemixCard = () => {};
+  const markManuallyEdited = () => {};
 
   ${section('  function hasUserUploadedImages()', '  function applyDemo(')}
   ${section('  const layoutTemplates = [', '  function remixLayout(')}
@@ -204,7 +205,23 @@ vm.runInNewContext(`
   const secIds = state.secondaries.map(s => s.imageId);
   assert.ok(secIds.includes(u2) && secIds.includes(u3));
 
-  // 4. Demo Reset
+  // 4. Test Modular Layout Template 01 (geometry only, preserves filters/bg)
+  state.backgroundStyle = 'scan';
+  state.filters.contrast = 99;
+  applyLayoutTemplate01(null, false, true);
+  assert.equal(state.backgroundStyle, 'scan', 'applyLayoutTemplate01 should not override existing backgroundStyle');
+  assert.equal(state.filters.contrast, 99, 'applyLayoutTemplate01 should not wipe user filter adjustments');
+  assert.equal(state.secondaries.length, 4, 'applyLayoutTemplate01 ensures 4-card structure');
+  assert.ok(lastToast.includes('排版模板 01'), 'Toast mentions Layout Template 01');
+
+  // 5. Test Modular Filter Template 01 (styling only, coordinates remain)
+  const prevX = state.secondaries[0].x;
+  applyFilterTemplate01(true);
+  assert.equal(state.backgroundStyle, 'electric-tiger', 'applyFilterTemplate01 sets electric tiger base');
+  assert.equal(state.secondaries[0].x, prevX, 'applyFilterTemplate01 does not move card coordinates');
+  assert.ok(lastToast.includes('滤镜模板 01'), 'Toast mentions Filter Template 01');
+
+  // 6. Demo Reset
   applyTemplate01({ close: demoImg, hands: demoImg, crouch: demoImg, sky: demoImg }, true);
   assert.equal(state.mainImageId, 'asset-karina-close');
   assert.equal(hasUserUploadedImages(), false);
@@ -219,5 +236,5 @@ vm.runInNewContext(`
   },
   window: {}
 });
-console.log('PASS: user image preservation on Master Remix, multi-image slot distribution, demo purge and restore');
+console.log('PASS: user image preservation on Master Remix, multi-image slot distribution, decoupled layout 01 and filter 01');
 
