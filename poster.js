@@ -493,6 +493,78 @@
   function raster(w, h, draw) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); draw(c.getContext('2d'), c); return c; }
   function noise(seed) { const n = Math.sin(seed * 12.9898 + 78.233) * 43758.5453; return n - Math.floor(n); }
 
+  function drawElectricTigerPattern(tc, w, h) {
+    const bgGrad = tc.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, '#001fd4');
+    bgGrad.addColorStop(0.25, '#042cf0');
+    bgGrad.addColorStop(0.65, '#0020be');
+    bgGrad.addColorStop(1, '#00138c');
+    tc.fillStyle = bgGrad;
+    tc.fillRect(0, 0, w, h);
+
+    const glow1 = tc.createRadialGradient(w * 0.22, h * 0.12, 10, w * 0.22, h * 0.12, w * 0.6);
+    glow1.addColorStop(0, 'rgba(80, 160, 255, 0.45)');
+    glow1.addColorStop(1, 'rgba(0, 31, 212, 0)');
+    tc.fillStyle = glow1;
+    tc.fillRect(0, 0, w, h);
+
+    const glow2 = tc.createRadialGradient(w * 0.78, h * 0.15, 10, w * 0.78, h * 0.15, w * 0.5);
+    glow2.addColorStop(0, 'rgba(60, 140, 255, 0.35)');
+    glow2.addColorStop(1, 'rgba(0, 31, 212, 0)');
+    tc.fillStyle = glow2;
+    tc.fillRect(0, 0, w, h);
+
+    function drawClaw(pts, width) {
+      if (pts.length < 2) return;
+      tc.save();
+      tc.beginPath();
+      tc.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1], p1 = pts[i];
+        const mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2;
+        tc.quadraticCurveTo(p0.x, p0.y, mx, my);
+      }
+      const last = pts[pts.length - 1];
+      tc.lineTo(last.x, last.y);
+      tc.lineWidth = width;
+      tc.lineCap = 'round';
+      tc.lineJoin = 'round';
+      tc.strokeStyle = '#06070a';
+      tc.stroke();
+      tc.restore();
+    }
+
+    const claws = [
+      { pts: [{ x: -30, y: 15 }, { x: 90, y: 35 }, { x: 220, y: 15 }, { x: 340, y: 45 }], w: 28 },
+      { pts: [{ x: -20, y: 65 }, { x: 130, y: 95 }, { x: 240, y: 65 }, { x: 380, y: 105 }], w: 24 },
+      { pts: [{ x: -40, y: 135 }, { x: 70, y: 160 }, { x: 170, y: 130 }, { x: 250, y: 155 }], w: 20 },
+      { pts: [{ x: 520, y: 25 }, { x: 670, y: 55 }, { x: 810, y: 25 }, { x: 930, y: 65 }], w: 32 },
+      { pts: [{ x: 590, y: 95 }, { x: 740, y: 125 }, { x: 860, y: 85 }, { x: 940, y: 120 }], w: 26 },
+      { pts: [{ x: 710, y: 165 }, { x: 820, y: 190 }, { x: 910, y: 160 }], w: 22 },
+      { pts: [{ x: -25, y: 260 }, { x: 55, y: 290 }, { x: 35, y: 380 }, { x: -25, y: 410 }], w: 34 },
+      { pts: [{ x: -25, y: 460 }, { x: 65, y: 500 }, { x: 25, y: 580 }, { x: -25, y: 610 }], w: 36 },
+      { pts: [{ x: -25, y: 680 }, { x: 70, y: 720 }, { x: 30, y: 810 }, { x: -25, y: 850 }], w: 32 },
+      { pts: [{ x: -25, y: 920 }, { x: 65, y: 960 }, { x: 35, y: 1050 }, { x: -25, y: 1090 }], w: 35 },
+      { pts: [{ x: 925, y: 270 }, { x: 845, y: 300 }, { x: 865, y: 390 }, { x: 925, y: 420 }], w: 32 },
+      { pts: [{ x: 925, y: 480 }, { x: 835, y: 520 }, { x: 875, y: 610 }, { x: 925, y: 640 }], w: 36 },
+      { pts: [{ x: 925, y: 700 }, { x: 830, y: 740 }, { x: 870, y: 830 }, { x: 925, y: 860 }], w: 34 },
+      { pts: [{ x: 925, y: 930 }, { x: 840, y: 970 }, { x: 865, y: 1060 }, { x: 925, y: 1090 }], w: 32 },
+      { pts: [{ x: 140, y: 1225 }, { x: 240, y: 1155 }, { x: 380, y: 1195 }, { x: 490, y: 1225 }], w: 30 },
+      { pts: [{ x: 530, y: 1225 }, { x: 640, y: 1160 }, { x: 760, y: 1195 }, { x: 860, y: 1225 }], w: 28 }
+    ];
+    claws.forEach((c) => drawClaw(c.pts, c.w));
+
+    tc.save();
+    tc.globalAlpha = 0.08;
+    tc.fillStyle = '#ffffff';
+    for (let i = 0; i < 350; i++) {
+      const rx = ((Math.sin(i * 19.3) * 43758.5453) % 1 + 1) % 1 * w;
+      const ry = ((Math.sin(i * 31.7) * 43758.5453) % 1 + 1) % 1 * h;
+      tc.fillRect(rx, ry, 1.8, 1.8);
+    }
+    tc.restore();
+  }
+
   function drawPosterBackground() {
     const style = state.backgroundStyle || 'solid';
     ctx.fillStyle = state.background; ctx.fillRect(0, 0, W, H);
@@ -501,7 +573,9 @@
     if (style !== 'solid' && textureAlpha > 0.005) {
       ctx.save();
       ctx.globalAlpha = textureAlpha;
-      if (style === 'liquid-chrome') {
+      if (style === 'electric-tiger' || style === 'tiger') {
+        drawElectricTigerPattern(ctx, W, H);
+      } else if (style === 'liquid-chrome') {
         if (window.posterLiquidChrome) {
           const chromeCanvas = window.posterLiquidChrome.getCachedCanvas(W, H, state.liquidChromeSeed || 0);
           if (chromeCanvas) ctx.drawImage(chromeCanvas, 0, 0, W, H);
@@ -1404,8 +1478,19 @@
       for (let i = 0; i < 3; i++) {
         ctx.save(); ctx.beginPath(); ctx.rect(0, i * bandH + 3, box.w, bandH - 6); ctx.clip(); ctx.drawImage(main, shifts[i], 0, box.w, box.h); ctx.restore();
       }
-    } else ctx.drawImage(main, 0, 0, box.w, box.h);
-    ctx.strokeStyle = 'rgba(20,20,20,.18)'; ctx.strokeRect(0, 0, box.w, box.h); ctx.restore();
+    } else {
+      ctx.drawImage(main, 0, 0, box.w, box.h);
+    }
+    if (box.lineWidth && box.color) {
+      ctx.strokeStyle = box.color;
+      ctx.lineWidth = box.lineWidth;
+      ctx.strokeRect(0, 0, box.w, box.h);
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, 0, box.w, box.h);
+    }
+    ctx.restore();
   }
   function drawLayer(layer) {
     if (layer.type === 'main') drawMainImage();
@@ -1876,6 +1961,7 @@
       }
 
       const bgPresetsContent = `<div class="poster-background-presets" style="margin-bottom:10px;">
+        <button type="button" data-poster-background="electric-tiger"><b>ELECTRIC TIGER</b><small>Aespa 经典电光虎纹 · 蓝黑斑纹</small></button>
         <button type="button" data-poster-background="liquid-chrome"><b>LIQUID CHROME</b><small>酸性全息水银 · WebGL 算法流体</small></button>
         <button type="button" data-poster-background="pure-black"><b>PURE BLACK</b><small>纯黑基底</small></button>
         <button type="button" data-poster-background="pure-white"><b>PURE WHITE</b><small>纯白基底</small></button>
@@ -1888,7 +1974,7 @@
         <button type="button" data-poster-background="blueprint"><b>BLUE PRINT</b><small>工程蓝图</small></button>
       </div>`
       + field('画布底色','Background Color','background',state.background,'color',true)
-      + select('背景样式','Background Style','backgroundStyle',state.backgroundStyle||'solid',[['liquid-chrome','酸性全息水银','Liquid Chrome'],['solid','纯色基底','Solid'],['grid','坐标网格','Index Grid'],['chrome','金属渐变','Chrome Gradient'],['scan','复印扫描纸','Scan Paper'],['dots','点阵印刷','Dot Matrix'],['soft-y2k','柔和 Y2K','Soft Y2K'],['blueprint','工程蓝图','Blue Print']],true)
+      + select('背景样式','Background Style','backgroundStyle',state.backgroundStyle||'solid',[['electric-tiger','电光虎纹','Electric Tiger'],['liquid-chrome','酸性全息水银','Liquid Chrome'],['solid','纯色基底','Solid'],['grid','坐标网格','Index Grid'],['chrome','金属渐变','Chrome Gradient'],['scan','复印扫描纸','Scan Paper'],['dots','点阵印刷','Dot Matrix'],['soft-y2k','柔和 Y2K','Soft Y2K'],['blueprint','工程蓝图','Blue Print']],true)
       + bgStyleControls + bgImageControls
       + toggle('海报外框','Poster Border','border',state.border,true)
       + field('外框颜色','Border Color','borderColor',state.borderColor,'color',true)
@@ -2115,39 +2201,41 @@
     state.imageName = 'karina-close.jpg';
     state.mainImageId = assetClose.id;
 
-    // 1. 底图全屏铺满 + 赛博暗夜黑基底
-    state.background = '#060a12';
-    state.backgroundStyle = 'solid';
+    // 1. 底图缩放漏出电光虎纹背景 + 保留原图色彩与毛衣细节
+    state.background = '#001fd4';
+    state.backgroundStyle = 'electric-tiger';
     state.backgroundImageId = null;
     state.border = true;
     state.borderColor = '#ffffff';
-    state.borderWidth = 5;
+    state.borderWidth = 4;
 
     state.main = {
       id: 'main-image',
-      x: 0,
-      y: 0,
-      w: W,
-      h: H,
+      x: 38,
+      y: 105,
+      w: 824,
+      h: 1035,
       rotation: 0,
       opacity: 100,
-      zoom: 1.05,
+      zoom: 1.02,
       panX: 0,
-      panY: -15,
+      panY: -10,
+      lineWidth: 2,
+      color: '#ffffff',
       layoutMode: 'AESPA RICH MAN ARCHIVE'
     };
 
-    // 经典粗颗粒黑白报纸印刷半调
+    // 保留真实原色与毛衣编织细节，辅以轻量杂志印刷网点
     state.filters = {
-      bw: 100,
+      bw: 0,
       brightness: 4,
-      contrast: 72,
-      saturation: 0,
-      halftone: 45,
-      halftoneSize: 11,
-      halftoneDensity: 52,
-      halftoneAngle: -15,
-      grain: 20,
+      contrast: 18,
+      saturation: 110,
+      halftone: 20,
+      halftoneSize: 5,
+      halftoneDensity: 65,
+      halftoneAngle: 15,
+      grain: 12,
       rough: 0,
       outline: 0,
       scan: 0,
@@ -2164,7 +2252,7 @@
       id: makeId(),
       fragmentType: 'color-block',
       source: 'main',
-      x: 125, y: 118, w: 168, h: 185,
+      x: 125, y: 135, w: 168, h: 185,
       rotation: 0,
       color: '#ffbe0b',
       backingColor: 'rgba(255, 190, 11, 0.45)',
@@ -2179,7 +2267,7 @@
       id: makeId(),
       fragmentType: 'color-block',
       source: 'main',
-      x: 220, y: 585, w: 155, h: 175,
+      x: 220, y: 615, w: 155, h: 175,
       rotation: 0,
       color: '#ffbe0b',
       backingColor: 'rgba(255, 190, 11, 0.45)',
@@ -2194,7 +2282,7 @@
       id: makeId(),
       fragmentType: 'color-block',
       source: 'main',
-      x: 240, y: 820, w: 125, h: 125,
+      x: 240, y: 840, w: 125, h: 125,
       rotation: 0,
       color: '#ffbe0b',
       backingColor: 'rgba(255, 190, 11, 0.45)',
@@ -2214,7 +2302,7 @@
         id: makeId(),
         imageId: assetHands.id,
         x: 28,
-        y: 165,
+        y: 175,
         w: 160,
         h: 215,
         rotation: 0,
@@ -2229,7 +2317,7 @@
         id: makeId(),
         imageId: assetCrouch.id,
         x: 605,
-        y: 275,
+        y: 285,
         w: 265,
         h: 360,
         rotation: 0,
@@ -2249,7 +2337,7 @@
         id: makeId(),
         imageId: assetSky.id,
         x: 575,
-        y: 775,
+        y: 785,
         w: 280,
         h: 175,
         rotation: 0,
@@ -2264,7 +2352,7 @@
         id: makeId(),
         imageId: assetClose.id,
         x: 45,
-        y: 730,
+        y: 745,
         w: 195,
         h: 145,
         rotation: 0,
@@ -2281,9 +2369,9 @@
       sourceId: 'main',
       labelPrefix: 'Eye',
       labelNumber: '',
-      x: 235,
-      y: 155,
-      w: 100,
+      x: 305,
+      y: 215,
+      w: 90,
       h: 70,
       color: '#002FA7',
       tagBackground: '#002FA7',
@@ -2296,7 +2384,7 @@
     });
     const d1 = makeDetail(f1, 0, {
       x: 105,
-      y: 245,
+      y: 285,
       w: 250,
       h: 140,
       rotation: 0
@@ -2319,10 +2407,10 @@
       sourceId: 'main',
       labelPrefix: 'Teeth',
       labelNumber: '',
-      x: 310,
+      x: 360,
       y: 315,
-      w: 115,
-      h: 80,
+      w: 135,
+      h: 110,
       color: '#002FA7',
       tagBackground: '#002FA7',
       tagTextColor: '#ffffff',
@@ -2334,7 +2422,7 @@
     });
     const d2 = makeDetail(f2, 1, {
       x: 325,
-      y: 465,
+      y: 515,
       w: 255,
       h: 140,
       rotation: 0
@@ -2357,8 +2445,8 @@
       sourceId: 'main',
       labelPrefix: 'Eye contact',
       labelNumber: '',
-      x: 220,
-      y: 150,
+      x: 275,
+      y: 205,
       w: 340,
       h: 75,
       color: '#002FA7',
@@ -2372,7 +2460,7 @@
     });
     const d3 = makeDetail(f3, 2, {
       x: 580,
-      y: 675,
+      y: 685,
       w: 300,
       h: 85,
       rotation: 0
@@ -2394,56 +2482,56 @@
     state.texts = [
       {
         id: 't-hero-richman', kind: 'hero', content: 'RICH MAN',
-        x: 340, y: 15, size: 78, weight: 900,
+        x: 340, y: 22, size: 78, weight: 900,
         font: 'Impact, Arial Black, sans-serif', color: '#ffbe0b',
         strokeColor: '#000000', strokeWidth: 5,
         rotation: 0, opacity: 100, scaleX: 1.05, letterSpacing: -1.5
       },
       {
         id: 't-hero-aespa', kind: 'hero', content: 'aespa',
-        x: 620, y: 245, size: 48, weight: 900,
+        x: 620, y: 255, size: 48, weight: 900,
         font: 'Impact, Arial Black, sans-serif', color: '#e2e8f0',
         strokeColor: '#111111', strokeWidth: 3.5,
         rotation: 0, opacity: 100
       },
       {
         id: 't-badge', kind: 'caption', content: 'aespa\nTHE 6TH MINI ALBUM\nRICH MAN',
-        x: 82, y: 55, size: 10, weight: 800,
+        x: 82, y: 60, size: 10, weight: 800,
         font: 'ui-monospace, Consolas, monospace', color: '#ffbe0b',
         rotation: -5, opacity: 100, align: 'center', lineHeight: 1.25,
         badgeShape: 'pick', badgeColor: '#002FA7', badgeWidth: 116, badgeHeight: 128
       },
       {
         id: 't-stack1', kind: 'micro', content: 'Karina\nKarina\nKarina',
-        x: 30, y: 395, size: 21, weight: 700,
+        x: 30, y: 405, size: 21, weight: 700,
         font: 'Arial, Helvetica, sans-serif', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 3,
         rotation: 0, opacity: 100, lineHeight: 1.05
       },
       {
         id: 't-stack2', kind: 'micro', content: 'rich man\nrich man\nrich man',
-        x: 60, y: 675, size: 15, weight: 600,
+        x: 60, y: 685, size: 15, weight: 600,
         font: 'Arial, Helvetica, sans-serif', color: '#e2e8f0',
         strokeColor: '#000000', strokeWidth: 2,
         rotation: 0, opacity: 90, lineHeight: 1.1
       },
       {
         id: 't-stack3', kind: 'micro', content: "i'm a rich man\ni'm a rich man\ni'm a rich man",
-        x: 470, y: 360, size: 14, weight: 600,
+        x: 470, y: 380, size: 14, weight: 600,
         font: 'ui-monospace, Consolas, monospace', color: '#111111',
         strokeColor: '#ffffff', strokeWidth: 1.5,
         rotation: 0, opacity: 90, lineHeight: 1.15
       },
       {
         id: 't-statement1', kind: 'hero', content: "I'M ENOUGH AS I AM.",
-        x: 50, y: 735, size: 26, weight: 900,
+        x: 50, y: 750, size: 26, weight: 900,
         font: 'Impact, Arial Black, sans-serif', color: '#002FA7',
         strokeColor: '#ffffff', strokeWidth: 2,
         rotation: -1, opacity: 100
       },
       {
         id: 't-statement2', kind: 'hero', content: "I'M A RICH MAN",
-        x: 92, y: 770, size: 29, weight: 900,
+        x: 92, y: 785, size: 29, weight: 900,
         font: 'Impact, Arial Black, sans-serif', color: '#002FA7',
         strokeColor: '#ffffff', strokeWidth: 2,
         strikeThrough: true, strikeThroughColor: '#e60033', strikeThroughWidth: 7,
@@ -2451,27 +2539,27 @@
       },
       {
         id: 't-woman', kind: 'micro', content: 'woman',
-        x: 365, y: 810, size: 12, weight: 600,
+        x: 365, y: 825, size: 12, weight: 600,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 2,
         rotation: 0, opacity: 85
       },
       {
         id: 't-date', kind: 'micro', content: '11.4.2000',
-        x: 720, y: 598, size: 12, weight: 700,
+        x: 720, y: 608, size: 12, weight: 700,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         rotation: 0, opacity: 100, backgroundColor: '#002FA7', backgroundPaddingX: 8, backgroundPaddingY: 4
       },
       {
         id: 't-name', kind: 'micro', content: 'Yu\nJi-min',
-        x: 775, y: 820, size: 11, weight: 700,
+        x: 775, y: 830, size: 11, weight: 700,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 2,
         rotation: 0, opacity: 90, lineHeight: 1.15
       },
       {
         id: 't-eye-contact', kind: 'micro', content: 'Eye\ncontact',
-        x: 505, y: 710, size: 11, weight: 700,
+        x: 505, y: 720, size: 11, weight: 700,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 2,
         rotation: 0, opacity: 90, lineHeight: 1.15
@@ -2493,12 +2581,12 @@
     state.remixInfo = {
       anchorZh: '模板 01 · Aespa 电光档案 (多图版)',
       anchorEn: 'Template 01 · Electric Archive (Multi-Image)',
-      mainLayoutZh: '全幅黑白半调基底',
-      mainLayoutEn: 'Full Halftone Base',
+      mainLayoutZh: '原色缩放主图 · 镂空电光虎纹底纸',
+      mainLayoutEn: 'Scaled True-Color Main · Electric Tiger Base',
       typographyZh: '电光涂鸦与三行叠字',
       typographyEn: 'Graffiti & Triple Stack',
-      backgroundZh: '纯黑 / 赛博暗夜',
-      backgroundEn: 'Pure Black / Cyber Noir',
+      backgroundZh: 'Aespa 经典电光蓝黑虎纹',
+      backgroundEn: 'Electric Tiger Cyber Noir',
       strengthZh: '精选多图模板',
       strengthEn: 'Curated Multi-Image Template',
       isManuallyEdited: false
@@ -2552,6 +2640,7 @@
 
   function applyPosterBackground(style) {
     const colors = {
+      'electric-tiger': '#001fd4',
       'liquid-chrome': '#0b1220',
       'pure-black': '#000000',
       'pure-white': '#ffffff',
@@ -2563,7 +2652,11 @@
       'soft-y2k': '#e5e2ef',
       blueprint: '#b9cbed'
     };
-    if (style === 'liquid-chrome') {
+    if (style === 'electric-tiger') {
+      state.backgroundStyle = 'electric-tiger';
+      state.background = '#001fd4';
+      state.borderColor = '#ffffff';
+    } else if (style === 'liquid-chrome') {
       state.backgroundStyle = 'liquid-chrome';
       state.background = '#0b1220';
       state.borderColor = '#ffffff';
