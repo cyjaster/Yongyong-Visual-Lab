@@ -3002,14 +3002,11 @@
 
     const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
 
-    // 默认确保有背景暗调
-    if (!state.backgroundStyle || state.backgroundStyle === 'solid') {
-      state.background = '#0a0c10';
-      state.backgroundStyle = 'ps-dark';
-      state.border = true;
-      state.borderColor = '#1f2430';
-      state.borderWidth = 0;
-    }
+    // 默认确保深色暗调影棚背景，彻底清除虎纹等干扰
+    state.background = '#0a0c10';
+    state.backgroundStyle = 'ps-dark';
+    state.border = false;
+    state.borderWidth = 0;
 
     // 1. 主图空间定位 (居中微调模特暗调底图，面部完全留空绝不遮挡)
     state.main = {
@@ -4182,6 +4179,8 @@
   window.posterApplyTemplate01 = applyTemplate01;
   window.posterApplyLayoutTemplate01 = applyLayoutTemplate01;
   window.posterApplyFilterTemplate01 = applyFilterTemplate01;
+  window.posterApplyLayoutTemplate02 = applyLayoutTemplate02;
+  window.posterApplyFilterTemplate02 = applyFilterTemplate02;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
   renderInspector();render();loadDemo(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
