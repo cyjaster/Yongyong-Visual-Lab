@@ -2370,10 +2370,10 @@
       sourceId: 'main',
       labelPrefix: 'Eye',
       labelNumber: '',
-      x: 305,
-      y: 215,
-      w: 90,
-      h: 70,
+      x: 235,
+      y: 185,
+      w: 220,
+      h: 140,
       color: '#002FA7',
       tagBackground: '#002FA7',
       tagTextColor: '#ffffff',
@@ -2384,10 +2384,10 @@
       showLabel: false
     });
     const d1 = makeDetail(f1, 0, {
-      x: 105,
-      y: 285,
-      w: 250,
-      h: 140,
+      x: 95,
+      y: 295,
+      w: 235,
+      h: 145,
       rotation: 0
     });
     d1.color = '#002FA7';
@@ -2408,10 +2408,10 @@
       sourceId: 'main',
       labelPrefix: 'Teeth',
       labelNumber: '',
-      x: 360,
-      y: 315,
-      w: 135,
-      h: 110,
+      x: 320,
+      y: 395,
+      w: 235,
+      h: 145,
       color: '#002FA7',
       tagBackground: '#002FA7',
       tagTextColor: '#ffffff',
@@ -2422,9 +2422,9 @@
       showLabel: false
     });
     const d2 = makeDetail(f2, 1, {
-      x: 325,
-      y: 515,
-      w: 255,
+      x: 330,
+      y: 520,
+      w: 245,
       h: 140,
       rotation: 0
     });
@@ -2446,10 +2446,10 @@
       sourceId: 'main',
       labelPrefix: 'Eye contact',
       labelNumber: '',
-      x: 275,
-      y: 205,
-      w: 340,
-      h: 75,
+      x: 220,
+      y: 185,
+      w: 505,
+      h: 150,
       color: '#002FA7',
       tagBackground: '#002FA7',
       tagTextColor: '#ffffff',
@@ -2460,9 +2460,9 @@
       showLabel: false
     });
     const d3 = makeDetail(f3, 2, {
-      x: 580,
-      y: 685,
-      w: 300,
+      x: 520,
+      y: 585,
+      w: 285,
       h: 85,
       rotation: 0
     });
