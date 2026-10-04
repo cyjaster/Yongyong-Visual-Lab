@@ -2607,7 +2607,7 @@
     state.borderColor = '#1f2430';
     state.borderWidth = 0;
     state.filters = {
-      bw: 100, brightness: 18, contrast: 28, saturation: 0,
+      bw: 100, brightness: 18, contrast: 28, saturation: 100,
       halftone: 0, halftoneSize: 6, halftoneDensity: 55, halftoneAngle: 15,
       grain: 8, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
       compression: 0, invert: 0, posterize: 0
@@ -3236,7 +3236,7 @@
     state.borderWidth = 0;
     state.filters = {
       ...(state.filters || cleanFilters()),
-      bw: 100, brightness: 18, contrast: 28, saturation: 0, grain: 8
+      bw: 100, brightness: 18, contrast: 28, saturation: 100, grain: 8
     };
 
     // 1. 主图空间定位 (居中模特暗调底图，全幅沉浸)
@@ -3952,6 +3952,46 @@
       }
       scheduleRender();
       syncLeftControls();
+      const out = c.closest('.poster-field')?.querySelector('output');
+      if (out) out.textContent = c.value;
+      commit(false);
+      markManuallyEdited();
+      return;
+    }
+
+    if (p === 'bw' && c.dataset.global) {
+      const val = Number(c.value);
+      state.filters.bw = val;
+      if (val < 100 && (state.filters.saturation === 0 || !state.filters.saturation)) {
+        state.filters.saturation = 100;
+        const satInput = inspector.querySelector('input[data-global="saturation"]');
+        if (satInput) {
+          satInput.value = 100;
+          const satOut = satInput.closest('.poster-field')?.querySelector('output');
+          if (satOut) satOut.textContent = '100';
+        }
+      }
+      scheduleRender();
+      const out = c.closest('.poster-field')?.querySelector('output');
+      if (out) out.textContent = c.value;
+      commit(false);
+      markManuallyEdited();
+      return;
+    }
+
+    if (p === 'saturation' && c.dataset.global) {
+      const val = Number(c.value);
+      state.filters.saturation = val;
+      if (val > 0 && state.filters.bw === 100) {
+        state.filters.bw = 0;
+        const bwInput = inspector.querySelector('input[data-global="bw"]');
+        if (bwInput) {
+          bwInput.value = 0;
+          const bwOut = bwInput.closest('.poster-field')?.querySelector('output');
+          if (bwOut) bwOut.textContent = '0';
+        }
+      }
+      scheduleRender();
       const out = c.closest('.poster-field')?.querySelector('output');
       if (out) out.textContent = c.value;
       commit(false);
