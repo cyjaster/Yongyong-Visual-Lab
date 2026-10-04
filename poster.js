@@ -2607,7 +2607,7 @@
     state.borderColor = '#1f2430';
     state.borderWidth = 0;
     state.filters = {
-      bw: 100, brightness: -4, contrast: 36, saturation: 0,
+      bw: 100, brightness: -2, contrast: 72, saturation: 0,
       halftone: 0, halftoneSize: 6, halftoneDensity: 55, halftoneAngle: 15,
       grain: 8, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
       compression: 0, invert: 0, posterize: 0
@@ -3234,6 +3234,10 @@
     state.backgroundStyle = 'ps-dark';
     state.border = false;
     state.borderWidth = 0;
+    state.filters = {
+      ...(state.filters || cleanFilters()),
+      bw: 100, brightness: -2, contrast: 72, saturation: 0, grain: 8
+    };
 
     // 1. 主图空间定位 (居中模特暗调底图，全幅沉浸)
     state.main = {
