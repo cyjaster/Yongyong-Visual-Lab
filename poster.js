@@ -863,8 +863,9 @@
       const cmykCanvas = raster(W, H, (cc) => {
         if (isDuotoneMap) {
           // 日系 PS 原版：彩色半调 + 渐变映射 (Cobalt / Electric Blue Duotone Map)
-          // 亮部柔和蓝紫浅底，网点映射为鲜明纯正的克莱因蓝/皇家宝蓝，绝不发黑发灰发暗
-          cc.fillStyle = o.duotoneLight || '#d6e2ff';
+          // 亮部柔和蓝紫半透浅底，网点映射为鲜明纯正的克莱因蓝/皇家宝蓝，绝不发黑发灰发暗，通透具有呼吸感
+          const lRgb = hexToRgb(o.duotoneLight, [214, 226, 255]);
+          cc.fillStyle = `rgba(${lRgb[0]}, ${lRgb[1]}, ${lRgb[2]}, 0.58)`;
           cc.fillRect(0, 0, W, H);
           const diagonal = Math.hypot(W, H);
 
@@ -2612,9 +2613,9 @@
       compression: 0, invert: 0, posterize: 0
     };
 
-    const targetOpacities = [85, 82, 80, 78, 80, 82, 82];
+    const targetOpacities = [56, 52, 50, 48, 52, 54, 52];
     (state.details || []).forEach((d, idx) => {
-      d.opacity = targetOpacities[idx] || 82;
+      d.opacity = targetOpacities[idx] || 52;
       d.color = '#fbcfe8';
       d.lineWidth = 1.2;
       d.showHandles = true;
@@ -3243,9 +3244,9 @@
       h: 1090,
       rotation: 0,
       opacity: 100,
-      zoom: 1.12,
-      panX: 30,
-      panY: -65,
+      zoom: 0.92,
+      panX: 20,
+      panY: -180,
       lineWidth: 0,
       color: '#ffffff',
       layoutMode: '7 IMAGE EFFECT SHOWCASE'
@@ -3309,7 +3310,7 @@
     });
     const d1 = makeDetail(f1, 0, {
       x: 285, y: 185, w: 135, h: 175, rotation: 0,
-      opacity: 85,
+      opacity: 56,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 28, brightness: 5, bw: 100,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
@@ -3325,7 +3326,7 @@
     });
     const d2 = makeDetail(f2, 1, {
       x: 485, y: 265, w: 355, h: 280, rotation: 0,
-      opacity: 82,
+      opacity: 52,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'color_halftone', halftoneStrength: 85, halftoneDensity: 65, halftoneSize: 6,
       duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
@@ -3342,7 +3343,7 @@
     });
     const d3 = makeDetail(f3, 2, {
       x: 135, y: 300, w: 245, h: 195, rotation: 0,
-      opacity: 80,
+      opacity: 50,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'circle_halftone', halftoneStrength: 82, grain: 24,
       duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
@@ -3359,7 +3360,7 @@
     });
     const d4 = makeDetail(f4, 3, {
       x: 590, y: 655, w: 240, h: 125, rotation: 0,
-      opacity: 78,
+      opacity: 48,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'line_halftone', halftoneStrength: 82, halftoneAngle: 0, halftoneDensity: 60,
       duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
@@ -3376,7 +3377,7 @@
     });
     const d5 = makeDetail(f5, 4, {
       x: 55, y: 675, w: 150, h: 205, rotation: 0,
-      opacity: 80,
+      opacity: 52,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dither', ditherStep: 6, contrast: 30,
       duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
@@ -3393,7 +3394,7 @@
     });
     const d6 = makeDetail(f6, 5, {
       x: 445, y: 690, w: 170, h: 405, rotation: 0,
-      opacity: 82,
+      opacity: 54,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'threshold', thresholdLevel: 132, grain: 28,
       duotoneDark: '#0d226b', duotoneLight: '#e8eeff', duotone: true,
@@ -3410,7 +3411,7 @@
     });
     const d7 = makeDetail(f7, 6, {
       x: 70, y: 925, w: 295, h: 115, rotation: 0,
-      opacity: 82,
+      opacity: 52,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: 45, halftoneDensity: 65, halftoneSize: 6,
       duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
