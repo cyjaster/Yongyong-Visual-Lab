@@ -2607,13 +2607,13 @@
     state.borderColor = '#1f2430';
     state.borderWidth = 0;
     state.filters = {
-      bw: 100, brightness: -2, contrast: 72, saturation: 0,
+      bw: 100, brightness: 18, contrast: 28, saturation: 0,
       halftone: 0, halftoneSize: 6, halftoneDensity: 55, halftoneAngle: 15,
       grain: 8, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
       compression: 0, invert: 0, posterize: 0
     };
 
-    const targetOpacities = [56, 52, 50, 48, 52, 54, 52];
+    const targetOpacities = [56, 46, 50, 48, 52, 54, 52];
     (state.details || []).forEach((d, idx) => {
       d.opacity = targetOpacities[idx] || 52;
       d.color = '#fbcfe8';
@@ -3236,7 +3236,7 @@
     state.borderWidth = 0;
     state.filters = {
       ...(state.filters || cleanFilters()),
-      bw: 100, brightness: -2, contrast: 72, saturation: 0, grain: 8
+      bw: 100, brightness: 18, contrast: 28, saturation: 0, grain: 8
     };
 
     // 1. 主图空间定位 (居中模特暗调底图，全幅沉浸)
@@ -3330,7 +3330,7 @@
     });
     const d2 = makeDetail(f2, 1, {
       x: 485, y: 265, w: 355, h: 280, rotation: 0,
-      opacity: 52,
+      opacity: 46,
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
       filterType: 'color_halftone', halftoneStrength: 85, halftoneDensity: 65, halftoneSize: 6,
       duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
@@ -4504,5 +4504,6 @@
   window.posterApplyFilterTemplate02 = applyFilterTemplate02;
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
+  window.posterRender = render;
   renderInspector();render();loadDemo02(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
 })();
