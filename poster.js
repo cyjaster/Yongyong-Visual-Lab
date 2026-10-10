@@ -4270,7 +4270,7 @@
     }
   }
 
-  $('.poster-tools').addEventListener('click', (e) => {
+  document.querySelectorAll('.poster-tools, .poster-action-dock').forEach(node => node.addEventListener('click', (e) => {
     const targetItem = e.target.closest('[data-poster-action]');
     const a = targetItem?.dataset.posterAction, elemId = targetItem?.dataset.id;
     if (!a) return;
@@ -4329,7 +4329,7 @@
       if (tx) { setSelected('text', tx); render(); renderInspector(); }
       return;
     }
-  });
+  }));
   $('.poster-tools').addEventListener('input', handleInspectorInput);
   $('.poster-tools').addEventListener('change', handleInspectorInput);
   $('#posterBackgroundClear')?.addEventListener('click', () => { state.backgroundImageId = null; renderInspector(); render(); commit(); markManuallyEdited(); toast('自定义背景图已移除。'); });

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261001-readable" />
-    <link rel="stylesheet" href="poster.css?v=20261009-cutout-direct" />
+    <link rel="stylesheet" href="poster.css?v=20261010-top-toolbar" />
   </head>
   <body>
     <div class="app-shell">
@@ -383,35 +383,7 @@
           </details>
           </div>
 
-          <section class="poster-action-dock" aria-label="常用海报操作">
-            <div class="poster-history-actions" role="group" aria-label="编辑历史">
-              <button type="button" data-poster-action="undo" title="撤销 Ctrl+Z">↶ 撤销</button>
-              <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
-              <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
-            </div>
-            <p class="poster-cutout-target" id="posterCutoutTarget" role="status" aria-live="polite">当前照片：主图</p>
-            <button class="poster-action" id="posterCutoutEntry" type="button" data-poster-action="cutout-current">✂ 自动抠图</button>
-            <button class="poster-action" id="posterCutoutRestore" type="button" data-poster-action="cutout-restore" hidden>↩ 恢复背景</button>
-            <p class="poster-cutout-hint">先点画布中的照片，再点自动抠图</p>
-            <button class="poster-master-remix-dock" id="posterMasterRemixDock" type="button" data-poster-action="master-remix" title="总 REMIX：保留当前图片，切换 8 组模板的排版与滤镜">
-              <div class="master-dock-top">
-                <div class="master-dock-header">
-                  <span class="master-dock-spark">⚡</span>
-                  <span class="master-dock-title">总 REMIX</span>
-                </div>
-                <span class="master-dock-tag" id="posterMasterRemixTag">8 组全套 ↻</span>
-              </div>
-              <div class="master-dock-sub" id="posterMasterRemixSub">八组模板 · 保留当前图片</div>
-            </button>
-            <div class="poster-dock-primary">
-              <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="排版 REMIX ↻"><b>排版 REMIX ↻</b></button>
-              <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
-            </div>
-            <a id="posterLastExportLink" hidden>保存刚导出的 PNG</a>
-            <button class="poster-action" id="posterSaveDraftButton" type="button">保存可编辑草稿</button>
-            <small id="posterDraftStatus" role="status" aria-live="polite">草稿 · 准备中</small>
-            <small>LOCAL ONLY · 图片仅在本地处理</small>
-          </section>
+
         </aside>
 
         <div class="poster-resizer poster-resizer-left" id="posterResizerLeft" role="separator" aria-orientation="vertical" tabindex="0" title="拖拽调整左侧栏宽度（双击复位）"></div>
@@ -419,12 +391,7 @@
         <section class="poster-stage" aria-label="海报编辑画布">
           <div class="poster-stage-topline">
             <span id="posterStatus">上传主图后开始索引</span>
-            <button class="poster-master-remix-topline" type="button" data-poster-action="master-remix" title="总 REMIX：保留当前图片，切换 8 组模板的排版与滤镜">
-              <span class="master-spark">⚡</span>
-              <span class="master-label">总 REMIX</span>
-              <span class="master-template" id="posterMasterRemixToplineText">8 组全套轮播</span>
-              <span class="master-badge">1-CLICK</span>
-            </button>
+
             <div class="poster-resolution-badge-wrap" title="切换海报分辨率 (当前默认 1.2K 推荐)">
               <select id="posterResolutionSelect" class="poster-resolution-select" aria-label="海报导出分辨率">
                 <option value="1200x1600" selected>1200 × 1600 (1.2K 推荐)</option>
@@ -438,6 +405,42 @@
               <span class="poster-resolution-tag" id="posterResolutionTag">1.2K</span>
               <span class="poster-resolution-caret">▾</span>
             </div>
+          <section class="poster-action-dock" aria-label="常用海报操作">
+            <div class="poster-toolbar-row">
+            <div class="poster-history-actions" role="group" aria-label="编辑历史">
+              <button type="button" data-poster-action="undo" title="撤销 Ctrl+Z">↶ 撤销</button>
+              <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
+              <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
+            </div>
+            <button class="poster-action" id="posterCutoutEntry" type="button" data-poster-action="cutout-current">✂ 自动抠图</button>
+            <button class="poster-action" id="posterCutoutRestore" type="button" data-poster-action="cutout-restore" hidden>↩ 恢复背景</button>
+            </div>
+            <div class="poster-toolbar-status">
+            <p class="poster-cutout-target" id="posterCutoutTarget" role="status" aria-live="polite">当前照片：主图</p>
+            <p class="poster-cutout-hint">先点画布中的照片，再点自动抠图</p>
+            </div>
+            <div class="poster-toolbar-row">
+            <button class="poster-master-remix-dock" id="posterMasterRemixDock" type="button" data-poster-action="master-remix" title="总 REMIX：保留当前图片，切换 8 组模板的排版与滤镜">
+              <div class="master-dock-top">
+                <div class="master-dock-header">
+                  <span class="master-dock-spark">⚡</span>
+                  <span class="master-dock-title">总 REMIX</span>
+                </div>
+                <span class="master-dock-tag" id="posterMasterRemixTag">8 组全套 ↻</span>
+              </div>
+              <div class="master-dock-sub" id="posterMasterRemixSub">八组模板 · 保留当前图片</div>
+            </button>
+
+              <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="排版 REMIX ↻"><b>排版 REMIX ↻</b></button>
+              <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
+            <a id="posterLastExportLink" hidden>保存刚导出的 PNG</a>
+            <button class="poster-action" id="posterSaveDraftButton" type="button">保存草稿</button>
+            </div>
+            <div class="poster-toolbar-status">
+            <small id="posterDraftStatus" role="status" aria-live="polite">草稿 · 准备中</small>
+            <small>LOCAL ONLY · 图片仅在本地处理</small>
+            </div>
+          </section>
           </div>
           <div class="poster-viewport" id="posterViewport">
             <div class="poster-canvas-wrap" id="posterCanvasWrap">
@@ -495,6 +498,6 @@
     <script src="poster-draft.js?v=20261009-local"></script>
     <script src="poster-cutout.js?v=20261009-stable"></script>
     <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261010-function-fit-font-backing"></script>
+    <script src="poster.js?v=20261010-top-toolbar"></script>
   </body>
 </html>
