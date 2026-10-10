@@ -1,0 +1,329 @@
+{
+  "samples": [
+    "aespa-03",
+    "aespa-20"
+  ],
+  "checks": [
+    "Template 1: every template font is available and selected correctly",
+    "Template 2: every template font is available and selected correctly",
+    "Template 3: every template font is available and selected correctly",
+    "Template 4: every template font is available and selected correctly",
+    "Template 5: every template font is available and selected correctly",
+    "Template 6: every template font is available and selected correctly",
+    "Template 7: every template font is available and selected correctly",
+    "Template 8: every template font is available and selected correctly",
+    "single-aespa-03: complete eight-template cycle preserves actual upload IDs, main and all sources",
+    "Template 1: every template font is available and selected correctly",
+    "Template 2: every template font is available and selected correctly",
+    "Template 3: every template font is available and selected correctly",
+    "Template 4: every template font is available and selected correctly",
+    "Template 5: every template font is available and selected correctly",
+    "Template 6: every template font is available and selected correctly",
+    "Template 7: every template font is available and selected correctly",
+    "Template 8: every template font is available and selected correctly",
+    "single-aespa-20: complete eight-template cycle preserves actual upload IDs, main and all sources",
+    "Template 1: every template font is available and selected correctly",
+    "Template 2: every template font is available and selected correctly",
+    "Template 3: every template font is available and selected correctly",
+    "Template 4: every template font is available and selected correctly",
+    "Template 5: every template font is available and selected correctly",
+    "Template 6: every template font is available and selected correctly",
+    "Template 7: every template font is available and selected correctly",
+    "Template 8: every template font is available and selected correctly",
+    "pair-main-03: complete eight-template cycle preserves actual upload IDs, main and all sources",
+    "Template 1: every template font is available and selected correctly",
+    "Template 2: every template font is available and selected correctly",
+    "Template 3: every template font is available and selected correctly",
+    "Template 4: every template font is available and selected correctly",
+    "Template 5: every template font is available and selected correctly",
+    "Template 6: every template font is available and selected correctly",
+    "Template 7: every template font is available and selected correctly",
+    "Template 8: every template font is available and selected correctly",
+    "pair-main-20: complete eight-template cycle preserves actual upload IDs, main and all sources",
+    "Actual fit menu switches cover/contain, exact undo/redo; zoom/offset, linked frame and source replacement retain fit geometry",
+    "Contain pose retained by real high-resolution export and exact draft reload",
+    "Toolbar backing opacity zero restores the prior exact template 7 pixels; undo/redo are exact",
+    "Portraits in template 7 horizontal cards can be moved toward the top with actual crop controls",
+    "Editor demo controls still fit at 900/390 widths"
+  ],
+  "exports": [
+    {
+      "file": "single-aespa-03-template-01.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "6029b762207a8ce13feb424c5b857c7709f4c0c79270692d801d5df2af2ae252"
+    },
+    {
+      "file": "single-aespa-03-template-02.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "d7ab0dcf84afd95064ca5cf10e7e61a13eda6241c705aa5179409de51478f3c6"
+    },
+    {
+      "file": "single-aespa-03-template-03.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "cd4fb4b88f0e9a292475cdd787f66d38923050cd095a4cdcf00fc671c52b5443"
+    },
+    {
+      "file": "single-aespa-03-template-04.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "5f142131d969fc3797e3944301e8d9d614162a10072d0d1e442a0b8c8c0a07de"
+    },
+    {
+      "file": "single-aespa-03-template-05.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "b3e47a38d7746c4b83a1e1a4bda2d0052782907747cc53f1a1bf24a4f8d10f49"
+    },
+    {
+      "file": "single-aespa-03-template-06.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "67accfc6275a79d59dd838ffc80e1e70126483dc9850b089b549b24de6e0e86f"
+    },
+    {
+      "file": "single-aespa-03-template-07.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "b4b7c7c91b91233abcb86fc48046ec24686bc66182c01274f00d564c30d65e33"
+    },
+    {
+      "file": "single-aespa-03-template-08.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "4ff0608afd5b64b37c266ea97a48f1338bbb325791e6db14fa16756ba4a7fa1e"
+    },
+    {
+      "file": "single-aespa-20-template-01.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "ec4979c3ed9996c7877d92b931d119d6e8eabe0267c31897544cfe170aa93390"
+    },
+    {
+      "file": "single-aespa-20-template-02.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "3ceb76f67b023aeef041fa40bfac5c7840a9a1ee64c76957e93c6de4af503c8c"
+    },
+    {
+      "file": "single-aespa-20-template-03.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "d62334b132d277485147ca88172b75d0fd4666e4f56c339ab12ec7783d8a3b2e"
+    },
+    {
+      "file": "single-aespa-20-template-04.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "31194fe764406e68ecd1f52ea9eeecdacfc171c8666c19897ee748b5892c01c5"
+    },
+    {
+      "file": "single-aespa-20-template-05.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "714b3eaab77fd7e1a85ff65f744ed57e5f90ab8910c67a0f3cc29a908b2b438c"
+    },
+    {
+      "file": "single-aespa-20-template-06.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "d807c7c24b1e526549948e930bcbd587708cea40610c5a936f79dcf0e2a87bc5"
+    },
+    {
+      "file": "single-aespa-20-template-07.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "8d82fab1f93742226aa676b614869601754a86b44ac61f7a4423395c383db9a0"
+    },
+    {
+      "file": "single-aespa-20-template-08.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "566dba49ec902f967c6bf6ba9eed22bd572aa54eea5c3e15a360b5631eb33c75"
+    },
+    {
+      "file": "pair-main-03-template-01.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "84d7622396f5220770595d496f442a454ca08d74b616a65997f6927331a76a5e"
+    },
+    {
+      "file": "pair-main-03-template-02.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "f05e333f3a40bf31eeb7b93aecfdc06664bbbe4653fea6d6e795a8d868dcf2d1"
+    },
+    {
+      "file": "pair-main-03-template-03.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "6d4bed7c147aa20e925586c51eae6d64365af9aa4972495cebeca0a0198fc6f0"
+    },
+    {
+      "file": "pair-main-03-template-04.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "566976bdab038bd5b794d31f5d47d418b62177e4d5f9d0f32461d429c5f9372a"
+    },
+    {
+      "file": "pair-main-03-template-05.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "672539ef720a1b37e4f04fe302f1b512f39d81855f55230b7b5ec533e2acc2e3"
+    },
+    {
+      "file": "pair-main-03-template-06.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "171e77baed180fff16818d28903a7aa706c43f2a21b914a821cb4cd4438ad324"
+    },
+    {
+      "file": "pair-main-03-template-07.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "8ccae5062425518ae5f6fa0b32ffaff27770f990f6881e2279c4f98654846bc3"
+    },
+    {
+      "file": "pair-main-03-template-08.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "47922962292ba439dbf50430957fb06c305f1bbbd602b451cad25ea41e4f2b2f"
+    },
+    {
+      "file": "pair-main-20-template-01.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "9c745ac72ccdb36b045b715aae76bc99bbb2009cd8736c2cb34d6db259a6eccb"
+    },
+    {
+      "file": "pair-main-20-template-02.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "ed3db5b3dc933d37a485c9b29d3b1a0f47c9cead1572b7919717d54edf3942c3"
+    },
+    {
+      "file": "pair-main-20-template-03.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "7a171dfbacfe41e6da1baf22cf7e7cae6ed0a5e62d6c07f81bae7b64ef11ba4b"
+    },
+    {
+      "file": "pair-main-20-template-04.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "1d9731ec66a4605448ea31271a28feece7b9b6d2111eada6ad1178be7b862e75"
+    },
+    {
+      "file": "pair-main-20-template-05.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "bdb09355396d09e111afe2a685725be766055f46dcd3bce5e26d0abeab5e1e36"
+    },
+    {
+      "file": "pair-main-20-template-06.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "52daa8796b698886e7ef837cdab4b21a1f33697928ab32acd3d50adb05355021"
+    },
+    {
+      "file": "pair-main-20-template-07.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "6637189e1536c6a71395ca425c1db5c24fe6c3e2e95829eab3caa8714be96d76"
+    },
+    {
+      "file": "pair-main-20-template-08.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "9e3b4656ebb957d4a099176259d8c869475189a798bb41c846026fb787962738"
+    },
+    {
+      "file": "fit-cover.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "935cba68c10d37076014e2d358d3069159844a342e6c23bd4aa6e7659838ea64"
+    },
+    {
+      "file": "fit-contain-undo.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "9e3b4656ebb957d4a099176259d8c869475189a798bb41c846026fb787962738"
+    },
+    {
+      "file": "fit-cover-redo.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "935cba68c10d37076014e2d358d3069159844a342e6c23bd4aa6e7659838ea64"
+    },
+    {
+      "file": "fit-zoom-pan.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "d5d4b0b9a2659b3e0663d0861d77796e8617c4880c5a6329666124f7c19df906"
+    },
+    {
+      "file": "fit-linked-sample.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "01efadb811a3cd7c7083150913cb5859fcbd27a4e8a319f6b85f57e139004b09"
+    },
+    {
+      "file": "fit-source-replaced.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "3e0565e8f81961d982b00fa2e849b2197519f605f6915e686c39c640c4792584"
+    },
+    {
+      "file": "demo-08.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "cf444d7efcbd2acb214971f0823a7b294b54dd014130199cda7a344440a51c15"
+    },
+    {
+      "file": "demo-08-3000x4000.png",
+      "width": 3000,
+      "height": 4000,
+      "sha256": "c87eefe90418ac81752b4e4314a32114119af9693385c2a379b7f269b3ed5138"
+    },
+    {
+      "file": "fit-draft-restored.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "cf444d7efcbd2acb214971f0823a7b294b54dd014130199cda7a344440a51c15"
+    },
+    {
+      "file": "demo-07.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "0ea3cd56aa1ab0bebc38bbb203506193cfe827d671127969f91b8b4344575da0"
+    },
+    {
+      "file": "toolbar-backing-zero.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "5c105cecd84aa8c18141641393d1791f952a7b87ce216332cb467b485dc6bce3"
+    },
+    {
+      "file": "toolbar-backing-undo.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "0ea3cd56aa1ab0bebc38bbb203506193cfe827d671127969f91b8b4344575da0"
+    },
+    {
+      "file": "toolbar-backing-redo.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "5c105cecd84aa8c18141641393d1791f952a7b87ce216332cb467b485dc6bce3"
+    },
+    {
+      "file": "template-07-portrait-crop-adjusted.png",
+      "width": 1200,
+      "height": 1600,
+      "sha256": "5254b569183569e089195794c3187db0d45f4726e0925ea7a0377e00779d4898"
+    }
+  ],
+  "errors": [],
+  "remote": []
+}

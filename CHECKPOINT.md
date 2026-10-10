@@ -1,0 +1,30 @@
+# 当前项目节点
+
+建立日期：2026-10-06（Asia/Shanghai）。
+
+节点标签：`checkpoint/20261006-two-templates`。该节点保存当前源码、工作约定、设计参考、21张固定示例原图及实际PNG验证资料。
+
+## 已确认状态
+
+- 模板一恢复用户认可的大人物密集电光拼贴，删除分栏试作函数。局部重复窗沿用左下／右侧位置。
+- 模板二为黑白人物和蓝粉透明特效窗，底图运动距离4、杂色7。
+- 总REMIX保留真实上传图片与主图；四图上传在两套模板中均显示4 IMAGES。
+- 对照页明确展示原图／模板一／模板二，分栏试作仅作历史留档。
+- 模板一21张单图重新导出，两套模板各展示23个默认场景；本轮30份实际PNG已解码核验。79组回归通过。
+
+## 下一步仍需处理
+
+固定Eye／Teeth取样不能保证对应眼睛或嘴；部分照片会取到头发或背景。密集构图的索引文字和透明窗口仍可能覆盖面部，白底模板二的小字对比偏弱。撤销恢复参数正确，但局部窗PNG较首次默认仍有约0.201/255的低幅像素差。横图和完整站姿全身真实照片未测。
+
+## 文件与启动
+
+- [当前完整验证记录](samples/results/subject-clear-20261005/restoration-results.md)
+- [图库使用流程](samples/README.md)
+- [开发记录](DEVELOPMENT_LOG.md)
+- [双模板对照页](samples/results/subject-clear-20261005/index.html)
+
+从项目目录用Node运行 `checks/serve-local.cjs`，编辑器为 `http://localhost:8089/#poster`，对照页为 `http://localhost:8089/samples/results/subject-clear-20261005/`。
+
+如需查看此节点，使用 `git show checkpoint/20261006-two-templates`。如需独立恢复，可用 `git worktree add ../Yongyong-Visual-Lab-checkpoint checkpoint/20261006-two-templates` 创建另一份目录，不覆盖当前工作文件。
+
+完整静态对照页使用相对链接，可在独立恢复目录启动网站后查看。历史验证事件保留原机器的绝对导出路径；若在其他目录重新运行Python验真或重建脚本，需要先处理路径映射，或在原目录执行。节点不改写原始事件证据。

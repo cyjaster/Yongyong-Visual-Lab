@@ -25,7 +25,7 @@ class ThreadingServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 if __name__ == '__main__':
     port = 8089
-    server = ThreadingServer(('0.0.0.0', port), NoCacheHandler)
-    sys.stderr.write(f"Serving HTTP on 0.0.0.0 port {port} (threading, no-cache) ...\n")
+    server = ThreadingServer(('127.0.0.1', port), NoCacheHandler)
+    sys.stderr.write(f"Serving HTTP on 127.0.0.1 port {port} (threading, no-cache) ...\n")
     sys.stderr.flush()
     server.serve_forever()

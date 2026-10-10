@@ -1,0 +1,425 @@
+{
+  "name": "aespa 示例图库",
+  "createdAt": "2026-10-05",
+  "sourceArchive": "aespa.zip",
+  "archiveSha256": "f661fa344fdf132cd14150c45e79358a6cad3d1ad9de1a4603990fdff5e8081a",
+  "count": 21,
+  "images": [
+    {
+      "id": "aespa-01",
+      "filename": "008xs5Begy1ifyhchdnl7j314n1kwaqx.jpg",
+      "original": "originals/008xs5Begy1ifyhchdnl7j314n1kwaqx.jpg",
+      "thumbnail": "thumbs/aespa-01.jpg",
+      "width": 1463,
+      "height": 2048,
+      "bytes": 632108,
+      "sha256": "fa5010328c05072a5e831ba9213dc29e7368d93ff7d0574bf7057dffcdef5e28",
+      "description": "绿植外景彩色服装",
+      "tags": [
+        "外景",
+        "复杂背景",
+        "半身",
+        "彩色服装"
+      ]
+    },
+    {
+      "id": "aespa-02",
+      "filename": "1276d75c472be714899e57210bfa6838.jpg",
+      "original": "originals/1276d75c472be714899e57210bfa6838.jpg",
+      "thumbnail": "thumbs/aespa-02.jpg",
+      "width": 736,
+      "height": 736,
+      "bytes": 82246,
+      "sha256": "d345ac14a304daa681ffa47a365c905ce51f51c17fe1643d194832e68c4fd2e9",
+      "description": "草地针织袖口遮脸",
+      "tags": [
+        "自然光",
+        "方幅",
+        "遮挡",
+        "彩色针织"
+      ]
+    },
+    {
+      "id": "aespa-03",
+      "filename": "1c79f7a79b1d81ef67bfaacf07db06e5.jpg",
+      "original": "originals/1c79f7a79b1d81ef67bfaacf07db06e5.jpg",
+      "thumbnail": "thumbs/aespa-03.jpg",
+      "width": 736,
+      "height": 1472,
+      "bytes": 126509,
+      "sha256": "5dd676890cc8f58d8d616d63a1d187093bf02cb97efc916f6fa7e42749879c25",
+      "description": "白底高光竖幅人像",
+      "tags": [
+        "白底",
+        "高光",
+        "头肩",
+        "长竖幅"
+      ]
+    },
+    {
+      "id": "aespa-04",
+      "filename": "22d5f781dd29715f2453d731a52720e2.jpg",
+      "original": "originals/22d5f781dd29715f2453d731a52720e2.jpg",
+      "thumbnail": "thumbs/aespa-04.jpg",
+      "width": 736,
+      "height": 994,
+      "bytes": 81726,
+      "sha256": "9c89756c6a0448804c4bde24ae2aade8d48b70b3b02f754cc5d53464137bdb88",
+      "description": "闪光眼镜毛领肖像",
+      "tags": [
+        "闪光",
+        "眼镜",
+        "深色服装",
+        "头肩"
+      ]
+    },
+    {
+      "id": "aespa-05",
+      "filename": "29dfc7b07cb3b0d9e5605ebaf5590904.jpg",
+      "original": "originals/29dfc7b07cb3b0d9e5605ebaf5590904.jpg",
+      "thumbnail": "thumbs/aespa-05.jpg",
+      "width": 735,
+      "height": 739,
+      "bytes": 72081,
+      "sha256": "0d734f14178fad54ab6b26b38cae3335041719f3395fdc99725b0ca0c75f4ccb",
+      "description": "夜景黑色皮衣肖像",
+      "tags": [
+        "夜景",
+        "闪光",
+        "深色服装",
+        "方幅"
+      ]
+    },
+    {
+      "id": "aespa-06",
+      "filename": "33b4d6328b61d3b9ebff3ef2857402aa.jpg",
+      "original": "originals/33b4d6328b61d3b9ebff3ef2857402aa.jpg",
+      "thumbnail": "thumbs/aespa-06.jpg",
+      "width": 735,
+      "height": 1021,
+      "bytes": 195387,
+      "sha256": "0c5b7d5a03bd72b28f35520b55ba9bb8551b1dfad3a4b14fb37d10c9f1032efb",
+      "description": "草地花朵与手部近景",
+      "tags": [
+        "自然光",
+        "近景",
+        "手部",
+        "彩色针织"
+      ]
+    },
+    {
+      "id": "aespa-07",
+      "filename": "412e878341454896c059f84f49f6de26.jpg",
+      "original": "originals/412e878341454896c059f84f49f6de26.jpg",
+      "thumbnail": "thumbs/aespa-07.jpg",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 240334,
+      "sha256": "be2d532c2b49169a44dbaa0b61b127cbffabd10ce1e23445e6680c2fb005d113",
+      "description": "草地阴天中景人物",
+      "tags": [
+        "阴天",
+        "外景",
+        "半身",
+        "遮挡"
+      ]
+    },
+    {
+      "id": "aespa-08",
+      "filename": "42e71643b44db19f34aa69deb8a1e504.jpg",
+      "original": "originals/42e71643b44db19f34aa69deb8a1e504.jpg",
+      "thumbnail": "thumbs/aespa-08.jpg",
+      "width": 736,
+      "height": 736,
+      "bytes": 61149,
+      "sha256": "d76d62e7c879273ea6d777d43010974a8165ba857da01cd47351076f37b20e39",
+      "description": "草地正面面部近景",
+      "tags": [
+        "自然光",
+        "面部近景",
+        "方幅",
+        "长发"
+      ]
+    },
+    {
+      "id": "aespa-09",
+      "filename": "5561874c188110984eb60e0366b53bef.jpg",
+      "original": "originals/5561874c188110984eb60e0366b53bef.jpg",
+      "thumbnail": "thumbs/aespa-09.jpg",
+      "width": 736,
+      "height": 1308,
+      "bytes": 147574,
+      "sha256": "ad5a0de631ded48ba420b42c7382a0f7b861f78f6fe96eb598b4a7669a67664d",
+      "description": "相机遮挡与浅色天空",
+      "tags": [
+        "浅色背景",
+        "手部",
+        "配饰",
+        "遮挡"
+      ]
+    },
+    {
+      "id": "aespa-10",
+      "filename": "67c4a1689c240c5ee0d077f4644af893.jpg",
+      "original": "originals/67c4a1689c240c5ee0d077f4644af893.jpg",
+      "thumbnail": "thumbs/aespa-10.jpg",
+      "width": 1079,
+      "height": 1079,
+      "bytes": 69593,
+      "sha256": "3dada3ef5143fe19b756ac156bf3e958ff4d3cd3162315d8a1c595ea1cfae1d0",
+      "description": "海边侧身白衣肖像",
+      "tags": [
+        "海边",
+        "方幅",
+        "侧身",
+        "浅色服装"
+      ]
+    },
+    {
+      "id": "aespa-11",
+      "filename": "7820459062e377482125ab4bafbd992f.jpg",
+      "original": "originals/7820459062e377482125ab4bafbd992f.jpg",
+      "thumbnail": "thumbs/aespa-11.jpg",
+      "width": 736,
+      "height": 1308,
+      "bytes": 110163,
+      "sha256": "50989ffa0d010ddff4ee2f708922a2cfa9f3f96f9e18db4537e56dff3226394b",
+      "description": "蓝光俯拍面部特写",
+      "tags": [
+        "暗光",
+        "蓝色灯光",
+        "面部特写",
+        "俯拍"
+      ]
+    },
+    {
+      "id": "aespa-12",
+      "filename": "84baabc702a5a862d97e3158ec2fc92c.jpg",
+      "original": "originals/84baabc702a5a862d97e3158ec2fc92c.jpg",
+      "thumbnail": "thumbs/aespa-12.jpg",
+      "width": 675,
+      "height": 900,
+      "bytes": 101387,
+      "sha256": "b31ba392de11e3817ac046a9fc8b13a8d846aa7649197674fc9019398a6b0e55",
+      "description": "白底墨镜黑衣肖像",
+      "tags": [
+        "白底",
+        "墨镜",
+        "深色服装",
+        "高反差"
+      ]
+    },
+    {
+      "id": "aespa-13",
+      "filename": "8d774f8fd0c3fd13dfca74c351f7f394.jpg",
+      "original": "originals/8d774f8fd0c3fd13dfca74c351f7f394.jpg",
+      "thumbnail": "thumbs/aespa-13.jpg",
+      "width": 736,
+      "height": 1308,
+      "bytes": 73657,
+      "sha256": "14b2b8b27e4e305b39107dcc32348821e472a653f4a1492d67eb3511642810dd",
+      "description": "大片留白四人合影",
+      "tags": [
+        "合影",
+        "大留白",
+        "深色服装",
+        "长竖幅"
+      ]
+    },
+    {
+      "id": "aespa-14",
+      "filename": "929ca399e19e398bf092cd383d7da8d4.jpg",
+      "original": "originals/929ca399e19e398bf092cd383d7da8d4.jpg",
+      "thumbnail": "thumbs/aespa-14.jpg",
+      "width": 804,
+      "height": 1206,
+      "bytes": 76400,
+      "sha256": "68224ae507cc9c879fcb891969e586d42683ed2cb3f7711595a7c2afab86a3b9",
+      "description": "红色舞台灯光与动态手臂",
+      "tags": [
+        "舞台",
+        "红色灯光",
+        "浅色服装",
+        "动态姿势"
+      ]
+    },
+    {
+      "id": "aespa-15",
+      "filename": "959ac3d300b94737c8fdfa40c3b6affc.jpg",
+      "original": "originals/959ac3d300b94737c8fdfa40c3b6affc.jpg",
+      "thumbnail": "thumbs/aespa-15.jpg",
+      "width": 1200,
+      "height": 2572,
+      "bytes": 257870,
+      "sha256": "44f5b7f067a1fbd049609c36096d12d9ccdff07afdfa8b5e8f3afc8b9ef8430c",
+      "description": "城市阴天回身竖幅",
+      "tags": [
+        "城市",
+        "阴天",
+        "回身",
+        "长竖幅"
+      ]
+    },
+    {
+      "id": "aespa-16",
+      "filename": "a7e037005f433afd6389c38b1cd05379.jpg",
+      "original": "originals/a7e037005f433afd6389c38b1cd05379.jpg",
+      "thumbnail": "thumbs/aespa-16.jpg",
+      "width": 1029,
+      "height": 1678,
+      "bytes": 249142,
+      "sha256": "0a846ff51cb6d2939b568904c7693415a6d0c7cf45c7e880e4542b3817e57bfe",
+      "description": "草地自然光半身",
+      "tags": [
+        "阴天",
+        "外景",
+        "半身",
+        "彩色针织"
+      ]
+    },
+    {
+      "id": "aespa-17",
+      "filename": "af465162789dbfae71ebcd1467f44b01.jpg",
+      "original": "originals/af465162789dbfae71ebcd1467f44b01.jpg",
+      "thumbnail": "thumbs/aespa-17.jpg",
+      "width": 539,
+      "height": 958,
+      "bytes": 62041,
+      "sha256": "1c7011fe8c5de00b3cc58116fb2f684a71c0279e45755b9da364d0ef64c7c8f0",
+      "description": "草地黄衣侧倾肖像",
+      "tags": [
+        "外景",
+        "侧倾",
+        "彩色服装",
+        "较低分辨率"
+      ]
+    },
+    {
+      "id": "aespa-18",
+      "filename": "bb0e239ead798c31dc84a901bd29c4c0.jpg",
+      "original": "originals/bb0e239ead798c31dc84a901bd29c4c0.jpg",
+      "thumbnail": "thumbs/aespa-18.jpg",
+      "width": 640,
+      "height": 640,
+      "bytes": 40482,
+      "sha256": "81ea034df04e8175dcc0d6b80fc4d9009fb78d1d4e2efab61eb6a2e2a8714c45",
+      "description": "柔光头盔与双手特写",
+      "tags": [
+        "柔光",
+        "高光",
+        "头盔配饰",
+        "方幅"
+      ]
+    },
+    {
+      "id": "aespa-19",
+      "filename": "d000dbc5519079096432521de82e207f.jpg",
+      "original": "originals/d000dbc5519079096432521de82e207f.jpg",
+      "thumbnail": "thumbs/aespa-19.jpg",
+      "width": 736,
+      "height": 1308,
+      "bytes": 173026,
+      "sha256": "009527fd9bb2c797e6c692923611223f9cdfb811679768bbc113ef016abf5332",
+      "description": "蓝天草地中景人物",
+      "tags": [
+        "自然光",
+        "蓝天",
+        "半身",
+        "彩色针织"
+      ]
+    },
+    {
+      "id": "aespa-20",
+      "filename": "d794141e2aa031b6a919dfddf078b2d0.jpg",
+      "original": "originals/d794141e2aa031b6a919dfddf078b2d0.jpg",
+      "thumbnail": "thumbs/aespa-20.jpg",
+      "width": 1200,
+      "height": 1602,
+      "bytes": 199848,
+      "sha256": "bcb81fab179c4596709aaea413c38f91ce7f02dd7b0c83862da52dc5af8545a8",
+      "description": "条纹字样服装与复杂背景",
+      "tags": [
+        "复杂背景",
+        "条纹服装",
+        "半身",
+        "手部"
+      ]
+    },
+    {
+      "id": "aespa-21",
+      "filename": "fa9ef45090ed8852b2abc526504e0b22.jpg",
+      "original": "originals/fa9ef45090ed8852b2abc526504e0b22.jpg",
+      "thumbnail": "thumbs/aespa-21.jpg",
+      "width": 736,
+      "height": 920,
+      "bytes": 172491,
+      "sha256": "0664efe243409ee672430178459ad346b734f978e2edd1d6a0807995fe6b9bd3",
+      "description": "草地袖口与面部近景",
+      "tags": [
+        "自然光",
+        "面部近景",
+        "手部",
+        "遮挡"
+      ]
+    }
+  ],
+  "testSets": {
+    "singleRepresentative": {
+      "ids": [
+        "aespa-03",
+        "aespa-05",
+        "aespa-10",
+        "aespa-11",
+        "aespa-13",
+        "aespa-20"
+      ],
+      "purpose": "白底高光、夜景深衣、浅衣侧身、俯拍近景、留白合影、复杂背景条纹服装；优先检查默认模板对人物的裁切和明暗。"
+    },
+    "multiOutdoorKnit": {
+      "ids": [
+        "aespa-19",
+        "aespa-06",
+        "aespa-21",
+        "aespa-07",
+        "aespa-09",
+        "aespa-02"
+      ],
+      "purpose": "第1张作主图，其余为同一彩色针织外景视觉系列的近景／中景／手部／相机，检查跨图索引和叙事。"
+    },
+    "multiContrastAccessories": {
+      "ids": [
+        "aespa-12",
+        "aespa-13",
+        "aespa-18",
+        "aespa-20"
+      ],
+      "purpose": "第1张作主图，组合墨镜黑衣、留白合影、柔光头盔、条纹服装，检查不同背景和配饰的混合拼贴。"
+    },
+    "fullSingleReview": {
+      "ids": [
+        "aespa-01",
+        "aespa-02",
+        "aespa-03",
+        "aespa-04",
+        "aespa-05",
+        "aespa-06",
+        "aespa-07",
+        "aespa-08",
+        "aespa-09",
+        "aespa-10",
+        "aespa-11",
+        "aespa-12",
+        "aespa-13",
+        "aespa-14",
+        "aespa-15",
+        "aespa-16",
+        "aespa-17",
+        "aespa-18",
+        "aespa-19",
+        "aespa-20",
+        "aespa-21"
+      ],
+      "purpose": "完整单图巡检，不以代表组通过代替全库查看。"
+    }
+  }
+}

@@ -2,7 +2,8 @@
 (() => {
   const $ = (s) => document.querySelector(s);
   const canvas = $('#posterCanvas');
-  const ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('2d');
+  let renderScale = 1;
   const input = $('#posterImageInput');
   const multiInput = $('#posterMultiImageInput');
   const imageTray = $('#posterImageTray');
@@ -26,14 +27,15 @@
   const clone = (v) => JSON.parse(JSON.stringify(v));
   const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let isBeforePreviewActive = false;
-  const cleanFilters = () => ({ bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 8, halftoneDensity: 50, halftoneAngle: 0, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 });
+  const cleanFilters = () => ({ bw: 0, brightness: 0, contrast: 0, saturation: 100, filterType: 'original', halftone: 0, halftoneSize: 8, halftoneDensity: 50, halftoneAngle: 0, halftoneContrast: 65, halftoneOriginX: 50, halftoneOriginY: 50, motionDistance: 0, motionAngle: 0, grain: 0, noiseDistribution: 'gaussian', noiseMonochrome: true, noiseSize: 1, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0, duotone: false, duotoneDark: '#0d226b', duotoneLight: '#eed4eb', gradientGamma: 1, bitmapMethod: 'diffusion' });
 
   const state = {
     image: null, imageName: '', mainImageId: '', assets: [], secondaries: [],
     exportResolution: [1200, 1600],
+    mainEdgeFade: 0, posterPaper: null,
     main: makeMain(), fragments: [], frames: [], details: [], texts: [], layers: [], selected: null,
     background: '#efeee8', backgroundStyle:'solid', backgroundTextureOpacity: 80, backgroundImageId:null, backgroundImageOpacity:48, backgroundImageFit:'cover', border: true, borderColor: '#fff', borderWidth: 5,
-    filters: { bw: 0, brightness: 0, contrast: 0, saturation: 100, halftone: 0, halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15, grain: 0, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0, compression: 0, invert: 0, posterize: 0 },
+    filters: { ...cleanFilters(), halftoneSize: 9, halftoneDensity: 58, halftoneAngle: 15 },
     remixInfo: {
       anchorZh: '示范模板', anchorEn: 'Demo Template',
       mainLayoutZh: '完整底图', mainLayoutEn: 'Full Base',
@@ -82,9 +84,29 @@
     requestAnimationFrame(() => requestAnimationFrame(() => { viewport.scrollLeft = 0; viewport.scrollTop = 0; }));
   }
   function zoomBy(delta, anchor = null) { applyZoom(zoom + delta, 'manual', anchor); }
-  function snapshot() { const { image, ...rest } = state; return JSON.stringify(rest); }
+  function pruneAssetCaches() {
+    const images = new Set(), backgrounds = new Set();
+    for (const scene of [state, ...history.map(value => JSON.parse(value))]) {
+      if (scene.mainImageId) images.add(scene.mainImageId);
+      for (const asset of scene.assets || []) images.add(asset.id);
+      for (const card of scene.secondaries || []) images.add(card.imageId);
+      if (scene.backgroundImageId) backgrounds.add(scene.backgroundImageId);
+    }
+    for (const [id, asset] of imageAssets) {
+      if (!images.has(id) && !isDemoAsset(asset)) imageAssets.delete(id);
+    }
+    for (const id of backgroundAssets.keys()) {
+      if (!backgrounds.has(id)) backgroundAssets.delete(id);
+    }
+  }
+  function snapshot() {
+    const { image, exportResolution, ...rest } = state;
+    return JSON.stringify({ ...rest, remixCursor: { layout: currentLayoutIndex, filter: currentFilterIndex, master: currentMasterIndex } });
+  }
   function commit(immediate = true) {
-    const save = () => { historyTimer = 0; const value = snapshot(); if (history[historyIndex] === value) return; history = history.slice(0, historyIndex + 1); history.push(value); if (history.length > 60) history.shift(); historyIndex = history.length - 1; };
+    if (historyTransactionDepth) return;
+    const save = () => { historyTimer = 0; const value = snapshot(); if (history[historyIndex] === value) return; history = history.slice(0, historyIndex + 1); history.push(value); if (history.length > 60) history.shift(); historyIndex = history.length - 1; pruneAssetCaches(); if (typeof scheduleDraftSave === 'function') scheduleDraftSave(); };
+    if (!immediate && typeof scheduleDraftSave === 'function') scheduleDraftSave();
     clearTimeout(historyTimer); if (immediate) save(); else historyTimer = setTimeout(save, 180);
   }
   function markManuallyEdited() {
@@ -93,6 +115,64 @@
       updateRemixCard();
     }
   }
+  let draftReady = false, draftHasEdits = false, draftDirty = false, draftTimer = 0;
+  let draftWrites = Promise.resolve();
+  function draftStatus(message) { const node=$('#posterDraftStatus'); if(node)node.textContent='草稿 · '+message; }
+  function scheduleDraftSave() {
+    if (!draftReady || historyTransactionDepth || !state.image || !(draftHasEdits || hasUserUploadedImages() || history.length>1)) return;
+    draftHasEdits = true; draftDirty = true; draftStatus('保存中…');
+    clearTimeout(draftTimer); draftTimer=setTimeout(saveDraftNow,600);
+  }
+  async function saveDraftNow() {
+    clearTimeout(draftTimer); draftTimer=0;
+    if (!state.image) return;
+    draftHasEdits=true; draftDirty=true; draftStatus('保存中…');
+    try {
+    const value=snapshot(), resolution=JSON.stringify(state.exportResolution);
+    const cutouts=new Set(state.secondaries.filter(s=>s.cutout).map(s=>s.imageId));
+    if(state.main.cutout)cutouts.add(state.mainImageId);
+    const assets=state.assets.map(meta=>{
+      const asset=imageAssets.get(meta.id);
+      if(!asset?.image)throw new Error('草稿照片缺失。');
+      return {id:meta.id,name:asset.name,origin:asset.origin,libraryId:asset.libraryId,
+        src:asset.src || asset.image.src,cutoutSrc:cutouts.has(meta.id)?asset.cutoutImage?.src:null};
+    });
+    const background=state.backgroundImageId ? {id:state.backgroundImageId,src:backgroundAssets.get(state.backgroundImageId)?.src} : null;
+    const record={version:1,scene:JSON.parse(value),assets,background,exportResolution:state.exportResolution.slice(),savedAt:Date.now()};
+      const write=draftWrites.catch(()=>{}).then(()=>window.PosterDraft.save(record));
+      draftWrites=write; await write;
+      const current=JSON.parse(snapshot()); current.selected=record.scene.selected;
+      if(JSON.stringify(current)===value && JSON.stringify(state.exportResolution)===resolution){draftDirty=false;draftStatus('已保存在此浏览器');}
+    } catch(error) { console.warn('Draft save failed',error);draftStatus('保存失败，请点保存重试');toast('草稿未保存：'+error.message+'。请保留当前页面并重试。'); }
+  }
+  async function loadDraftImage(src) {
+    if(typeof src!=='string' || (!src.startsWith('data:image/') && new URL(src,location.href).origin!==location.origin)) throw new Error('草稿照片来源无效。');
+    const image=new Image();image.src=src;await image.decode();return image;
+  }
+  async function initializePoster() {
+    const initial=snapshot(); let restored=false;
+    try {
+      const record=await window.PosterDraft.load();
+      if(snapshot()!==initial)return;
+      if(!record){loadDemo(false);draftStatus('编辑后自动保存');return;}
+      if(record.version!==1 || !record.scene?.main || !record.scene?.filters
+        || !['assets','secondaries','fragments','frames','details','texts','layers'].every(key=>Array.isArray(record.scene[key]))
+        || !Array.isArray(record.assets) || !record.assets.some(a=>a.id===record.scene.mainImageId))throw new Error('草稿数据不完整。');
+      const assets=await Promise.all(record.assets.map(async asset=>({...asset,image:await loadDraftImage(asset.src),cutoutImage:asset.cutoutSrc?await loadDraftImage(asset.cutoutSrc):null})));
+      const background=record.background ? await loadDraftImage(record.background.src) : null;
+      if(snapshot()!==initial)return;
+      assets.forEach(asset=>imageAssets.set(asset.id,asset));
+      if(background)backgroundAssets.set(record.background.id,background);
+      const resolution=Array.isArray(record.exportResolution)?record.exportResolution.join('x'):'';
+      const resolutionSelect=$('#posterResolutionSelect');
+      if(Array.from(resolutionSelect.options).some(option=>option.value===resolution))state.exportResolution=record.exportResolution.slice();
+      history=[JSON.stringify(record.scene)];historyIndex=0;restore(0);
+      resolutionSelect.value=state.exportResolution.join('x');resolutionSelect.dispatchEvent(new Event('change'));
+      restored=true;draftHasEdits=true;draftDirty=false;draftStatus('已恢复本地作品');toast('已恢复本地草稿，可继续编辑。');
+    } catch(error) {console.warn('Draft restore failed',error);draftStatus('恢复失败，旧草稿保留');toast('草稿未能恢复：'+error.message+'。旧草稿仍保留。');if(snapshot()===initial)loadDemo(false);}
+    finally {draftReady=true;if(!restored)scheduleDraftSave();}
+  }
+
   function getImageSourceInfo(sourceId) {
     if (!sourceId || sourceId === 'main') {
       return {
@@ -151,6 +231,9 @@
       rolesZh: '主辅有序', rolesEn: 'Structured',
       isManuallyEdited: false,
     };
+    const layoutNumber = '[' + (currentLayoutIndex + 1) + '/' + layoutRemixList.length + ']';
+    const anchorZh = (info.anchorZh || '').replace(/(排版 REMIX) \[\d+\/\d+\]/, '$1 ' + layoutNumber);
+    const anchorEn = (info.anchorEn || '').replace(/(Layout REMIX) \[\d+\/\d+\]/, '$1 ' + layoutNumber);
     const multiRows = hasSecondaryImages() ? `
         <div class="poster-remix-row">
           <span class="poster-remix-key">多图叙事 / NARRATIVE</span>
@@ -171,7 +254,7 @@
       <div class="poster-remix-grid">
         <div class="poster-remix-row">
           <span class="poster-remix-key">视觉锚点 / ANCHOR</span>
-          <div class="poster-remix-val">${info.anchorZh} <small>${info.anchorEn}</small></div>
+          <div class="poster-remix-val">${anchorZh} <small>${anchorEn}</small></div>
         </div>
         <div class="poster-remix-row">
           <span class="poster-remix-key">主图布局 / MAIN LAYOUT</span>
@@ -220,8 +303,9 @@
     }
     frame.x = parent.x + frame.relX * parent.w;
     frame.y = parent.y + frame.relY * parent.h;
-    frame.w = Math.max(20, frame.relW * parent.w);
-    frame.h = Math.max(20, frame.relH * parent.h);
+    const minSize = frame.minSize ?? 20;
+    frame.w = Math.max(minSize, frame.relW * parent.w);
+    frame.h = Math.max(minSize, frame.relH * parent.h);
     if (parent.rotation !== undefined) {
       frame.rotation = (parent.rotation || 0) + (frame.relRotation || 0);
     }
@@ -238,8 +322,10 @@
 
   function renderImageTray() {
     if (!imageTray) return;
-    const activeAssets = state.assets.filter(a => a.id === state.mainImageId || state.secondaries.some(s => s.imageId === a.id));
-    if (trayCount) trayCount.textContent = `${(state.image ? 1 : 0) + state.secondaries.length} IMAGES`;
+    // The upload pool remains accessible even when the current template uses only
+    // some photos. Cards are scene instances and must not decide library visibility.
+    const activeAssets = state.assets.filter(a => imageAssets.get(a.id)?.image || (a.id === state.mainImageId && state.image));
+    if (trayCount) trayCount.textContent = `${activeAssets.length || (state.image ? 1 : 0)} IMAGES`;
     updateRemixCard();
     if (!activeAssets.length) {
       imageTray.innerHTML = `<p class="poster-help">先上传主图，也可以一次添加多张图片。</p>`;
@@ -249,6 +335,7 @@
       const asset = imageAssets.get(assetMeta.id);
       const src = asset?.src || (asset?.image ? asset.image.src : '');
       const isMain = state.mainImageId === assetMeta.id || (!state.mainImageId && state.imageName === assetMeta.name);
+      const isAssigned = isMain || state.secondaries.some(s => s.imageId === assetMeta.id);
       
       let evidenceCount = 0;
       if (isMain) {
@@ -265,17 +352,17 @@
       }
 
       return `
-        <div class="poster-tray-item ${isMain ? 'is-main' : ''}" data-asset-id="${assetMeta.id}" title="点击在画布中选中">
+        <div class="poster-tray-item ${isMain ? 'is-main' : ''}" data-asset-id="${assetMeta.id}" title="${isAssigned ? '点击在画布中选中' : '尚未分配到画布，可设为主图'}">
           <div class="poster-tray-thumb">
             ${src ? `<img src="${escapeHTML(src)}" alt="${escapeHTML(assetMeta.name)}">` : ''}
             <span class="poster-tray-badge ${isMain ? 'is-primary' : 'is-secondary'}">
-              ${isMain ? '★ PRIMARY' : 'SECONDARY'}
+              ${isMain ? '★ PRIMARY' : (isAssigned ? 'SECONDARY' : 'ASSET')}
             </span>
           </div>
           <div class="poster-tray-info">
             <span class="poster-tray-name" title="${escapeHTML(assetMeta.name)}">${escapeHTML(assetMeta.name)}</span>
             <span class="poster-tray-stats">
-              ${isMain ? `主图 · 特写 ${evidenceCount}` : `辅图 · 特写 ${evidenceCount}`}
+              ${isMain ? `主图 · 特写 ${evidenceCount}` : (isAssigned ? `辅图 · 特写 ${evidenceCount}` : '素材 · 未分配')}
             </span>
             <div class="poster-tray-actions">
               ${!isMain ? `<button type="button" class="poster-tray-btn" data-tray-action="set-main" title="设为主视觉核心">设为主图</button>` : ''}
@@ -292,50 +379,26 @@
     if (!asset) return;
     const oldMainId = state.mainImageId;
     if (oldMainId === assetId) return;
+    commit();
 
-    const existingSecIdx = (state.secondaries || []).findIndex((s) => s.imageId === assetId);
-    let secIdBeingPromoted = null;
-    if (existingSecIdx >= 0) {
-      secIdBeingPromoted = state.secondaries[existingSecIdx].id;
-      state.secondaries.splice(existingSecIdx, 1);
-      state.layers = state.layers.filter((l) => !(l.type === 'secondary' && l.id === secIdBeingPromoted));
-    }
-
-    if (oldMainId && oldMainId !== assetId && imageAssets.has(oldMainId)) {
-      const s = {
-        id: makeId(),
-        imageId: oldMainId,
-        x: 50,
-        y: 720,
-        w: 260,
-        h: 320,
-        rotation: -2,
-        opacity: 100,
-        color: '#ffffff',
-        lineWidth: 3,
-        backingColor: '#ffffff',
-        filters: cleanFilters(),
-      };
-      state.secondaries.push(s);
-      addLayer('secondary', s.id);
-      state.frames.forEach((f) => {
-        if (!f.sourceId || f.sourceId === 'main') {
-          f.sourceId = s.id;
-          f.parentObjectId = s.id;
-          syncFrameRelativeToParent(f);
+    const selectedCard = state.secondaries.find(s=>s.id===state.selected?.id && s.imageId===assetId);
+    const card = selectedCard || state.secondaries.find(s=>s.imageId===assetId);
+    const promotedCutout = !!card?.cutout && !!asset.cutoutImage;
+    const oldMainCutout = !!state.main.cutout;
+    if (card && oldMainId && imageAssets.has(oldMainId)) {
+      card.imageId = oldMainId;
+      card.cutout = oldMainCutout && !!imageAssets.get(oldMainId).cutoutImage;
+      for (const frame of state.frames) {
+        if (!frame.sourceId || frame.sourceId === 'main') {
+          frame.sourceId = card.id; frame.parentObjectId = card.id;
+          syncFrameRelativeToParent(frame);
+        } else if (frame.sourceId === card.id) {
+          frame.sourceId = 'main'; frame.parentObjectId = 'main';
+          syncFrameRelativeToParent(frame);
         }
-      });
+      }
     }
-
-    if (secIdBeingPromoted) {
-      state.frames.forEach((f) => {
-        if (f.sourceId === secIdBeingPromoted) {
-          f.sourceId = 'main';
-          f.parentObjectId = 'main';
-          syncFrameRelativeToParent(f);
-        }
-      });
-    }
+    state.main.cutout = promotedCutout;
 
     state.image = asset.image;
     state.imageName = asset.name;
@@ -347,6 +410,7 @@
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach((s) => syncAllChildFramesOf(s.id));
 
+    setSelected('main', state.main);
     renderImageTray();
     render();
     commit();
@@ -440,17 +504,27 @@
     if (index < 0 || index >= history.length) return;
     clearTimeout(historyTimer); historyTimer = 0;
     const currentImage = state.image;
-    Object.assign(state, JSON.parse(history[index]));
+    const currentExportResolution = state.exportResolution;
+    const { remixCursor, ...savedState } = JSON.parse(history[index]);
+    Object.assign(state, savedState);
+    state.posterPaper = savedState.posterPaper || null;
+    // Older scene snapshots have no cursor; their first next REMIX starts at 01.
+    currentLayoutIndex = remixCursor?.layout ?? 0;
+    currentFilterIndex = remixCursor?.filter ?? 0;
+    currentMasterIndex = remixCursor?.master ?? -1;
+    state.exportResolution = currentExportResolution;
     if (state.mainImageId && imageAssets.has(state.mainImageId)) {
       state.image = imageAssets.get(state.mainImageId).image;
     } else {
       state.image = state.mainImageId ? currentImage : null;
     }
     historyIndex = index;
+    if (typeof scheduleDraftSave === 'function') scheduleDraftSave();
     renderImageTray();
     renderInspector();
     render();
     updateRemixCard();
+    updateMasterRemixControls();
   }
   function undo() { if (historyTimer) commit(); if (historyIndex > 0) restore(historyIndex - 1); else toast('已经是最早一步。'); }
   function redo() { if (historyTimer) commit(); if (historyIndex < history.length - 1) restore(historyIndex + 1); else toast('没有可重做的操作。'); }
@@ -460,17 +534,19 @@
     return imageCover(state.image, state.main || imageBox);
   }
   function imageCover(image, box) {
-    const scale = Math.max(box.w / image.naturalWidth, box.h / image.naturalHeight) * (box.zoom || 1);
+    const baseScale = box.fit === 'contain'
+      ? Math.min(box.w / image.naturalWidth, box.h / image.naturalHeight)
+      : Math.max(box.w / image.naturalWidth, box.h / image.naturalHeight);
+    const scale = baseScale * (box.zoom || 1);
     const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
     return { x: box.x + (box.w - w) / 2 + (box.panX || 0), y: box.y + (box.h - h) / 2 + (box.panY || 0), w, h, scale };
   }
   function getSourceImageForFrame(f) {
-    if (!f) return state.image;
-    if (!f.sourceId || f.sourceId === 'main') return state.image;
+    if (!f || !f.sourceId || f.sourceId === 'main') return (state.main?.cutout && imageAssets.get(state.mainImageId)?.cutoutImage) || state.image;
     const s = state.secondaries?.find((v) => v.id === f.sourceId);
     if (s) {
       const asset = imageAssets.get(s.imageId);
-      if (asset?.image) return asset.image;
+      if (asset?.image) return (s.cutout && asset.cutoutImage) || asset.image;
     }
     const directAsset = imageAssets.get(f.sourceId);
     if (directAsset?.image) return directAsset.image;
@@ -478,20 +554,31 @@
   }
   function sourceRect(frame) {
     const image = getSourceImageForFrame(frame); if (!image) return null;
-    const box = state.secondaries?.find((v) => v.id === frame.sourceId) || state.main || imageBox;
-    const cover = imageCover(image, box), cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    const secondary=state.secondaries?.find((v)=>v.id===frame.sourceId);
+    const box = secondary || state.main || imageBox;
+    const photoBox={...box};
+    if(secondary){
+      const p=(typeof window!=='undefined' && window.PosterDecor?.photoRect(box)) || {x:0,y:box.windowFrame?Math.min(22,box.h*.14):0,w:box.w,h:box.windowFrame?box.h-Math.min(22,box.h*.14):box.h};
+      photoBox.x+=p.x;photoBox.y+=p.y;photoBox.w=p.w;photoBox.h=p.h;
+      if(box.fit!=='contain'){
+        const scale=Math.max(photoBox.w/image.naturalWidth,photoBox.h/image.naturalHeight)*(box.zoom || 1);
+        const dx=(image.naturalWidth*scale-photoBox.w)/2,dy=(image.naturalHeight*scale-photoBox.h)/2;
+        photoBox.panX=Math.max(-dx,Math.min(dx,box.panX || 0));photoBox.panY=Math.max(-dy,Math.min(dy,box.panY || 0));
+      }
+    }
+    const cover = imageCover(image, photoBox), cx = box.x + box.w / 2, cy = box.y + box.h / 2;
     // Map all four rotated frame corners back into the unrotated source image.
     const corners = [[0,0],[frame.w,0],[frame.w,frame.h],[0,frame.h]].map(([x,y]) => {
       const p = rotatePoint(frame.x+x, frame.y+y, frame.x+frame.w/2, frame.y+frame.h/2, frame.rotation || 0);
       return rotatePoint(p.x, p.y, cx, cy, -(box.rotation || 0));
     });
-    const left = Math.max(box.x, Math.min(...corners.map(p => p.x))), top = Math.max(box.y, Math.min(...corners.map(p => p.y)));
-    const right = Math.min(box.x+box.w, Math.max(...corners.map(p => p.x))), bottom = Math.min(box.y+box.h, Math.max(...corners.map(p => p.y)));
+    const left = Math.max(photoBox.x, Math.min(...corners.map(p => p.x))), top = Math.max(photoBox.y, Math.min(...corners.map(p => p.y)));
+    const right = Math.min(photoBox.x+photoBox.w, Math.max(...corners.map(p => p.x))), bottom = Math.min(photoBox.y+photoBox.h, Math.max(...corners.map(p => p.y)));
     const sx = Math.max(0, Math.min(image.naturalWidth-1, (left-cover.x)/cover.scale));
     const sy = Math.max(0, Math.min(image.naturalHeight-1, (top-cover.y)/cover.scale));
     return { sx, sy, sw: Math.max(1, Math.min(image.naturalWidth-sx, (right-cover.x)/cover.scale-sx)), sh: Math.max(1, Math.min(image.naturalHeight-sy, (bottom-cover.y)/cover.scale-sy)) };
   }
-  function raster(w, h, draw) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); draw(c.getContext('2d'), c); return c; }
+  function raster(w, h, draw) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); draw(c.getContext('2d',{willReadFrequently:true}), c); return c; }
   function noise(seed) { const n = Math.sin(seed * 12.9898 + 78.233) * 43758.5453; return n - Math.floor(n); }
 
   function drawElectricTigerPattern(tc, w, h) {
@@ -566,6 +653,45 @@
     tc.restore();
   }
 
+  function drawBlueValentineBackdrop() {
+    const ghost = (image, x, y, w, h, opacity) => {
+      if (!image) return;
+      image = window.PosterPixels?.normalize(image) || image;
+      const scale = Math.max(w / image.naturalWidth, h / image.naturalHeight);
+      ctx.save(); ctx.globalAlpha = opacity; ctx.filter = 'grayscale(75%)';
+      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      ctx.drawImage(image, x + (w - image.naturalWidth * scale) / 2,
+        y + (h - image.naturalHeight * scale) / 2, image.naturalWidth * scale, image.naturalHeight * scale);
+      ctx.restore();
+    };
+    ctx.fillStyle = '#a8afd2'; ctx.fillRect(0, 0, W, H);
+    ghost(state.image, 8, -95, 430, 430, .28);
+    const support = state.assets.find(asset => asset.id !== state.mainImageId);
+    ghost(imageAssets.get(support?.id)?.image || state.image, 687, 285, 210, 895, .38);
+    ctx.fillStyle = 'rgba(174,180,229,.37)'; ctx.fillRect(0, 0, W, H);
+    // Fixed torn paper and printed fruit are background graphics, never substitute uploaded photos.
+    ctx.save(); ctx.translate(-24, 310); ctx.rotate(-.13);
+    ctx.fillStyle = '#e8e7ee'; ctx.beginPath(); ctx.moveTo(0, 22);
+    for (let y = 22; y < 660; y += 13) ctx.lineTo(240 + noise(y) * 12, y);
+    ctx.lineTo(0, 660); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3f4d91'; ctx.beginPath(); ctx.ellipse(100, 220, 122, 179, -.06, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#d6d2e9'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(100, 220, 122, 179, -.06, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(768, 71); ctx.rotate(.09);
+    ctx.fillStyle = '#d4bfe8'; ctx.beginPath(); ctx.ellipse(0, 0, 109, 135, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#bfa9d8'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#263561'; [-19,19].forEach(x => {ctx.beginPath();ctx.ellipse(x, -3, 7, 20, x / 100, 0, Math.PI * 2);ctx.fill();}); ctx.restore();
+    ctx.fillStyle = 'rgba(243,240,255,.32)';
+    for (let i = 0; i < 3300; i++) {const x = noise(i * 17 + 9) * W, y = noise(i * 31 + 2) * H;ctx.fillRect(x,y,.5 + noise(i)*1.7,.6);}
+  }
+  function drawPosterPaper() {
+    const p = state.posterPaper; if (!p) return;
+    ctx.save(); ctx.fillStyle = p.color || '#fafaff'; ctx.shadowColor = 'rgba(23,31,63,.25)';
+    ctx.shadowBlur = 16 * renderScale; ctx.shadowOffsetY = 7 * renderScale;
+    ctx.fillRect(p.x, p.y, p.w, p.h); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.fillStyle = p.headerColor || '#3152ed'; ctx.fillRect(p.x+14,p.y+14,p.w-28,p.headerH ?? 178);
+    ctx.restore();
+  }
   function drawPosterBackground() {
     const style = state.backgroundStyle || 'solid';
     ctx.fillStyle = state.background; ctx.fillRect(0, 0, W, H);
@@ -574,7 +700,9 @@
     if (style !== 'solid' && textureAlpha > 0.005) {
       ctx.save();
       ctx.globalAlpha = textureAlpha;
-      if (style === 'ps-dark' || style === 'dark-studio') {
+      if (style === 'blue-valentine') {
+        drawBlueValentineBackdrop();
+      } else if (style === 'ps-dark' || style === 'dark-studio') {
         const rad = ctx.createRadialGradient(W / 2, H * 0.45, 80, W / 2, H * 0.45, W * 0.72);
         rad.addColorStop(0, '#1c1f28');
         rad.addColorStop(0.65, '#0e1015');
@@ -585,7 +713,7 @@
         drawElectricTigerPattern(ctx, W, H);
       } else if (style === 'liquid-chrome') {
         if (window.posterLiquidChrome) {
-          const chromeCanvas = window.posterLiquidChrome.getCachedCanvas(W, H, state.liquidChromeSeed || 0);
+          const chromeCanvas = window.posterLiquidChrome.getCachedCanvas(Math.round(W * renderScale), Math.round(H * renderScale), state.liquidChromeSeed || 0);
           if (chromeCanvas) ctx.drawImage(chromeCanvas, 0, 0, W, H);
         }
       } else if (style === 'grid') {
@@ -599,6 +727,15 @@
         const g = ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,'#d9f3ff'); g.addColorStop(.25,'#f4d7ee'); g.addColorStop(.5,'#eef4ff'); g.addColorStop(.72,'#b9c9f4'); g.addColorStop(1,'#f7e0ea');
         ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
         const glow = ctx.createRadialGradient(W*.72,H*.18,10,W*.72,H*.18,W*.58); glow.addColorStop(0,'rgba(255,255,255,.92)'); glow.addColorStop(.34,'rgba(158,191,255,.26)'); glow.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+      } else if (style === 'pink-paper') {
+        ctx.fillStyle='#f6f1f4';ctx.fillRect(0,0,W,H);
+        for(let i=0;i<6;i++){
+          const x=noise(i*19+2)*W,y=noise(i*37+5)*H,r=180+noise(i*11)*220,g=ctx.createRadialGradient(x,y,0,x,y,r);
+          g.addColorStop(0,i%2?'rgba(223,210,232,.3)':'rgba(255,255,255,.9)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        }
+        for(let i=0;i<4500;i++){ctx.fillStyle=['rgba(187,135,166,.17)','rgba(124,166,174,.13)','rgba(255,255,255,.7)'][i%3];ctx.fillRect(noise(i*17+4)*W,noise(i*29+9)*H,.4+noise(i*3),.6);}
+        ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=.65;
+        for(let i=0;i<28;i++){const x=noise(i*41+2)*W,y=noise(i*53+3)*H;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+40+noise(i*7)*120,y-15-noise(i*13)*45);ctx.stroke();}
       } else if (style === 'scan') {
         ctx.fillStyle='#5b554c';
         for(let i=0;i<520;i++){const x=noise(i*17)*W,y=noise(i*31)*H,s=.3+noise(i*43)*2.3;ctx.fillRect(x,y,s,s*(1+noise(i*7)*4));}
@@ -619,7 +756,8 @@
       ctx.restore();
     }
 
-    const bgImage = state.backgroundImageId ? backgroundAssets.get(state.backgroundImageId) : null;
+    const originalBackground = state.backgroundImageId ? backgroundAssets.get(state.backgroundImageId) : null;
+    const bgImage = originalBackground ? (window.PosterPixels?.normalize(originalBackground) || originalBackground) : null;
     if (bgImage) {
       ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(100, state.backgroundImageOpacity ?? 48)) / 100;
       const fit = state.backgroundImageFit || 'cover', iw=bgImage.naturalWidth||bgImage.width, ih=bgImage.naturalHeight||bgImage.height;
@@ -637,7 +775,7 @@
 
     // 1. 玻璃「块状」 (Glass Brick / Thick Glass Refraction)
     if (o.glass) {
-      const gSize = Math.max(12, Math.min(72, o.glassSize || 32));
+      const gSize = Math.max(12, Math.min(72, o.glassSize || 32)) * renderScale;
       const copy = new Uint8ClampedArray(d);
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
@@ -647,7 +785,7 @@
           const v = (y - by) / gSize - 0.5;
           // 凸透镜/水波砖折射畸变位移
           const rDist = Math.hypot(u, v);
-          const bend = Math.sin(rDist * Math.PI) * 20 * (o.glass / 100);
+          const bend = Math.sin(rDist * Math.PI) * 20 * renderScale * (o.glass / 100);
           const srcX = Math.max(0, Math.min(W - 1, Math.round(x + u * bend * 2.5)));
           const srcY = Math.max(0, Math.min(H - 1, Math.round(y + v * bend * 2.5)));
           const targetIdx = (y * W + x) * 4;
@@ -655,8 +793,8 @@
           let r = copy[srcIdx], g = copy[srcIdx + 1], b = copy[srcIdx + 2];
 
           // 玻璃方格高光与倒角阴影边框
-          const isHighlight = (x - bx < 2 || y - by < 2);
-          const isShadow = (bx + gSize - x < 2 || by + gSize - y < 2);
+          const isHighlight = (x - bx < 2 * renderScale || y - by < 2 * renderScale);
+          const isShadow = (bx + gSize - x < 2 * renderScale || by + gSize - y < 2 * renderScale);
           if (isHighlight) {
             r = Math.min(255, r + 85);
             g = Math.min(255, g + 90);
@@ -671,7 +809,7 @@
 
     // 2. 马赛克 (像素化 + 锐化或拼贴)
     if (o.mosaic) {
-      const mSize = Math.max(4, Math.min(64, o.mosaicSize || 18));
+      const mSize = Math.max(1, Math.round(Math.max(4, Math.min(64, o.mosaicSize || 18)) * renderScale));
       const copy = new Uint8ClampedArray(d);
       const isFacet = o.mosaicStyle === 'facet';
       for (let by = 0; by < H; by += mSize) {
@@ -692,7 +830,7 @@
               let r = avgR, g = avgG, b = avgB;
               if (isFacet) {
                 // 彩色玻璃镶嵌缝/暗纹
-                const onBorder = (x === bx || y === by || x === bx + bw - 1 || y === by + bh - 1);
+                const onBorder = (x - bx < renderScale || y - by < renderScale || bx + bw - 1 - x < renderScale || by + bh - 1 - y < renderScale);
                 if (onBorder) { r *= 0.22; g *= 0.22; b *= 0.22; }
                 else {
                   const bevel = ((x - bx) - (y - by)) / mSize * 36;
@@ -702,9 +840,9 @@
                 }
               } else {
                 // 经典阶梯大像素 + 锐化边界 (Sharp Pixelate)
-                if (x === bx || y === by) {
+                if (x - bx < renderScale || y - by < renderScale) {
                   r *= 0.84; g *= 0.84; b *= 0.84;
-                } else if (x === bx + bw - 1 || y === by + bh - 1) {
+                } else if (bx + bw - 1 - x < renderScale || by + bh - 1 - y < renderScale) {
                   r = Math.min(255, r * 1.08);
                   g = Math.min(255, g * 1.08);
                   b = Math.min(255, b * 1.08);
@@ -732,7 +870,7 @@
         15, 47,  7, 39, 13, 45,  5, 37,
         63, 31, 55, 23, 61, 29, 53, 21
       ];
-      const step = Math.max(2, Math.round(o.ditherStep || 4));
+      const step = Math.max(1, Math.round(Math.max(2, Math.round(o.ditherStep || 4)) * renderScale));
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const p = y * W + x, idx = p * 4;
@@ -781,7 +919,7 @@
       step = 255 / (levels - 1);
     }
 
-    const blockSize = o.compression ? Math.max(3, Math.round(3 + (o.compression / 100) * 13)) : 1;
+    const blockSize = o.compression ? Math.max(1, Math.round(Math.max(3, Math.round(3 + (o.compression / 100) * 13)) * renderScale)) : 1;
     const compressionWeight = o.compression ? Math.min(1, Math.pow(o.compression / 100, 0.72) * 1.15) : 0;
     const roughBlend = o.rough ? Math.min(1, Math.pow(o.rough / 100, 0.75) * 1.05) : 0;
     const outlineBlend = o.outline ? Math.min(1, Math.pow(o.outline / 100, 0.75) * 1.1) : 0;
@@ -799,8 +937,8 @@
       }
 
       if (o.outline) {
-        const nextX = Math.min(p + 1, lum.length - 1);
-        const nextY = Math.min(p + W, lum.length - 1);
+        const nextX = Math.min(p + Math.max(1, Math.round(renderScale)), lum.length - 1);
+        const nextY = Math.min(p + W * Math.max(1, Math.round(renderScale)), lum.length - 1);
         const edge = Math.min(255, (Math.abs(l - lum[nextX]) * 1.5 + Math.abs(l - lum[nextY]) * 1.8) * 2.4);
         const ink = Math.max(0, 255 - edge);
         r += (ink - r) * outlineBlend;
@@ -847,215 +985,10 @@
     if (!o.halftone) return;
     const tc = target.getContext('2d'); let pixels;
     try { pixels = tc.getImageData(0, 0, target.width, target.height).data; } catch (e) { console.warn('Halftone skipped.', e); return; }
-    const spacing = Math.max(4, 18 - Math.max(1, o.halftoneDensity || 50) * .14);
-    const size = Math.max(1, o.halftoneSize || 8);
+    const spacing = Math.max(4, 18 - Math.max(1, o.halftoneDensity || 50) * .14) * renderScale;
+    const size = Math.max(1, o.halftoneSize || 8) * renderScale;
     const strength = Math.pow(o.halftone / 100, 0.75);
     const W = target.width, H = target.height;
-
-    const hexToRgb = (hex, def) => {
-      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
-      return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : def;
-    };
-
-    // A. 彩色半调 (CMYK 分色印刷网点 - 直接生成高辨识度分色网屏画面)
-    if (o.colorHalftone) {
-      const isDuotoneMap = !!o.duotone;
-      const cmykCanvas = raster(W, H, (cc) => {
-        if (isDuotoneMap) {
-          // 日系 PS 原版：彩色半调 + 渐变映射 (Cobalt / Electric Blue Duotone Map)
-          // 亮部柔和蓝紫半透浅底，网点映射为鲜明纯正的克莱因蓝/皇家宝蓝，绝不发黑发灰发暗，通透具有呼吸感
-          const lRgb = hexToRgb(o.duotoneLight, [214, 226, 255]);
-          cc.fillStyle = `rgba(${lRgb[0]}, ${lRgb[1]}, ${lRgb[2]}, 0.58)`;
-          cc.fillRect(0, 0, W, H);
-          const diagonal = Math.hypot(W, H);
-
-          // 主网角 45° 电光宝蓝网点 + 副网角 15° 深邃群青暗部加强网点
-          const blueChannels = [
-            { angle: 45 * Math.PI / 180, color: 'rgba(26, 68, 196, 0.95)', scale: 1.0, threshold: 0 },
-            { angle: 15 * Math.PI / 180, color: 'rgba(10, 24, 85, 0.88)', scale: 0.85, threshold: 0.22 }
-          ];
-
-          blueChannels.forEach((ch) => {
-            cc.save();
-            cc.translate(W / 2, H / 2);
-            cc.rotate(ch.angle);
-            cc.fillStyle = ch.color;
-
-            for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) {
-              for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
-                const cos = Math.cos(-ch.angle), sin = Math.sin(-ch.angle);
-                const sx = Math.round(gx * cos - gy * sin + W / 2);
-                const sy = Math.round(gx * sin + gy * cos + H / 2);
-                if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
-                const p = (sy * W + sx) * 4;
-                const lum = (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114) / 255;
-                const darkness = 1 - lum;
-                if (darkness <= ch.threshold) continue;
-                const dotVal = (darkness - ch.threshold) / (1 - ch.threshold);
-                const maxR = spacing * 0.52;
-                const radius = Math.max(0, Math.min(maxR, dotVal * size * 0.68 * ch.scale * (0.35 + strength * 0.9)));
-                if (radius > 0.35) {
-                  cc.beginPath();
-                  cc.arc(gx, gy, radius, 0, Math.PI * 2);
-                  cc.fill();
-                }
-              }
-            }
-            cc.restore();
-          });
-        } else {
-          cc.fillStyle = '#f8f8f6';
-          cc.fillRect(0, 0, W, H);
-          const channels = [
-            { name: 'c', angle: 15 * Math.PI / 180, color: 'rgba(0, 168, 240, 0.92)' },
-            { name: 'm', angle: 75 * Math.PI / 180, color: 'rgba(235, 10, 130, 0.92)' },
-            { name: 'y', angle: 0, color: 'rgba(255, 230, 10, 0.95)' },
-            { name: 'k', angle: 45 * Math.PI / 180, color: 'rgba(20, 20, 20, 0.98)' }
-          ];
-          const diagonal = Math.hypot(W, H);
-
-          channels.forEach((ch) => {
-            cc.save();
-            cc.translate(W / 2, H / 2);
-            cc.rotate(ch.angle);
-            cc.fillStyle = ch.color;
-            cc.globalCompositeOperation = 'multiply';
-
-            for (let gy = -diagonal / 2; gy < diagonal / 2; gy += spacing) {
-              for (let gx = -diagonal / 2; gx < diagonal / 2; gx += spacing) {
-                const cos = Math.cos(-ch.angle), sin = Math.sin(-ch.angle);
-                const sx = Math.round(gx * cos - gy * sin + W / 2);
-                const sy = Math.round(gx * sin + gy * cos + H / 2);
-                if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
-                const p = (sy * W + sx) * 4;
-                const r = pixels[p] / 255, g = pixels[p + 1] / 255, b = pixels[p + 2] / 255;
-                const k = 1 - Math.max(r, g, b);
-                const c = (1 - r - k) / Math.max(0.001, 1 - k);
-                const m = (1 - g - k) / Math.max(0.001, 1 - k);
-                const yVal = (1 - b - k) / Math.max(0.001, 1 - k);
-                const dotVal = ch.name === 'c' ? c : ch.name === 'm' ? m : ch.name === 'y' ? yVal : k;
-                const radius = Math.max(0, dotVal * size * 0.68 * (0.35 + strength * 0.9));
-                if (radius > 0.4) {
-                  cc.beginPath(); cc.arc(gx, gy, radius, 0, Math.PI * 2); cc.fill();
-                }
-              }
-            }
-            cc.restore();
-          });
-        }
-      });
-
-      tc.save();
-      tc.globalAlpha = Math.min(1, 0.70 + strength * 0.30);
-      tc.drawImage(cmykCanvas, 0, 0);
-      tc.restore();
-      return;
-    }
-
-    // B. 半调图案「圆形 / 同心圆」 (Concentric Circle Halftone + Grain + Duotone)
-    if (o.halftoneShape === 'concentric') {
-      const overlay = raster(W, H, (oc) => {
-        const odata = oc.createImageData(W, H);
-        const od = odata.data;
-        const centerX = W / 2, centerY = H / 2;
-        const ringStep = Math.max(4, spacing * 0.85);
-        const darkRgb = hexToRgb(o.duotoneDark, [13, 34, 107]);
-        const lightRgb = hexToRgb(o.duotoneLight, [214, 226, 255]);
-        const grainAmount = (o.grain || 24) * 0.45;
-
-        for (let y = 0; y < H; y++) {
-          for (let x = 0; x < W; x++) {
-            const p = (y * W + x) * 4;
-            const lum = (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114) / 255;
-            const dist = Math.hypot(x - centerX, y - centerY);
-            const wave = Math.pow(Math.max(0, Math.sin(dist / ringStep * Math.PI * 2)), 2.8);
-            const darkness = 1 - lum;
-            const ink = Math.min(1, wave * (0.35 + darkness * 0.65));
-            const noiseVal = (noise(p * 7) - 0.5) * grainAmount / 255;
-            const finalVal = Math.max(0, Math.min(1, (1 - ink) + noiseVal));
-
-            if (o.duotone) {
-              od[p] = Math.round(darkRgb[0] + (lightRgb[0] - darkRgb[0]) * finalVal);
-              od[p + 1] = Math.round(darkRgb[1] + (lightRgb[1] - darkRgb[1]) * finalVal);
-              od[p + 2] = Math.round(darkRgb[2] + (lightRgb[2] - darkRgb[2]) * finalVal);
-              od[p + 3] = 255;
-            } else {
-              const grey = Math.round(finalVal * 255);
-              od[p] = grey; od[p + 1] = grey; od[p + 2] = grey; od[p + 3] = 255;
-            }
-          }
-        }
-        oc.putImageData(odata, 0, 0);
-      });
-
-      tc.save();
-      if (o.duotone) {
-        tc.globalAlpha = Math.min(1, 0.88 + strength * 0.12);
-        tc.drawImage(overlay, 0, 0);
-      } else {
-        tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
-        tc.globalCompositeOperation = 'multiply';
-        tc.drawImage(overlay, 0, 0);
-      }
-      tc.restore();
-      return;
-    }
-
-    // B2. 半调图案「线条」 (Line / Scanline Halftone + Motion Blur)
-    if (o.halftoneShape === 'line') {
-      const overlay = raster(W, H, (oc) => {
-        const odata = oc.createImageData(W, H);
-        const od = odata.data;
-        const angle = (o.halftoneAngle || 0) * Math.PI / 180;
-        const lineStep = Math.max(3, spacing * 0.75);
-        const darkRgb = hexToRgb(o.duotoneDark, [13, 34, 107]);
-        const lightRgb = hexToRgb(o.duotoneLight, [214, 226, 255]);
-        const cos = Math.cos(angle), sin = Math.sin(angle);
-
-        for (let y = 0; y < H; y++) {
-          for (let x = 0; x < W; x++) {
-            const p = (y * W + x) * 4;
-            const lum = (pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114) / 255;
-            const proj = x * sin + y * cos;
-            const lineWave = (Math.sin(proj / lineStep * Math.PI * 2) + 1) * 0.5;
-            const darkness = 1 - lum;
-            const ink = Math.max(0, Math.min(1, lineWave * 0.65 + darkness * 0.7 - 0.15));
-
-            // ぼかし（移動） Motion Blur: horizontal gradient fade towards rich cobalt blue on the right
-            const motionRight = Math.min(1, Math.max(0, (x / W - 0.42) / 0.58));
-            const motionBlue = [37, 99, 235]; // vibrant electric cobalt blue
-
-            if (o.duotone) {
-              const baseR = darkRgb[0] + (lightRgb[0] - darkRgb[0]) * (1 - ink);
-              const baseG = darkRgb[1] + (lightRgb[1] - darkRgb[1]) * (1 - ink);
-              const baseB = darkRgb[2] + (lightRgb[2] - darkRgb[2]) * (1 - ink);
-
-              // Blend with motion blur blue on the right side
-              od[p] = Math.round(baseR + (motionBlue[0] - baseR) * motionRight * 0.88);
-              od[p + 1] = Math.round(baseG + (motionBlue[1] - baseG) * motionRight * 0.88);
-              od[p + 2] = Math.round(baseB + (motionBlue[2] - baseB) * motionRight * 0.88);
-              od[p + 3] = 255;
-            } else {
-              const grey = Math.round((1 - ink) * 255);
-              od[p] = grey; od[p + 1] = grey; od[p + 2] = grey; od[p + 3] = 255;
-            }
-          }
-        }
-        oc.putImageData(odata, 0, 0);
-      });
-
-      tc.save();
-      if (o.duotone) {
-        tc.globalAlpha = Math.min(1, 0.88 + strength * 0.12);
-        tc.drawImage(overlay, 0, 0);
-      } else {
-        tc.globalAlpha = Math.min(1, 0.45 + strength * 0.55);
-        tc.globalCompositeOperation = 'multiply';
-        tc.drawImage(overlay, 0, 0);
-      }
-      tc.restore();
-      return;
-    }
 
     // C. 经典点状单色半调 (Dot Halftone)
     const overlay = raster(W, H, () => {}), oc = overlay.getContext('2d');
@@ -1071,7 +1004,7 @@
       if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
       const p = (sy * W + sx) * 4;
       const l = pixels[p] * .299 + pixels[p + 1] * .587 + pixels[p + 2] * .114;
-      const radius = Math.max(.2, (1 - l / 255) * size * .52 * Math.min(1.6, 0.35 + strength * 1.15));
+      const radius = Math.max(.2 * renderScale, (1 - l / 255) * size * .52 * Math.min(1.6, 0.35 + strength * 1.15));
       oc.beginPath(); oc.arc(gx, gy, radius, 0, Math.PI * 2); oc.fill();
     }
     oc.restore();
@@ -1091,22 +1024,25 @@
 
   function surfaceTexture(target, o) {
     const tc = target.getContext('2d');
+    const width = target.width / renderScale, height = target.height / renderScale;
+    tc.save();
+    if (renderScale !== 1) tc.scale(renderScale, renderScale);
     if (o.paper) {
       const alpha = Math.min(0.92, Math.pow(o.paper / 100, 0.72) * 0.8);
       tc.save();
       tc.globalAlpha = alpha * 0.32;
       tc.fillStyle = '#d4cbbd';
-      tc.fillRect(0, 0, target.width, target.height);
+      tc.fillRect(0, 0, width, height);
       tc.globalAlpha = alpha * 0.82;
       tc.fillStyle = '#372f23';
       const fiberCount = Math.round(1400 + (o.paper / 100) * 2600);
       for (let i = 0; i < fiberCount; i++) {
-        tc.fillRect(noise(i * 3.7 + 1) * target.width, noise(i * 7.1 + 2) * target.height, noise(i * 11.3) * 2.8 + .5, noise(i * 13.9) * 11 + 1.2);
+        tc.fillRect(noise(i * 3.7 + 1) * width, noise(i * 7.1 + 2) * height, noise(i * 11.3) * 2.8 + .5, noise(i * 13.9) * 11 + 1.2);
       }
       tc.globalAlpha = alpha * 0.42;
       tc.fillStyle = '#fffdf7';
       for (let i = 0; i < fiberCount * 0.4; i++) {
-        tc.fillRect(noise(i * 17.3 + 5) * target.width, noise(i * 19.9 + 7) * target.height, noise(i * 23.1) * 2 + .4, noise(i * 29.5) * 8 + 1);
+        tc.fillRect(noise(i * 17.3 + 5) * width, noise(i * 19.9 + 7) * height, noise(i * 23.1) * 2 + .4, noise(i * 29.5) * 8 + 1);
       }
       tc.restore();
     }
@@ -1119,12 +1055,12 @@
       const step = Math.max(3, Math.round(9 - (o.scan / 100) * 5));
       const isVertical = Math.abs(o.scanAngle || 0) > 45;
       if (isVertical) {
-        for (let x = 0; x < target.width; x += step) {
-          tc.beginPath(); tc.moveTo(x, 0); tc.lineTo(x, target.height); tc.stroke();
+        for (let x = 0; x < width; x += step) {
+          tc.beginPath(); tc.moveTo(x, 0); tc.lineTo(x, height); tc.stroke();
         }
       } else {
-        for (let y = 0; y < target.height; y += step) {
-          tc.beginPath(); tc.moveTo(0, y); tc.lineTo(target.width, y); tc.stroke();
+        for (let y = 0; y < height; y += step) {
+          tc.beginPath(); tc.moveTo(0, y); tc.lineTo(width, y); tc.stroke();
         }
       }
       tc.restore();
@@ -1136,7 +1072,7 @@
       tc.globalAlpha = alpha;
       const count = Math.round(70 + (o.dirty / 100) * 350);
       for (let i = 0; i < count; i++) {
-        const x = noise(i * 19 + 4) * target.width, y = noise(i * 23 + 6) * target.height;
+        const x = noise(i * 19 + 4) * width, y = noise(i * 23 + 6) * height;
         const rw = (1 + noise(i * 29) * (o.dirty * .42 + 4)), rh = (1 + noise(i * 31) * (o.dirty * .22 + 3));
         tc.save();
         tc.translate(x, y);
@@ -1146,7 +1082,7 @@
       }
       const smudgeCount = Math.round(2 + (o.dirty / 100) * 16);
       for (let i = 0; i < smudgeCount; i++) {
-        const sx = noise(i * 41 + 11) * target.width, sy = noise(i * 43 + 13) * target.height;
+        const sx = noise(i * 41 + 11) * width, sy = noise(i * 43 + 13) * height;
         const sr = 3 + noise(i * 47) * (o.dirty * .35 + 8);
         tc.save();
         tc.globalAlpha = alpha * 0.55;
@@ -1157,169 +1093,94 @@
       }
       tc.restore();
     }
+    tc.restore();
   }
 
   function filteredImage(source, rect, w, h, o) {
-    const result = raster(w, h, (rc, target) => {
+    source = (typeof window !== 'undefined' && window.PosterPixels?.normalize(source)) || source;
+    const result = raster(w * renderScale, h * renderScale, (rc, target) => {
+      if (renderScale !== 1) rc.scale(renderScale, renderScale);
       rc.filter = `grayscale(${Math.max(0, Math.min(100, o.bw || 0))}%) brightness(${Math.max(5, 100 + (o.brightness || 0))}%) contrast(${Math.max(5, 100 + (o.contrast || 0))}%) saturate(${Math.max(0, o.saturation ?? 100)}%) invert(${Math.max(0, Math.min(100, o.invert || 0))}%)`;
       if (rect) {
         // Cover the card with one uniform scale; crop excess edges, never stretch faces.
         // Use logical dimensions so rounding the raster canvas cannot distort the final draw.
         const scale = Math.max(w / rect.sw, h / rect.sh), sw = w / scale, sh = h / scale;
-        rc.drawImage(source, rect.sx+(rect.sw-sw)/2, rect.sy+(rect.sh-sh)/2, sw, sh, 0, 0, target.width, target.height);
+        rc.drawImage(source, rect.sx+(rect.sw-sw)/2, rect.sy+(rect.sh-sh)/2, sw, sh, 0, 0, target.width / renderScale, target.height / renderScale);
       }
       else { const cover = getCover(), box = state.main || imageBox; rc.drawImage(source, cover.x - box.x, cover.y - box.y, cover.w, cover.h); }
       rc.filter = 'none';
+      if (renderScale !== 1) rc.setTransform(1, 0, 0, 1, 0, 0);
     });
-    pixelEffects(result, o); halftone(result, o); surfaceTexture(result, o); return result;
+    const engine = typeof window !== 'undefined' && window.PosterFilterEngine;
+    if (engine) {
+      const effects = { color_halftone:'color', dot_halftone:'dot', halftone:'dot', circle_halftone:'circle', line_halftone:'line', mosaic_sharp:'mosaic', dither:'bitmap', threshold:'threshold', highbw:'threshold' };
+      const effect = o.effect ?? effects[o.filterType] ?? 'none';
+      // Keep existing glass, facet, outline and print treatments; process reference
+      // patterns from photo luminance and apply the gradient map only at the end.
+      const legacy = { ...o, grain:0, duotone:false, dither:0, threshold:0 };
+      if (effect === 'mosaic') legacy.mosaic = 0;
+      pixelEffects(result, legacy);
+      // Original presets keep their established overprinted dot screen.
+      if (effect === 'none' && !o.effect && (o.filterType ?? 'original') === 'original') halftone(result, legacy);
+      if (effect !== 'none' || o.motionDistance || o.grain || o.duotone) {
+        const rc = result.getContext('2d');
+        const pixels = rc.getImageData(0, 0, result.width, result.height);
+        const output = engine.apply(pixels, { ...o, pixelScale: renderScale, effect, halftoneStrength: o.halftoneStrength ?? o.halftone ?? 75 });
+        pixels.data.set(output.data);
+        rc.putImageData(pixels, 0, 0);
+      }
+    } else {
+      pixelEffects(result, o); halftone(result, o);
+    }
+    surfaceTexture(result, o); return result;
   }
 
   function detailOptions(d) {
     const o = {
-      bw: 0, brightness: d.brightness || 0, contrast: d.contrast || 0, saturation: d.saturation ?? 100,
-      grain: d.grain || 0, rough: 0, outline: 0, invert: 0, posterize: 0, compression: 0, scan: 0,
-      paper: 0, dirty: 0, halftone: 0, halftoneSize: d.halftoneSize || 8, halftoneDensity: d.halftoneDensity || 55,
-      halftoneAngle: d.halftoneAngle || 15, colorHalftone: false, halftoneShape: 'dot',
-      glass: 0, glassSize: d.glassSize || 32, mosaic: 0, mosaicSize: d.mosaicSize || 18, mosaicStyle: 'sharp',
-      dither: 0, ditherStep: d.ditherStep || 4, ditherInvert: false, threshold: 0, thresholdLevel: 128,
-      duotone: false, duotoneDark: d.duotoneDark || '#182678', duotoneLight: d.duotoneLight || '#f5af2d'
+      bw: d.bw ?? 0, brightness: d.brightness ?? 0, contrast: d.contrast ?? 0, saturation: d.saturation ?? 100,
+      grain: d.grain ?? 0, noiseDistribution: d.noiseDistribution ?? 'gaussian', noiseMonochrome: d.noiseMonochrome ?? true, noiseSize: d.noiseSize ?? 1,
+      motionDistance: d.motionDistance ?? 0, motionAngle: d.motionAngle ?? 0,
+      rough: 0, outline: 0, invert: 0, posterize: 0, compression: 0, scan: 0,
+      paper: 0, dirty: 0, effect:'none', halftone: 0, halftoneStrength: d.halftoneStrength ?? 80,
+      halftoneSize: d.halftoneSize ?? 6, halftoneDensity: d.halftoneDensity ?? 55,
+      halftoneAngle: d.halftoneAngle ?? 0, halftoneContrast: d.halftoneContrast ?? 65,
+      halftoneOriginX: d.halftoneOriginX ?? 50, halftoneOriginY: d.halftoneOriginY ?? 50,
+      glass: 0, glassSize: d.glassSize ?? 32, mosaic: 0, mosaicSize: d.mosaicSize ?? 18, mosaicStyle: 'sharp',
+      dither: 0, ditherStep: d.ditherStep ?? 1, bitmapMethod: d.bitmapMethod ?? 'diffusion', ditherInvert: false,
+      threshold: 0, thresholdLevel: d.thresholdLevel ?? 128,
+      duotone: d.duotone ?? ['duotone','gradient_map'].includes(d.filterType),
+      duotoneDark: d.duotoneDark ?? '#0d226b', duotoneLight: d.duotoneLight ?? '#eed4eb', gradientGamma: d.gradientGamma ?? 1
     };
 
     const type = d.filterType || 'original';
 
-    // 1. 彩色半调 (Color Halftone / 胶印像素化分色)
-    if (type === 'color_halftone') {
-      o.contrast += 18;
-      o.saturation = Math.max(120, o.saturation + 15);
-      o.halftone = d.halftoneStrength || 85;
-      o.colorHalftone = true;
-      if (d.duotone) {
-        o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#0d226b';
-        o.duotoneLight = d.duotoneLight || '#d6e2ff';
-      }
-    }
-    // 2. 单色半调「点状」 (Dot Halftone / 强调色点阵)
-    else if (type === 'dot_halftone' || type === 'halftone') {
-      o.bw = 100;
-      o.contrast += 35;
-      o.halftone = d.halftoneStrength || 75;
-      o.halftoneShape = 'dot';
-      o.halftoneAngle = d.halftoneAngle !== undefined ? d.halftoneAngle : 45;
-      if (d.duotone) {
-        o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#0d226b';
-        o.duotoneLight = d.duotoneLight || '#d6e2ff';
-      }
-    }
-    // 3. 半调图案「圆形」+ 颗粒 (Concentric Circle Halftone + Grain)
-    else if (type === 'circle_halftone') {
-      o.bw = 100;
-      o.contrast += 25;
-      o.grain = Math.max(22, o.grain || 25);
-      o.halftone = d.halftoneStrength || 80;
-      o.halftoneShape = 'concentric';
-      if (d.duotone) {
-        o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#0d226b';
-        o.duotoneLight = d.duotoneLight || '#d6e2ff';
-      }
-    }
-    // 3b. 半调图案「线条」 (Line Halftone + Duotone)
-    else if (type === 'line_halftone') {
-      o.bw = 100;
-      o.contrast += 25;
-      o.halftone = d.halftoneStrength || 80;
-      o.halftoneShape = 'line';
-      o.halftoneAngle = d.halftoneAngle || 0;
-      o.duotone = true;
-      o.duotoneDark = d.duotoneDark || '#0d226b';
-      o.duotoneLight = d.duotoneLight || '#d6e2ff';
-    }
-    // 4. 玻璃「块状」 (Glass Brick / Refraction)
-    else if (type === 'glass') {
+    const effects = {
+      color_halftone:'color', dot_halftone:'dot', halftone:'dot',
+      circle_halftone:'circle', line_halftone:'line', mosaic_sharp:'mosaic',
+      dither:'bitmap', threshold:'threshold', highbw:'threshold'
+    };
+    o.effect = effects[type] ?? 'none';
+    // These independent controls all retain an explicit zero or false.
+    if (['dot_halftone','halftone','circle_halftone','line_halftone','threshold','highbw','dither'].includes(type)) o.bw = 100;
+    if (type === 'glass') {
       o.glass = 85;
       o.contrast += 16;
-      o.saturation = Math.max(110, o.saturation + 10);
-    }
-    // 5. 马赛克 (像素化) + 增强锐化 (Mosaic Pixelate + Sharpen)
-    else if (type === 'mosaic_sharp') {
-      o.mosaic = 100;
-      o.mosaicStyle = 'sharp';
-      o.contrast += 25;
-      o.saturation = Math.max(115, o.saturation + 10);
-    }
-    // 6. 马赛克拼贴 + 颗粒 (Mosaic Facet Tiles + Grain)
-    else if (type === 'mosaic_tile') {
+    } else if (type === 'mosaic_tile') {
       o.mosaic = 100;
       o.mosaicStyle = 'facet';
-      o.grain = Math.max(28, o.grain || 30);
-      o.contrast += 18;
-    }
-    // 7. 渐变映射 + 颗粒 (双色调 Duotone High Contrast + Grain)
-    else if (type === 'duotone') {
-      o.duotone = true;
-      o.grain = Math.max(24, o.grain || 26);
-      o.contrast += 22;
-      o.duotoneDark = d.duotoneDark || '#162772'; // 深蓝紫
-      o.duotoneLight = d.duotoneLight || '#fca311'; // 金黄
-    }
-    // 8. 渐变映射 (柔和微调 / 氛围单色渐变)
-    else if (type === 'gradient_map') {
-      o.duotone = true;
-      o.contrast += 8;
-      o.duotoneDark = d.duotoneDark || '#2b2353'; // 柔和暗紫
-      o.duotoneLight = d.duotoneLight || '#9bb1ff'; // 柔和蓝粉高光
-    }
-    // 9. 位图：20 像素 (Bayer Dither 纯点刻抖动)
-    else if (type === 'dither') {
-      o.dither = 100;
-      o.ditherStep = d.ditherStep || 5;
-      o.contrast += 25;
-      if (d.duotone) {
-        o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#0d226b';
-        o.duotoneLight = d.duotoneLight || '#d6e2ff';
-      }
-    }
-    // 10. 阈值 + 颗粒 (黑白强对比复印 Threshold + Grain)
-    else if (type === 'threshold' || type === 'highbw') {
-      o.threshold = 100;
-      o.grain = Math.max(30, o.grain || 30);
-      o.thresholdLevel = d.thresholdLevel || 130;
-      if (d.duotone) {
-        o.duotone = true;
-        o.duotoneDark = d.duotoneDark || '#0d226b';
-        o.duotoneLight = d.duotoneLight || '#e8eeff';
-      }
-    }
-    // 兼容原有的黑白与描边
-    else if (type === 'bw') {
+    } else if (type === 'bw') {
       o.bw = 100;
-    }
-    else if (type === 'outline') {
+    } else if (type === 'outline') {
       o.bw = 100;
       o.outline = 100;
-      o.contrast += 20;
-    }
-    else if (type === 'rough') {
-      o.contrast += 28;
-      o.grain = Math.max(35, o.grain);
+    } else if (type === 'rough') {
       o.rough = 52;
       o.dirty = 35;
       o.scan = 25;
-    }
-    else if (type === 'invert') {
+    } else if (type === 'invert') {
       o.invert = 100;
-    }
-    else if (type === 'posterize') {
+    } else if (type === 'posterize') {
       o.posterize = 78;
-      o.contrast += 22;
-    }
-    else if (type === 'original') {
-      // 原色微增强
-      o.contrast += 6;
-      o.saturation = Math.max(105, o.saturation);
     }
     return o;
   }
@@ -1333,7 +1194,7 @@
     if (state.selected.type === 'detail' || state.selected.type === 'connector') return state.details.find((v) => v.id === state.selected.id) || null;
     return state.texts.find((v) => v.id === state.selected.id) || null;
   }
-  function setSelected(type, item) { state.selected = item ? { type, id: item.id } : null; renderInspector(); }
+  function setSelected(type, item) { state.selected = item ? { type, id: item.id } : null; renderInspector(); inspector.closest('.poster-inspector').scrollTop = 0; }
   function frameById(frameId) { return state.frames.find((v) => v.id === frameId); }
   function layerIndex(type, layerId) { return state.layers.findIndex((v) => v.type === type && v.id === layerId); }
   function addLayer(type, layerId, after = state.layers.length - 1) { state.layers.splice(Math.max(0, after + 1), 0, { type, id: layerId }); }
@@ -1471,9 +1332,9 @@
     if (d.hasShadow) {
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
-      ctx.shadowBlur = d.shadowBlur || 14;
-      ctx.shadowOffsetX = d.shadowOffsetX || 2;
-      ctx.shadowOffsetY = d.shadowOffsetY || 6;
+      ctx.shadowBlur = (d.shadowBlur || 14) * renderScale;
+      ctx.shadowOffsetX = (d.shadowOffsetX || 2) * renderScale;
+      ctx.shadowOffsetY = (d.shadowOffsetY || 6) * renderScale;
       ctx.fillStyle = '#0a0c10';
       ctx.fillRect(0, 0, d.w, d.h);
       ctx.restore();
@@ -1540,21 +1401,38 @@
   }
   function drawSecondaryImage(s) {
     const asset = imageAssets.get(s.imageId);
-    const img = asset?.image;
+    const img = (s.cutout && asset?.cutoutImage) || asset?.image;
     if (!img) return;
     const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'secondary' && state.selected.id === s.id;
     const opts = isTargetBefore ? cleanFilters() : (s.filters || cleanFilters());
+    const p=window.PosterDecor?.photoRect(s) || {x:0,y:s.windowFrame?Math.min(22,s.h*.14):0,w:s.w,h:s.windowFrame?s.h-Math.min(22,s.h*.14):s.h};
+    const header=p.y,photoH=p.h;
     const iw = img.naturalWidth || s.w;
     const ih = img.naturalHeight || s.h;
-    const scale = Math.max(s.w / iw, s.h / ih);
-    const sw = Math.min(iw, s.w / scale);
-    const sh = Math.min(ih, s.h / scale);
-    const sx = Math.max(0, (iw - sw) / 2);
-    const sy = Math.max(0, (ih - sh) / 2);
-    const cut = filteredImage(img, { sx, sy, sw, sh }, s.w, s.h, opts);
+    const scale = Math.max(p.w / iw, photoH / ih) * (s.zoom || 1);
+    const sw = Math.min(iw, p.w / scale);
+    const sh = Math.min(ih, photoH / scale);
+    const sx = Math.max(0,Math.min(iw-sw,(iw-sw)/2-(s.panX || 0)/scale));
+    const sy = Math.max(0,Math.min(ih-sh,(ih-sh)/2-(s.panY || 0)/scale));
+    const full=s.fit==='contain';
+    const cover=full?imageCover(img,{...s,x:0,y:0,w:p.w,h:photoH}):{x:0,y:0,w:p.w,h:photoH};
+    const cut = filteredImage(isTargetBefore ? asset.image : img, full?{sx:0,sy:0,sw:iw,sh:ih}:{sx,sy,sw,sh}, cover.w, cover.h, opts);
     ctx.save(); ctx.globalAlpha = (s.opacity ?? 100) / 100; transformBox(ctx, s);
     if (s.backingColor) { ctx.fillStyle = s.backingColor; ctx.fillRect(-2, -2, s.w + 4, s.h + 4); }
-    ctx.drawImage(cut, 0, 0, s.w, s.h);
+    if(s.windowFrame)window.PosterDecor?.windowFrame(ctx,s);
+    if(s.cutout && !isTargetBefore){ctx.save();ctx.translate(p.x+cover.x,header+cover.y);window.PosterDecor?.cutoutBacking(ctx,cut,cover.w,cover.h,s,renderScale);ctx.restore();}
+    ctx.save();
+    if(full){ctx.beginPath();ctx.rect(p.x,header,p.w,photoH);ctx.clip();}
+    if(s.windowFrame && s.windowStyle==='circle'){ctx.beginPath();ctx.ellipse(s.w/2,s.h/2,Math.max(1,s.w/2-3),Math.max(1,s.h/2-3),0,0,Math.PI*2);ctx.clip();}
+    if(opts.blur){ctx.filter=`blur(${opts.blur*renderScale}px)`;}
+    ctx.drawImage(cut, p.x+cover.x, header+cover.y, cover.w, cover.h);ctx.restore();
+    if(s.windowFrame && (!s.windowStyle || s.windowStyle==='desktop')){
+      ctx.fillStyle=s.windowColor || '#e88fb9';ctx.fillRect(0,0,s.w,header);
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(.5,.5,s.w-1,s.h-1);
+      ctx.font='bold 9px Consolas, monospace';ctx.textBaseline='middle';ctx.fillStyle='#fff';
+      ctx.save();ctx.beginPath();ctx.rect(5,0,Math.max(0,s.w-42),header);ctx.clip();ctx.fillText(s.windowTitle || 'portrait.jpg',6,header/2);ctx.restore();
+      for(let i=0;i<3;i++){const x=s.w-31+i*10;ctx.fillStyle='#fff';ctx.fillRect(x,header/2-3,7,6);ctx.strokeStyle='#765269';ctx.lineWidth=.7;ctx.strokeRect(x,header/2-3,7,6);}
+    }
     if (s.lineWidth && s.color) { ctx.strokeStyle = s.color; ctx.lineWidth = s.lineWidth; ctx.strokeRect(0, 0, s.w, s.h); }
     ctx.restore();
   }
@@ -1625,6 +1503,18 @@
   function drawText(t) {
     ctx.save(); ctx.translate(t.x, t.y); ctx.rotate((t.rotation || 0) * Math.PI / 180); ctx.scale(t.scaleX || 1, t.scaleY || 1); ctx.globalAlpha = (t.opacity ?? 100) / 100;
     const lh = t.lineHeight || 1.15;
+    if (window.PosterDecor?.draw(ctx,t)) {ctx.restore();return;}
+    if (t.badgeShape === 'heart') {
+      ctx.save(); ctx.translate(0, t.size * (t.lineHeight || 1.1));ctx.scale((t.badgeWidth||164)/164,(t.badgeHeight||134)/134);
+      ctx.strokeStyle = t.badgeColor || '#d9dfee'; ctx.lineWidth = 2;
+      for (const offset of [0,7]) {
+        ctx.beginPath(); ctx.moveTo(0, 62 + offset);
+        ctx.bezierCurveTo(-92,-1,-62,-72,-12,-30);
+        ctx.bezierCurveTo(2,-60,74,-66,64,-16);
+        ctx.bezierCurveTo(63,18,19,26,0,62+offset); ctx.stroke();
+      }
+      ctx.restore();
+    }
     if (t.badgeShape === 'pick') {
       ctx.save();
       const bw = t.badgeWidth || 116, bh = t.badgeHeight || 128;
@@ -1660,8 +1550,8 @@
       ctx.stroke();
       ctx.restore();
     }
-    if (t.backgroundColor) {
-      ctx.save();
+    if (t.backgroundColor && t.backgroundEnabled !== false) {
+      ctx.save();ctx.globalAlpha *= (t.backgroundOpacity ?? 100) / 100;
       ctx.font = `${t.weight} ${t.size}px ${t.font}`;
       const lines = t.content.split('\n');
       const maxW = Math.max(...lines.map(l => measureLine(l, t.letterSpacing || 0)));
@@ -1704,9 +1594,9 @@
       if (t.kind === 'ps-recipe') {
         ctx.save();
         ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 6 * renderScale;
         ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 1;
+        ctx.shadowOffsetY = renderScale;
       }
       lines.forEach((line, i) => {
         if (t.kind === 'ps-recipe') {
@@ -1752,6 +1642,8 @@
     ctx.restore();
   }
   function textBounds(t) {
+    const decorBounds=typeof window!=='undefined' && window.PosterDecor?.bounds(t);
+    if(decorBounds)return decorBounds;
     ctx.save(); ctx.font = `${t.weight} ${t.size}px ${t.font}`;
     const lh = t.lineHeight || 1.15;
     const lines = t.content.split('\n');
@@ -1784,12 +1676,46 @@
   }
   function boundsOf(item, type) { return type === 'text' ? textBounds(item) : { x: item.x, y: item.y, w: item.w, h: item.h, rotation: item.rotation || 0 }; }
   function drawSelection() { const item = selectedObject(); if (!item || state.selected.type === 'connector') return; const b = boundsOf(item, state.selected.type); ctx.save(); transformBox(ctx, b); ctx.strokeStyle = '#151515'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); ctx.strokeRect(-4, -4, b.w + 8, b.h + 8); if (state.selected.type !== 'text') { ctx.setLineDash([]); ctx.fillStyle = '#151515'; ctx.fillRect(b.w - 7, b.h - 7, 14, 14); } ctx.restore(); }
+  function blendMainEdges(target, box, amount) {
+    const strength = Math.max(0, Math.min(100, Number(amount) || 0)) / 100;
+    if (!strength) return;
+    const cover = getCover();
+    if (!cover) return;
+    // Fade the visible photo, including its actual bottom after crop/pan.
+    const left = Math.max(0, cover.x - box.x), top = Math.max(0, cover.y - box.y);
+    const right = Math.min(target.width / renderScale, cover.x + cover.w - box.x);
+    const bottom = Math.min(target.height / renderScale, cover.y + cover.h - box.y);
+    const w = right - left, h = bottom - top;
+    if (w <= 0 || h <= 0) return;
+    const mc = target.getContext('2d');
+    mc.save();
+    if (renderScale !== 1) mc.scale(renderScale, renderScale);
+    mc.globalCompositeOperation = 'destination-in';
+    const horizontal = mc.createLinearGradient(left, 0, right, 0);
+    horizontal.addColorStop(0, 'rgba(255,255,255,0)');
+    horizontal.addColorStop(0.16 * strength, '#ffffff');
+    horizontal.addColorStop(1 - 0.16 * strength, '#ffffff');
+    horizontal.addColorStop(1, 'rgba(255,255,255,0)');
+    mc.fillStyle = horizontal;
+    mc.fillRect(0, 0, target.width / renderScale, target.height / renderScale);
+    const vertical = mc.createLinearGradient(0, top, 0, bottom);
+    vertical.addColorStop(0, 'rgba(255,255,255,0)');
+    vertical.addColorStop(0.2 * strength, '#ffffff');
+    vertical.addColorStop(1 - 0.26 * strength, '#ffffff');
+    vertical.addColorStop(1, 'rgba(255,255,255,0)');
+    mc.fillStyle = vertical;
+    mc.fillRect(0, 0, target.width / renderScale, target.height / renderScale);
+    mc.restore();
+  }
   function drawMainImage() {
     if (!state.image) return;
     const box = state.main || makeMain();
     const isTargetBefore = isBeforePreviewActive && (!state.selected || state.selected.type === 'main');
-    const main = filteredImage(state.image, null, box.w, box.h, isTargetBefore ? cleanFilters() : state.filters);
+    const image = !isTargetBefore && box.cutout && imageAssets.get(state.mainImageId)?.cutoutImage || state.image;
+    const main = filteredImage(image, null, box.w, box.h, isTargetBefore ? cleanFilters() : state.filters);
+    if (!isTargetBefore) blendMainEdges(main, box, state.mainEdgeFade);
     ctx.save(); ctx.globalAlpha = (box.opacity ?? 100) / 100; transformBox(ctx, box);
+    if(box.cutout && !isTargetBefore)window.PosterDecor?.cutoutBacking(ctx,main,box.w,box.h,box,renderScale);
     if (box.fragmented && !isTargetBefore) {
       const bandH = box.h / 3, shifts = [-14,18,-9];
       for (let i = 0; i < 3; i++) {
@@ -1819,7 +1745,7 @@
     if (layer.type === 'text') { const t = state.texts.find((v) => v.id === layer.id); if (t) drawText(t); }
   }
   function ensureMainLayer() { if (state.image && !state.layers.some((v) => v.type === 'main')) state.layers.unshift({ type: 'main', id: 'main-image' }); }
-  function render(showSelection = true) { ctx.clearRect(0, 0, W, H); drawPosterBackground(); if (!state.image) { ctx.strokeStyle = 'rgba(20,20,20,.08)'; for (let n = 25; n < W; n += 50) { ctx.beginPath(); ctx.moveTo(n, 0); ctx.lineTo(n, H); ctx.stroke(); } for (let n = 25; n < H; n += 50) { ctx.beginPath(); ctx.moveTo(0, n); ctx.lineTo(W, n); ctx.stroke(); } } ensureMainLayer(); state.layers.forEach(drawLayer); if (state.border) { ctx.strokeStyle = state.borderColor; ctx.lineWidth = state.borderWidth; ctx.strokeRect(18, 18, W - 36, H - 36); } if (showSelection) drawSelection(); }
+  function render(showSelection = true) { ctx.clearRect(0, 0, W, H); drawPosterBackground(); drawPosterPaper(); if (!state.image) { ctx.strokeStyle = 'rgba(20,20,20,.08)'; for (let n = 25; n < W; n += 50) { ctx.beginPath(); ctx.moveTo(n, 0); ctx.lineTo(n, H); ctx.stroke(); } for (let n = 25; n < H; n += 50) { ctx.beginPath(); ctx.moveTo(0, n); ctx.lineTo(W, n); ctx.stroke(); } } ensureMainLayer(); state.layers.forEach(drawLayer); if (state.border) { ctx.strokeStyle = state.borderColor; ctx.lineWidth = state.borderWidth; ctx.strokeRect(18, 18, W - 36, H - 36); } if (showSelection) drawSelection(); }
   let renderFrameRequested = false;
   function scheduleRender(showSelection = true) {
     if (!renderFrameRequested) {
@@ -2166,7 +2092,7 @@
     `<div class="poster-field"><label class="poster-toggle"><div class="poster-toggle-title"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div><input type="checkbox" data-${global ? 'global' : 'prop'}="${key}" ${value ? 'checked' : ''}></label>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}</div>`;
 
   const select = (zh, en, key, value, options, global = false, hint = '') =>
-    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<select data-${global ? 'global' : 'prop'}="${key}">${options.map(([v, optZh, optEn]) => `<option value="${v}" ${String(v) === String(value) ? 'selected' : ''}>${optZh} · ${optEn || v}</option>`).join('')}</select></div>`;
+    `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<select data-${global ? 'global' : 'prop'}="${key}">${options.map(([v, optZh, optEn]) => `<option value="${escapeHTML(v)}" ${String(v) === String(value) ? 'selected' : ''}>${optZh} · ${optEn || v}</option>`).join('')}</select></div>`;
 
   const accordion = (zh, en, content, open = false) =>
     `<details class="poster-accordion" ${open ? 'open' : ''}><summary><span class="acc-zh">${zh}</span><span class="acc-en">${en}</span></summary><div class="poster-accordion-body">${content}</div></details>`;
@@ -2211,19 +2137,19 @@
       html += `<div class="poster-layer-row ${isMainSelected ? 'is-selected' : ''}" data-poster-action="select-main" style="cursor:pointer;padding:6px 10px;border-radius:4px;background:${isMainSelected ? '#e0e7ff' : '#f0f4ff'};border:1px solid ${isMainSelected ? '#002FA7' : '#c7d7fe'};display:flex;align-items:center;justify-content:space-between;"><span style="font-weight:600;font-size:12px;color:#002FA7;">🖼️ 主图 · MAIN IMAGE</span><small style="color:#002FA7;font-weight:700;">${isMainSelected ? '已选 ✓' : '选中 ↗'}</small></div>`;
 
       (state.secondaries || []).forEach((sec, idx) => {
-        const isSel = state.selected?.type === 'secondary' && state.selected?.item?.id === sec.id;
+        const isSel = state.selected?.type === 'secondary' && state.selected?.id === sec.id;
         html += `<div class="poster-layer-row ${isSel ? 'is-selected' : ''}" data-poster-action="select-secondary" data-id="${sec.id}" style="cursor:pointer;padding:6px 10px;border-radius:4px;background:${isSel ? '#e0e7ff' : '#fff'};border:1px solid ${isSel ? '#002FA7' : '#e2e8f0'};display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;">🗂️ 辅图卡片 ${String(idx+1).padStart(2,'0')}</span><small style="color:${isSel ? '#002FA7' : '#666'};font-weight:${isSel ? '700' : '400'};">${isSel ? '已选 ✓' : '选中 ↗'}</small></div>`;
       });
       (state.frames || []).forEach((f, idx) => {
-        const isSel = state.selected?.type === 'frame' && state.selected?.item?.id === f.id;
+        const isSel = state.selected?.type === 'frame' && state.selected?.id === f.id;
         html += `<div class="poster-layer-row ${isSel ? 'is-selected' : ''}" data-poster-action="select-frame" data-id="${f.id}" style="cursor:pointer;padding:6px 10px;border-radius:4px;background:${isSel ? '#e0e7ff' : '#fff'};border:1px solid ${isSel ? '#002FA7' : '#e2e8f0'};display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;">🔍 索引框 [${f.labelPrefix||'ITEM'} ${String(idx+1).padStart(2,'0')}]</span><small style="color:${isSel ? '#002FA7' : '#666'};font-weight:${isSel ? '700' : '400'};">${isSel ? '已选 ✓' : '选中 ↗'}</small></div>`;
       });
       (state.details || []).forEach((d, idx) => {
-        const isSel = state.selected?.type === 'detail' && state.selected?.item?.id === d.id;
+        const isSel = state.selected?.type === 'detail' && state.selected?.id === d.id;
         html += `<div class="poster-layer-row ${isSel ? 'is-selected' : ''}" data-poster-action="select-detail" data-id="${d.id}" style="cursor:pointer;padding:6px 10px;border-radius:4px;background:${isSel ? '#e0e7ff' : '#fff'};border:1px solid ${isSel ? '#002FA7' : '#e2e8f0'};display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;">🔬 局部特写 ${String(idx+1).padStart(2,'0')}</span><small style="color:${isSel ? '#002FA7' : '#666'};font-weight:${isSel ? '700' : '400'};">${isSel ? '已选 ✓' : '选中 ↗'}</small></div>`;
       });
       (state.texts || []).forEach((t) => {
-        const isSel = state.selected?.type === 'text' && state.selected?.item?.id === t.id;
+        const isSel = state.selected?.type === 'text' && state.selected?.id === t.id;
         const textNames = { hero:'主标题', subtitle:'副标题', caption:'说明', micro:'微型', repeat:'重复' };
         html += `<div class="poster-layer-row ${isSel ? 'is-selected' : ''}" data-poster-action="select-text" data-id="${t.id}" style="cursor:pointer;padding:6px 10px;border-radius:4px;background:${isSel ? '#e0e7ff' : '#fff'};border:1px solid ${isSel ? '#002FA7' : '#e2e8f0'};display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">✍️ ${textNames[t.kind]||'文字'}: ${escapeHTML(t.content?.slice(0,14))}</span><small style="color:${isSel ? '#002FA7' : '#666'};font-weight:${isSel ? '700' : '400'};">${isSel ? '已选 ✓' : '选中 ↗'}</small></div>`;
       });
@@ -2231,9 +2157,103 @@
     }
   }
 
+  const inspectorFilterKeys = new Set([
+    'filterType', 'bw', 'brightness', 'contrast', 'saturation', 'halftone',
+    'halftoneSize', 'halftoneDensity', 'halftoneAngle', 'halftoneStrength',
+    'halftoneContrast', 'halftoneOriginX', 'halftoneOriginY',
+    'motionDistance', 'motionAngle', 'blur', 'grain', 'noiseDistribution',
+    'noiseMonochrome', 'noiseSize', 'bitmapMethod', 'ditherStep',
+    'gradientGamma', 'duotone', 'duotoneDark', 'duotoneLight',
+    'scan', 'scanAngle', 'rough', 'paper', 'dirty', 'compression',
+    'outline', 'invert', 'posterize'
+  ]);
+  const inspectorPatternTypes = [
+    ['original', '原图基调', 'Original Base'],
+    ['color_halftone', '彩色半调', 'Color Halftone'],
+    ['dot_halftone', '半调图案「点状」', 'Dot Pattern'],
+    ['circle_halftone', '半调图案「圆形」', 'Circle Pattern'],
+    ['line_halftone', '半调图案「线条」', 'Line Pattern']
+  ];
+  function inspectorMotionNoise(filters, global = false) {
+    return accordion('运动模糊', 'MOTION BLUR',
+      range('模糊距离 (px)', 'Distance / px', 'motionDistance', filters.motionDistance ?? 0, 0, 80, 1, global, '0 关闭；沿指定方向形成运动拖影')
+      + range('运动方向 (°)', 'Angle / degrees', 'motionAngle', filters.motionAngle ?? 0, -180, 180, 1, global))
+      + accordion('杂色', 'NOISE',
+        range('杂色强度', 'Noise Amount', 'grain', filters.grain ?? 0, 0, 100, 1, global, '0 关闭；控制明暗与颜色噪点')
+        + select('杂色分布', 'Distribution', 'noiseDistribution', filters.noiseDistribution ?? 'gaussian', [['uniform', '均匀', 'Uniform'], ['gaussian', '高斯', 'Gaussian']], global)
+        + toggle('单色杂色', 'Monochromatic', 'noiseMonochrome', filters.noiseMonochrome ?? true, global, '关闭后使用彩色杂色')
+        + range('杂色颗粒大小 (px)', 'Noise Size / px', 'noiseSize', filters.noiseSize ?? 1, 1, 8, 1, global));
+  }
+  function inspectorPatternControls(filters, global = false, strengthKey = 'halftoneStrength') {
+    return range('图案大小 (px)', 'Pattern Size / px', 'halftoneSize', filters.halftoneSize ?? 8, 2, 32, 1, global)
+      + range('半调强度', 'Pattern Strength', strengthKey, filters[strengthKey] ?? 75, 0, 100, 1, global, '0 关闭；100 完全呈现图案')
+      + range('图案对比度', 'Pattern Contrast', 'halftoneContrast', filters.halftoneContrast ?? 65, 0, 100, 1, global)
+      + (filters.filterType === 'circle_halftone' ? '' : range('图案角度 (°)', 'Pattern Angle', 'halftoneAngle', filters.halftoneAngle ?? 0, -90, 90, 1, global))
+      + range('图案中心 X (%)', 'Origin X / %', 'halftoneOriginX', filters.halftoneOriginX ?? 50, -100, 200, 1, global)
+      + range('图案中心 Y (%)', 'Origin Y / %', 'halftoneOriginY', filters.halftoneOriginY ?? 50, -100, 200, 1, global);
+  }
+  function inspectorImagePatterns(filters, global = false) {
+    const type = filters.filterType ?? 'original';
+    const isPattern = ['color_halftone', 'dot_halftone', 'circle_halftone', 'line_halftone'].includes(type);
+    const patternContent = select('半调类型', 'Pattern Type', 'filterType', type, inspectorPatternTypes, global)
+      + (isPattern ? inspectorPatternControls(filters, global, 'halftone') : '<p class="poster-help">选择半调类型启用图案；原图基调可单独添加叠印网点。</p>');
+    const overprintContent = range('叠印强度', 'Overprint Strength', 'halftone', filters.halftone ?? 0, 0, 100, 1, global, '0 关闭；在原图上叠加印刷网点')
+      + range('叠印网点大小', 'Overprint Dot Size', 'halftoneSize', filters.halftoneSize ?? 9, 1, 42, 1, global)
+      + range('叠印网点密度', 'Overprint Density', 'halftoneDensity', filters.halftoneDensity ?? 58, 1, 100, 1, global)
+      + range('叠印网点角度', 'Overprint Angle', 'halftoneAngle', filters.halftoneAngle ?? 15, -90, 90, 1, global);
+    return accordion('半调图案', 'HALFTONE PATTERN', patternContent)
+      + (type === 'original' ? accordion('叠印网点', 'OVERPRINT DOTS', overprintContent) : '');
+  }
+  function inspectorGradientControls(filters, global = false) {
+    const defaultEnabled = ['duotone', 'gradient_map'].includes(filters.filterType);
+    return accordion('渐变映射', 'GRADIENT MAP',
+      toggle('启用双色映射', 'Enable Gradient Map', 'duotone', filters.duotone ?? defaultEnabled, global)
+      + field('暗部映射色', 'Dark Tone', 'duotoneDark', filters.duotoneDark ?? '#0d226b', 'color', global)
+      + field('亮部映射色', 'Light Tone', 'duotoneLight', filters.duotoneLight ?? '#eed4eb', 'color', global)
+      + range('映射中间调', 'Gradient Gamma', 'gradientGamma', filters.gradientGamma ?? 1, .2, 3, .05, global));
+  }
+  let cutoutBusy = false;
+  let cutoutLabel = '';
+  function cutoutControls(object,assetId) {
+    const asset = imageAssets.get(assetId);
+    const enabled = object.cutout && asset?.cutoutImage;
+    return accordion('人像抠图','PERSON CUTOUT',
+      '<button type="button" class="poster-action poster-action-primary" data-poster-action="cutout" '+(cutoutBusy?'disabled':'')+'>'+(cutoutBusy?'正在抠图…':enabled?'已抠图 · 恢复背景':'自动抠出人像')+'</button><p class="poster-help">'+(enabled?'这张照片已自动抠出人像，点击上方可恢复原图背景。':'点击上方自动去除照片背景，只保留人像。')+' 原图保留，支持撤销。</p>'
+      +range('人像贴纸边缘','Sticker Edge','cutoutBorderWidth',object.cutoutBorderWidth||0,0,24)+field('边缘颜色','Edge Color','cutoutBorderColor',object.cutoutBorderColor||'#ffffff','color')+range('人像投影','Portrait Shadow','cutoutShadow',object.cutoutShadow||0,0,30),true);
+  }
+  async function togglePersonCutout() {
+    const object = selectedObject(), type = state.selected?.type;
+    if (!object || !['main','secondary'].includes(type) || cutoutBusy) return;
+    const assetId = type === 'main' ? state.mainImageId : object.imageId;
+    const asset = imageAssets.get(assetId); if (!asset?.image) return;
+    if (object.cutout && asset.cutoutImage) { object.cutout = false;renderInspector();render();commit();markManuallyEdited();return; }
+    cutoutBusy = true; cutoutLabel = type === 'main' ? '主图' : `辅图 ${state.secondaries.indexOf(object)+1}`; renderInspector(); toast('正在本地抠出人像…');
+    try {
+      const image = asset.cutoutImage || await window.posterCutout.removeBackground(asset.image);
+      // A late model result must not change a different scene or newly selected photo.
+      const current = type === 'main' ? state.main : state.secondaries.find(item=>item.id===object.id);
+      const currentId = type === 'main' ? state.mainImageId : current?.imageId;
+      if (current !== object || currentId !== assetId) { toast('作品已切换，本次抠图未应用。'); return; }
+      asset.cutoutImage = image; object.cutout = true;
+      render();commit();markManuallyEdited();toast('人像已抠出；可恢复原图或撤销。');
+    } catch (error) { console.warn('Person cutout failed',error);toast('抠图未完成：'+error.message); }
+    finally { cutoutBusy = false;cutoutLabel = '';renderInspector(); }
+  }
   function renderInspector() {
     syncLeftControls();
     const o = selectedObject();
+    const photoSelected = !!o && ['main','secondary'].includes(state.selected?.type);
+    const photo = photoSelected ? o : state.main;
+    const secondary = photoSelected && state.selected.type === 'secondary';
+    const asset = imageAssets.get(secondary ? photo.imageId : state.mainImageId);
+    const enabled = !!(photo?.cutout && asset?.cutoutImage);
+    const entry = $('#posterCutoutEntry'), restoreButton = $('#posterCutoutRestore'), targetLabel = $('#posterCutoutTarget');
+    if (targetLabel) {
+      targetLabel.textContent = cutoutBusy ? '正在处理：'+cutoutLabel : '当前照片：' + (secondary ? `辅图 ${state.secondaries.indexOf(photo)+1}` : photoSelected ? '主图' : '主图（默认）');
+      targetLabel.title = asset?.name || '请先上传照片';
+    }
+    if (entry) { entry.textContent = cutoutBusy ? '正在抠图…' : enabled ? '✓ 已抠图' : '✂ 自动抠图'; entry.disabled = cutoutBusy || enabled || !asset?.image; }
+    if (restoreButton) { restoreButton.hidden = !enabled; restoreButton.disabled = cutoutBusy; }
     const deselectBtn = $('#posterDeselectButton');
     if (deselectBtn) {
       deselectBtn.style.display = o ? 'inline-block' : 'none';
@@ -2246,19 +2266,9 @@
       const filterRemixBanner = `<div class="poster-inspector-remix-banner" style="margin-bottom:12px;">
         <button class="poster-filter-remix-button" type="button" data-poster-action="filter-remix" style="width:100%;padding:10px 14px;background:#002FA7;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(0,47,167,0.25);transition:all 0.15s ease;">
           <span>滤镜 REMIX ↻</span>
-          <small style="opacity:0.85;font-weight:400;font-size:11px;">循环切换 6 组精选滤镜调色</small>
+          <small style="opacity:0.85;font-weight:400;font-size:11px;">循环切换 ${filterRemixList.length} 组精选滤镜调色</small>
         </button>
       </div>`;
-
-      const presetsContent = `<div class="poster-presets">
-        <button type="button" data-poster-preset="electric">TIGER<br /><b>AESPA</b></button>
-        <button type="button" data-poster-preset="red">CCTV<br /><b>RED</b></button>
-        <button type="button" data-poster-preset="blue">CCTV<br /><b>BLUE</b></button>
-        <button type="button" data-poster-preset="editorial">HALFTONE<br /><b>EDITORIAL</b></button>
-        <button type="button" data-poster-preset="chrome">LIQUID<br /><b>CHROME</b></button>
-        <button class="poster-preset-xerox" type="button" data-poster-preset="xerox">XEROX<br /><b>/ PUNK</b></button>
-      </div>`;
-      const presetsAccordion = accordion('风格预设', 'STYLE PRESETS', presetsContent, true);
 
       const hasBgImage = !!state.backgroundImageId;
       const isPattern = state.backgroundStyle && state.backgroundStyle !== 'solid';
@@ -2278,35 +2288,28 @@
         bgImageControls += `<div class="poster-field"><label class="poster-action" for="posterBackgroundImageInput" style="display:block;text-align:center;cursor:pointer;margin-top:4px;">+ 上传背景图 <small>LOCAL IMAGE</small></label></div>`;
       }
 
-      const bgPresetsContent = `<div class="poster-background-presets" style="margin-bottom:10px;">
-        <button type="button" data-poster-background="electric-tiger"><b>ELECTRIC TIGER</b><small>Aespa 经典电光虎纹 · 蓝黑斑纹</small></button>
-        <button type="button" data-poster-background="liquid-chrome"><b>LIQUID CHROME</b><small>酸性全息水银 · WebGL 算法流体</small></button>
-        <button type="button" data-poster-background="pure-black"><b>PURE BLACK</b><small>纯黑基底</small></button>
-        <button type="button" data-poster-background="pure-white"><b>PURE WHITE</b><small>纯白基底</small></button>
-        <button type="button" data-poster-background="solid"><b>SOLID</b><small>复古米白</small></button>
-        <button type="button" data-poster-background="grid"><b>INDEX GRID</b><small>坐标网格</small></button>
-        <button type="button" data-poster-background="chrome"><b>CHROME</b><small>金属渐变</small></button>
-        <button type="button" data-poster-background="scan"><b>SCAN PAPER</b><small>复印扫描纸</small></button>
-        <button type="button" data-poster-background="dots"><b>DOT MATRIX</b><small>点阵印刷</small></button>
-        <button type="button" data-poster-background="soft-y2k"><b>SOFT Y2K</b><small>柔和千禧</small></button>
-        <button type="button" data-poster-background="blueprint"><b>BLUE PRINT</b><small>工程蓝图</small></button>
-      </div>`
-      + field('画布底色','Background Color','background',state.background,'color',true)
-      + select('背景样式','Background Style','backgroundStyle',state.backgroundStyle||'solid',[['electric-tiger','电光虎纹','Electric Tiger'],['liquid-chrome','酸性全息水银','Liquid Chrome'],['solid','纯色基底','Solid'],['grid','坐标网格','Index Grid'],['chrome','金属渐变','Chrome Gradient'],['scan','复印扫描纸','Scan Paper'],['dots','点阵印刷','Dot Matrix'],['soft-y2k','柔和 Y2K','Soft Y2K'],['blueprint','工程蓝图','Blue Print']],true)
+      const bgPresetsContent =
+        field('画布底色','Background Color','background',state.background,'color',true)
+      + select('背景样式','Background Style','backgroundStyle',state.backgroundStyle||'solid',[['blue-valentine','蓝色情绪拼贴','Blue Valentine'],['electric-tiger','电光虎纹','Electric Tiger'],['liquid-chrome','酸性全息水银','Liquid Chrome'],['solid','纯色基底','Solid'],['grid','坐标网格','Index Grid'],['chrome','金属渐变','Chrome Gradient'],['pink-paper','淡粉扫描纸','Pink Paper'],['scan','复印扫描纸','Scan Paper'],['dots','点阵印刷','Dot Matrix'],['soft-y2k','柔和 Y2K','Soft Y2K'],['blueprint','工程蓝图','Blue Print']],true)
       + bgStyleControls + bgImageControls
+      + toggle('内层纸框','Inner Paper','paperEnabled',!!state.posterPaper,true)
+      + (state.posterPaper ? field('纸框 X','Paper X','paper_x',state.posterPaper.x,'number',true)+field('纸框 Y','Paper Y','paper_y',state.posterPaper.y,'number',true)+field('纸框宽度','Paper Width','paper_w',state.posterPaper.w,'number',true)+field('纸框高度','Paper Height','paper_h',state.posterPaper.h,'number',true)+field('纸框颜色','Paper Color','paper_color',state.posterPaper.color||'#fafaff','color',true)+field('标题栏颜色','Header Color','paper_headerColor',state.posterPaper.headerColor||'#3152ed','color',true)+range('标题栏高度','Header Height','paper_headerH',state.posterPaper.headerH??178,0,400,1,true) : '')
       + toggle('海报外框','Poster Border','border',state.border,true)
       + field('外框颜色','Border Color','borderColor',state.borderColor,'color',true)
       + range('外框线宽','Border Width','borderWidth',state.borderWidth,1,18,1,true);
       const bgAccordion = accordion('背景与纸张', 'BACKGROUND & PAPER', bgPresetsContent, true);
 
-      const colorAccordion = accordion('图像调色', 'COLOR & TONALITY', `${range('主图透明度','Image Opacity','mainOpacity',state.main?.opacity??100,0,100,1,true,'调节主图与背景的融合透明度')}${range('黑白','B&W','bw',state.filters.bw,0,100,1,true,'将彩色转换为黑白基调')}${range('亮度','Brightness','brightness',state.filters.brightness,-70,80,1,true,'调节画面整体明暗曝光')}${range('对比度','Contrast','contrast',state.filters.contrast,-50,120,1,true,'拉开明暗反差与视觉冲击')}${range('饱和度','Saturation','saturation',state.filters.saturation??100,0,200,1,true,'控制色彩纯度与鲜艳度')}<div class="poster-field" style="margin-top:6px;"><button type="button" class="poster-action" data-poster-action="reset-filters" style="width:100%;">恢复原图清晰质感 / RESET FILTERS</button></div>`, true);
+      const colorAccordion = accordion('图像调色', 'COLOR & TONALITY', `${range('主图透明度','Image Opacity','mainOpacity',state.main?.opacity??100,0,100,1,true,'调节主图与背景的融合透明度')}${range('底图边缘融合','Main Edge Blend','mainEdgeFade',state.mainEdgeFade??0,0,100,1,true,'柔化照片边缘，让底图融入纸张背景')}${range('黑白','B&W','bw',state.filters.bw??0,0,100,1,true,'将彩色转换为黑白基调')}${range('亮度','Brightness','brightness',state.filters.brightness??0,-70,80,1,true,'调节画面整体明暗曝光')}${range('对比度','Contrast','contrast',state.filters.contrast??0,-50,120,1,true,'拉开明暗反差与视觉冲击')}${range('饱和度','Saturation','saturation',state.filters.saturation??100,0,200,1,true,'控制色彩纯度与鲜艳度')}<div class="poster-field" style="margin-top:6px;"><button type="button" class="poster-action" data-poster-action="reset-filters" style="width:100%;">恢复原图清晰质感 / RESET FILTERS</button></div>`, true);
 
-      inspector.innerHTML = filterRemixBanner
-        + presetsAccordion
+      inspector.innerHTML = accordion('人像抠图','PERSON CUTOUT','<button type="button" class="poster-action poster-action-primary" data-poster-action="select-main">选择主图抠图 ↗</button><p class="poster-help">点击画布中的辅图，可单独抠出该照片的人像。已抠图的照片可恢复背景。</p>',true)
+        + filterRemixBanner
         + bgAccordion
         + colorAccordion
-        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftone',state.filters.halftone,0,100,1,true,'控制印刷网点效果的明显程度')}${range('网点大小','Dot Size','halftoneSize',state.filters.halftoneSize,1,42,1,true,'控制半调颗粒尺寸')}${range('网点密度','Dot Density','halftoneDensity',state.filters.halftoneDensity,1,100,1,true,'控制网点之间的疏密')}${range('网点角度','Dot Angle','halftoneAngle',state.filters.halftoneAngle,-90,90,1,true,'旋转半调网点排列角度')}${range('扫描线','Scanline','scan',state.filters.scan,0,100,1,true,'模拟复印或显像管扫描条纹')}${segmented('扫描方向','Scan Direction','scanAngle',state.filters.scanAngle||0,[[0,'横向','Horizontal'],[90,'纵向','Vertical']],true,'切换横向或纵向扫描条纹')}`)
-        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',state.filters.grain,0,100,1,true,'添加胶片噪点与印刷颗粒')}${range('粗糙度','Roughness','rough',state.filters.rough,0,100,1,true,'增加复印 / 阈值化的粗粝感')}${range('纸张纹理','Paper Texture','paper',state.filters.paper,0,100,1,true,'模拟旧报纸与复印纸纤维杂质')}${range('脏版印刷','Dirty Print','dirty',state.filters.dirty,0,100,1,true,'增加墨点、污渍和印刷缺陷')}${range('压缩损坏','Compression','compression',state.filters.compression,0,100,1,true,'模拟低质量数字图片的块状损坏')}`)
+        + inspectorImagePatterns(state.filters,true)
+        + accordion('扫描纹', 'SCANLINES', `${range('扫描线','Scanline','scan',state.filters.scan??0,0,100,1,true,'模拟复印或显像管扫描条纹')}${segmented('扫描方向','Scan Direction','scanAngle',state.filters.scanAngle??0,[[0,'横向','Horizontal'],[90,'纵向','Vertical']],true,'切换横向或纵向扫描条纹')}`)
+        + inspectorMotionNoise(state.filters,true)
+        + inspectorGradientControls(state.filters,true)
+        + accordion('质感', 'TEXTURE', `${range('粗糙度','Roughness','rough',state.filters.rough??0,0,100,1,true,'增加复印 / 阈值化的粗粝感')}${range('纸张纹理','Paper Texture','paper',state.filters.paper??0,0,100,1,true,'模拟旧报纸与复印纸纤维杂质')}${range('脏版印刷','Dirty Print','dirty',state.filters.dirty??0,0,100,1,true,'增加墨点、污渍和印刷缺陷')}${range('压缩损坏','Compression','compression',state.filters.compression??0,0,100,1,true,'模拟低质量数字图片的块状损坏')}`)
         + accordion('风格化', 'STYLIZE', `${range('轮廓','Outline','outline',state.filters.outline,0,100,1,true,'提取高对比边缘描边线条')}${range('反相','Invert','invert',state.filters.invert,0,100,1,true,'翻转明暗与底片反色')}${range('色阶压缩','Color Compression / Posterize','posterize',state.filters.posterize,0,100,1,true,'减少颜色层级，形成块面效果')}<p class="poster-help">所有质感均可从 Clean 的 0% 推到 Destroyed 的 100%。</p>`);
       return;
     }
@@ -2314,8 +2317,13 @@
       if (holdBeforeButton) holdBeforeButton.style.display = 'flex';
       inspectorSelection.textContent = `SELECTED · MAIN IMAGE / ${o.layoutMode || 'CUSTOM'}`;
       inspectorTitle.innerHTML = '主图 <small>MAIN IMAGE · 核心视觉</small>';
-      inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-12,12,.5)}${range('主图透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('裁切', 'CROP', `${range('画面缩放','Image Zoom','zoom',o.zoom||1,.7,2.4,.02)}${range('裁切水平偏移','Crop X','panX',o.panX||0,-350,350,1)}${range('裁切垂直偏移','Crop Y','panY',o.panY||0,-450,450,1)}`, true)
+      inspector.innerHTML = cutoutControls(o,state.mainImageId)
+        + accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-12,12,.5)}${range('主图透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
+        + accordion('裁切', 'CROP', `${select('照片适配','Image Fit','fit',o.fit||'cover',[['cover','填满画框','Cover'],['contain','完整照片','Contain']])}${range('画面缩放','Image Zoom','zoom',o.zoom??1,.7,2.4,.02)}${range('裁切水平偏移','Crop X','panX',o.panX??0,-350,350,1)}${range('裁切垂直偏移','Crop Y','panY',o.panY??0,-450,450,1)}`, true)
+        + accordion('图像调色', 'COLOR & TONALITY', `${range('黑白','B&W','bw',state.filters.bw??0,0,100,1,true)}${range('亮度','Brightness','brightness',state.filters.brightness??0,-70,80,1,true)}${range('对比度','Contrast','contrast',state.filters.contrast??0,-50,120,1,true)}${range('饱和度','Saturation','saturation',state.filters.saturation??100,0,200,1,true)}`, true)
+        + inspectorImagePatterns(state.filters,true)
+        + inspectorMotionNoise(state.filters,true)
+        + inspectorGradientControls(state.filters,true)
         + layerControls();
       return;
     }
@@ -2326,9 +2334,9 @@
       inspectorTitle.innerHTML = `图像碎片 <small>FRAGMENT / ${String(number).padStart(2,'0')}</small>`;
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
         + accordion('图像', 'IMAGE', `${range('亮度','Brightness','brightness',o.brightness||0,-80,100)}${range('对比度','Contrast','contrast',o.contrast||0,-60,120)}${range('饱和度','Saturation','saturation',o.saturation??100,0,200)}${field('碎片边框','Border Color','color',o.color||'#fff','color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth||0,0,12)}`, true)
-        + accordion('印刷 / 扫描', 'PRINT / SCAN', `${range('半调强度','Halftone Strength','halftoneStrength',o.halftoneStrength||75,0,100,false,'控制碎片半调网点强度')}${range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,1,42)}${range('网点密度','Dot Density','halftoneDensity',o.halftoneDensity||55,1,100)}${range('网点角度','Dot Angle','halftoneAngle',o.halftoneAngle||0,-90,90)}`)
-        + accordion('质感', 'TEXTURE', `${range('颗粒','Grain','grain',o.grain||0,0,100,false,'给碎片添加噪点颗粒')}`)
-        + accordion('风格化', 'STYLIZE', `${select('滤镜类型','Filter Type','filterType',o.filterType,[['original','原图','Original'],['bw','黑白','B&W'],['highbw','高对比黑白','High Contrast B&W'],['halftone','半调网点','Halftone'],['rough','粗糙颗粒','Rough / Grain'],['outline','轮廓描边','Outline / Edge'],['invert','反相','Invert'],['posterize','色阶压缩','Posterize']])}`)
+        + accordion('风格滤镜', 'STYLE', select('滤镜类型','Filter Type','filterType',o.filterType ?? 'original',[...inspectorPatternTypes,['bw','黑白','B&W'],['highbw','高对比黑白','Threshold'],['duotone','双色映射','Duotone'],['gradient_map','渐变映射','Gradient Map'],['rough','粗糙复印','Rough'],['outline','轮廓描边','Outline'],['invert','反相','Invert'],['posterize','色阶压缩','Posterize']]) + (['halftone','color_halftone','dot_halftone','circle_halftone','line_halftone'].includes(o.filterType) ? inspectorPatternControls(o) : '') + (o.filterType === 'highbw' ? range('二值化阈值','Threshold Level','thresholdLevel',o.thresholdLevel ?? 128,0,255) : ''), true)
+        + inspectorMotionNoise(o)
+        + inspectorGradientControls(o)
         + objectActions();
       return;
     }
@@ -2346,8 +2354,14 @@
       else if (o.lineWidth === 4 && o.backingColor === '#ffffff') currentFramePreset = 'white-border';
       else if (o.lineWidth >= 8 && o.backingColor === '#ffffff') currentFramePreset = 'editorial';
 
-      inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('外观', 'APPEARANCE', `${select('风格预设','Appearance','secAppearance',currentAppearance,[['original','原图色彩','Original'],['bw','黑白基调','B&W'],['highbw','高对比黑白','High Contrast B&W']])}${range('胶片颗粒','Grain','secGrain',o.filters.grain||0,0,100,1,false,'轻度噪点质感')}`, true)
+      inspector.innerHTML = cutoutControls(o,o.imageId)
+        + select('照片来源','Image Source','imageId',o.imageId,state.assets.filter(a=>imageAssets.has(a.id)).map(a=>[a.id,escapeHTML(a.name),escapeHTML(imageAssets.get(a.id)?.libraryId || '当前素材')]),false,'从已上传的照片中替换这一格；位置、尺寸与滤镜保留。')
+        + accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
+        + accordion('窗口与取景','WINDOW & CROP', `${toggle('复古窗口边框','Desktop Window','windowFrame',!!o.windowFrame)}${field('标题栏颜色','Window Color','windowColor',o.windowColor||'#e88fb9','color')}${select('照片框样式','Photo Frame','windowStyle',o.windowStyle||'desktop',[['desktop','复古窗口','Desktop'],['photo-booth','Photo Booth','Photo Booth'],['airdrop','AirDrop','AirDrop'],['polaroid','拍立得','Polaroid'],['circle','圆形','Circle']])}${field('窗口标题','Window Title','windowTitle',o.windowTitle||'portrait.jpg','textarea')}${select('照片适配','Image Fit','fit',o.fit||'cover',[['cover','填满画框','Cover'],['contain','完整照片／人物','Contain']])}${range('照片虚化','Photo Blur','blur',o.filters?.blur||0,0,30)}${range('照片缩放','Photo Zoom','zoom',o.zoom||1,1,3,.05)}${range('取景水平偏移','Crop X','panX',o.panX||0,-200,200)}${range('取景垂直偏移','Crop Y','panY',o.panY||0,-200,200)}`)
+        + accordion('外观', 'APPEARANCE', `${select('风格预设','Appearance','secAppearance',currentAppearance,[['original','原图色彩','Original'],['bw','黑白基调','B&W'],['highbw','高对比黑白','High Contrast B&W']])}${range('黑白','B&W','bw',o.filters.bw??0,0,100)}${range('亮度','Brightness','brightness',o.filters.brightness??0,-70,80)}${range('对比度','Contrast','contrast',o.filters.contrast??0,-50,120)}${range('饱和度','Saturation','saturation',o.filters.saturation??100,0,200)}`, true)
+        + inspectorImagePatterns(o.filters)
+        + inspectorMotionNoise(o.filters)
+        + inspectorGradientControls(o.filters)
         + accordion('边框', 'FRAME', `${select('边框样式','Frame Style','secFramePreset',currentFramePreset,[['thin','细线框 (1px)','Thin Border'],['white-border','拍立得白边 (4px)','White Border'],['editorial','编辑宽衬底 (8px)','Editorial Border'],['none','无边框','None']])}${field('边框颜色','Border Color','color',o.color||'#ffffff','color')}${range('边框粗细','Border Width','lineWidth',o.lineWidth??3,0,16)}`, true)
         + objectActions();
       return;
@@ -2380,16 +2394,17 @@
         : `局部放大 <small>DETAIL CROP / ${String(number).padStart(2,'0')}</small>`;
 
       const filterList = [
-        ['original', '原图色彩 (增强)', 'Original Clean'],
+        ['original', '原图基调', 'Original Base'],
         ['color_halftone', '彩色半调 (像素化)', 'Color Halftone'],
         ['dot_halftone', '半调图案「点状」', 'Dot Halftone'],
-        ['circle_halftone', '半调图案「圆形」+ 颗粒', 'Circle Halftone + Grain'],
+        ['circle_halftone', '半调图案「圆形」', 'Circle Halftone'],
+        ['line_halftone', '半调图案「线条」', 'Line Halftone'],
         ['glass', '玻璃「块状」(折射)', 'Glass Brick'],
-        ['mosaic_sharp', '马赛克 (像素化) + 锐化', 'Sharp Pixelate'],
-        ['mosaic_tile', '马赛克拼贴 + 颗粒', 'Mosaic Tiles + Grain'],
-        ['duotone', '渐变映射 + 颗粒 (双色调)', 'Duotone + Grain'],
+        ['mosaic_sharp', '马赛克 (像素化)', 'Mosaic Pixelate'],
+        ['mosaic_tile', '马赛克拼贴', 'Mosaic Tiles'],
+        ['duotone', '渐变映射 (双色调)', 'Duotone'],
         ['gradient_map', '渐变映射 (柔和氛围)', 'Soft Gradient Map'],
-        ['dither', '位图：20 像素 (Dither 抖动)', 'Bayer Dither'],
+        ['dither', '位图 / 抖动', 'Bitmap / Dither'],
         ['threshold', '阈值 + 颗粒 (复印高反差)', 'Threshold + Grain'],
         ['bw', '黑白基调', 'B&W'],
         ['outline', '轮廓描边', 'Outline / Edge'],
@@ -2399,30 +2414,24 @@
       ];
 
       let filterExtraSliders = '';
-      if (o.filterType === 'color_halftone' || o.filterType === 'dot_halftone' || o.filterType === 'halftone') {
-        filterExtraSliders += range('网点大小','Dot Size','halftoneSize',o.halftoneSize||8,2,36);
-        filterExtraSliders += range('半调网点强度','Halftone Strength','halftoneStrength',o.halftoneStrength||80,20,100);
-      } else if (o.filterType === 'circle_halftone') {
-        filterExtraSliders += range('环纹间距','Ring Spacing','halftoneDensity',o.halftoneDensity||55,20,90);
-        filterExtraSliders += range('胶片颗粒','Grain','grain',o.grain||25,0,100);
+      if (['color_halftone', 'dot_halftone', 'circle_halftone', 'line_halftone', 'halftone'].includes(o.filterType)) {
+        filterExtraSliders += inspectorPatternControls(o);
       } else if (o.filterType === 'glass') {
-        filterExtraSliders += range('玻璃方块尺寸','Glass Block Size','glassSize',o.glassSize||32,12,72);
+        filterExtraSliders += range('玻璃方块尺寸','Glass Block Size','glassSize',o.glassSize??32,12,72);
       } else if (o.filterType === 'mosaic_sharp' || o.filterType === 'mosaic_tile') {
-        filterExtraSliders += range('马赛克块尺寸','Mosaic Block Size','mosaicSize',o.mosaicSize||18,4,64);
-        if (o.filterType === 'mosaic_tile') filterExtraSliders += range('拼贴颗粒','Grain','grain',o.grain||30,0,100);
-      } else if (o.filterType === 'duotone' || o.filterType === 'gradient_map') {
-        filterExtraSliders += field('暗部映射色','Dark Tone Color','duotoneDark',o.duotoneDark||(o.filterType==='duotone'?'#162772':'#2b2353'),'color');
-        filterExtraSliders += field('亮部映射色','Light Tone Color','duotoneLight',o.duotoneLight||(o.filterType==='duotone'?'#fca311':'#9bb1ff'),'color');
-        if (o.filterType === 'duotone') filterExtraSliders += range('映射颗粒','Grain','grain',o.grain||26,0,100);
+        filterExtraSliders += range('马赛克块尺寸','Mosaic Block Size','mosaicSize',o.mosaicSize??18,4,64);
       } else if (o.filterType === 'dither') {
-        filterExtraSliders += range('点刻步长 (粗细)','Dither Step','ditherStep',o.ditherStep||4,2,16);
+        filterExtraSliders += select('位图方法','Bitmap Method','bitmapMethod',o.bitmapMethod??'diffusion',[['diffusion','误差扩散抖动','Diffusion Dither'],['ordered','有序抖动','Ordered Dither'],['threshold','阈值二值化','Threshold']]);
+        filterExtraSliders += range('位图像素步长','Bitmap Step','ditherStep',o.ditherStep??1,1,16);
+        if ((o.bitmapMethod ?? 'diffusion') !== 'ordered') filterExtraSliders += range('二值化阈值','Threshold Level','thresholdLevel',o.thresholdLevel??128,0,255);
       } else if (o.filterType === 'threshold' || o.filterType === 'highbw') {
-        filterExtraSliders += range('二值化阈值','Threshold Level','thresholdLevel',o.thresholdLevel||124,40,220);
-        filterExtraSliders += range('复印颗粒','Grain','grain',o.grain||35,0,100);
+        filterExtraSliders += range('二值化阈值','Threshold Level','thresholdLevel',o.thresholdLevel??124,0,255);
       }
 
       inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${field('宽度','Width','w',Math.round(o.w),'number')}${field('高度','Height','h',Math.round(o.h),'number')}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity??100,0,100)}`, true)
-        + accordion('风格滤镜', 'STYLE', `${select('滤镜效果','Filter Effect','filterType',o.filterType,filterList)}${filterExtraSliders}${range('画面对比度','Contrast','contrast',o.contrast||0,-40,100)}`, true)
+        + accordion('风格滤镜', 'STYLE', `${select('滤镜效果','Filter Effect','filterType',o.filterType??'original',filterList)}${filterExtraSliders}${range('画面对比度','Contrast','contrast',o.contrast??0,-40,100)}${range('亮度','Brightness','brightness',o.brightness??0,-70,80)}${range('饱和度','Saturation','saturation',o.saturation??100,0,200)}`, true)
+        + inspectorMotionNoise(o)
+        + inspectorGradientControls(o)
         + accordion('边框与衬底', 'FRAME & BACKING', `${field('边框颜色','Border Color','color',o.color,'color')}${range('边框线宽','Border Width','lineWidth',o.lineWidth,0,12)}${field('衬底颜色','Backing Color','backingColor',o.backingColor||'#fff','color')}`, true)
         + accordion('图源信息', 'SOURCE', `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">来源图源</span><span class="poster-label-sub">SOURCE</span></div></div><div class="poster-readonly-badge">来源：${srcInfo.name} / SOURCE · ${srcInfo.name}</div></div>`, true)
         + objectActions();
@@ -2451,7 +2460,9 @@
     inspectorTitle.innerHTML = `${titlesZh[o.kind] || '排版文字'} <small>${names[o.kind] || 'TYPOGRAPHY'}</small>`;
     const repeatControls = o.kind === 'repeat' ? accordion('重复文字', 'REPEAT', `${range('重复次数','Repeat Count','repeat',o.repeat,2,24)}${segmented('排列方向','Direction','direction',o.direction,[['vertical','纵向','Vertical'],['horizontal','横向','Horizontal']])}${range('间距','Spacing','repeatSpacing',o.repeatSpacing||0,-20,100)}${range('水平错位','X Offset','repeatOffsetX',o.repeatOffsetX||0,-100,100)}${range('垂直错位','Y Offset','repeatOffsetY',o.repeatOffsetY||0,-100,100)}${range('逐次旋转步长','Rotation Step','rotationStep',o.rotationStep||0,-20,20,.5)}`, true) : '';
     inspector.innerHTML = accordion('变换', 'TRANSFORM', `${field('水平位置','X','x',Math.round(o.x),'number')}${field('垂直位置','Y','y',Math.round(o.y),'number')}${range('水平缩放','Horizontal Scale','scaleX',o.scaleX||1,.2,3,.05)}${range('垂直缩放','Vertical Scale','scaleY',o.scaleY||1,.2,3,.05)}${range('旋转角度','Rotation','rotation',o.rotation||0,-180,180)}${range('透明度','Opacity','opacity',o.opacity,0,100)}`, true)
-      + accordion('排版文字', 'TYPOGRAPHY', `${field('文字内容','Text Content','content',o.content,'textarea')}${select('字体','Font Family','font',o.font,[['Arial, sans-serif','Arial','Sans-Serif'],['Arial Black, Impact, sans-serif','Arial Black','Display'],['Georgia, serif','Georgia','Serif'],['ui-monospace, Consolas, monospace','Monospace','Technical']])}${range('字号','Font Size','size',o.size,6,240)}${select('字重','Weight','weight',o.weight,[['400','常规','Regular'],['500','中等','Medium'],['700','加粗','Bold'],['800','超重','Black']])}${range('字距','Tracking','letterSpacing',o.letterSpacing||0,-20,100,.5)}${range('行距','Line Height','lineHeight',o.lineHeight,.35,4,.05)}${select('对齐方式','Alignment','align',o.align||'left',[['left','左对齐','Left'],['center','居中','Center'],['right','右对齐','Right']])}${o.kind !== 'repeat' ? segmented('排版方向','Text Direction','writingMode',o.writingMode||'horizontal',[['horizontal','横排','Horizontal'],['vertical','竖排','Vertical']]) : ''}${field('文字颜色','Color','color',o.color,'color')}`, true)
+      + accordion('排版文字', 'TYPOGRAPHY', `${field('文字内容','Text Content','content',o.content,'textarea')}${select('字体','Font Family','font',o.font,[['Comic Sans MS, Arial Rounded MT Bold, sans-serif','气球圆体','Balloon'],['Arial Rounded MT Bold, Arial Black, sans-serif','圆润粗体','Rounded'],['Segoe Script, cursive','手写字体','Script'],['Arial, sans-serif','Arial','Sans-Serif'],["Comic Sans MS, cursive", "手写圆体", "Handwriting"],["Segoe UI Emoji", "彩色表情", "Emoji"],["Segoe UI Symbol", "符号字体", "Symbols"],["Arial Black, Arial", "粗标题", "Display"],["Arial Black, Arial, sans-serif", "粗标题回退", "Display"],["Arial, Helvetica, sans-serif", "经典无衬线", "Sans"],["Impact, Arial Black", "窄粗标题", "Impact"],["Impact, Arial Black, sans-serif", "窄粗标题回退", "Impact"],['Arial Black, Impact, sans-serif','Arial Black','Display'],['Georgia, serif','Georgia','Serif'],['Impact, "Arial Black", sans-serif','Impact','Display'],['system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif','系统字体','System'],['ui-monospace, Consolas, monospace','Monospace','Technical']])}${range('字号','Font Size','size',o.size,6,240,.5)}${select('字重','Weight','weight',o.weight,[['400','常规','Regular'],['500','中等','Medium'],['600','半粗','Semibold'],['700','加粗','Bold'],['800','超重','Black'],['900','特粗','Heavy']])}${range('字距','Tracking','letterSpacing',o.letterSpacing||0,-20,100,.5)}${range('行距','Line Height','lineHeight',o.lineHeight,.35,4,.05)}${select('对齐方式','Alignment','align',o.align||'left',[['left','左对齐','Left'],['center','居中','Center'],['right','右对齐','Right']])}${o.kind !== 'repeat' ? segmented('排版方向','Text Direction','writingMode',o.writingMode||'horizontal',[['horizontal','横排','Horizontal'],['vertical','竖排','Vertical']]) : ''}${field('文字颜色','Color','color',o.color,'color')}`, true)
+      + accordion('文字效果','TEXT EFFECT', select('文字效果','Text Effect','textStyle',o.textStyle||'plain',[['plain','普通文字','Plain'],['balloon','立体气球字','Balloon']])+range('气球立体厚度','Balloon Depth','balloonDepth',o.balloonDepth??7,0,16)+range('气球高光','Balloon Shine','balloonShine',o.balloonShine??75,0,100)+field('描边颜色','Outline Color','strokeColor',o.strokeColor||'#ffffff','color')+range('描边宽度','Outline Width','strokeWidth',o.strokeWidth||0,0,16))
+      + accordion('徽章与文字底色','BADGE & BACKING', select('徽章形状','Badge Shape','badgeShape',o.badgeShape||'none',[['none','无','None'],['pick','拨片','Pick'],['heart','心形线框','Heart'],['checker-heart','棋盘心形','Checker Heart'],['heart-arrow','箭头格纹心','Heart Arrow'],['burst','爆炸贴纸','Burst'],['bunny','小兔贴纸','Bunny'],['star','星星贴纸','Star'],['flower','小花贴纸','Flower'],['butterfly','蝴蝶贴纸','Butterfly'],['book','手绘书本','Book'],['folder','文件夹','Folder'],['globe','网络球','Internet'],['computer','电脑','Computer'],['ribbon','彩虹条','Ribbon'],['panel','桌面面板','Panel'],['grid','网格纸','Grid'],['dock','应用程序栏','Dock'],['focus','专注模式栏','Focus'],['printer','照片打印机','Printer'],['sparkle','四角闪光','Sparkle'],['doodle','手绘花线','Doodle'],['outline-box','索引线框','Outline Box'],['sketch-arrow','手绘箭头','Sketch Arrow'],['connector-path','折线连接','Connector Path'],['retro-window','复古信息窗口','Retro Window'],['profile-card','照片档案卡','Profile Card'],['speech','聊天气泡','Speech'],['checker-panel','棋盘块','Checker Panel'],['recycle-bin','回收站','Recycle Bin']])+field('徽章颜色','Badge Color','badgeColor',o.badgeColor||'#3152ed','color')+range('徽章宽度','Badge Width','badgeWidth',o.badgeWidth||(o.badgeShape==='heart'?164:116),40,900)+range('徽章高度','Badge Height','badgeHeight',o.badgeHeight||(o.badgeShape==='heart'?134:128),40,1200)+range('面板圆角','Panel Radius','cornerRadius',o.cornerRadius??Math.min(24,(o.badgeHeight||100)*.35),0,60)+toggle('文字底色','Text Backing','backgroundEnabled',o.backgroundEnabled??!!o.backgroundColor)+field('底色颜色','Backing Color','backgroundColor',o.backgroundColor||'#3152ed','color')+range('底色透明度','Backing Opacity','backgroundOpacity',o.backgroundOpacity??100,0,100)+range('底色横向留边','Backing X','backgroundPaddingX',o.backgroundPaddingX??8,0,60)+range('底色纵向留边','Backing Y','backgroundPaddingY',o.backgroundPaddingY??4,0,60))
       + repeatControls + objectActions();
   }
 
@@ -2484,7 +2495,7 @@
       }
       const img = new Image();
       img.onload = () => {
-        imageAssets.set(assetId, { id: assetId, name: 'karina-' + k + '.jpg', image: img, src: img.src });
+        imageAssets.set(assetId, { id: assetId, name: 'karina-' + k + '.jpg', image: img, src: img.src, origin:'demo' });
         loadedImages[k] = img;
         count++;
         if (count === keys.length) callback(loadedImages);
@@ -2513,7 +2524,7 @@
     }
     const img = new Image();
     img.onload = () => {
-      imageAssets.set(assetId, { id: assetId, name: 'model-techwear.jpg', image: img, src: img.src });
+      imageAssets.set(assetId, { id: assetId, name: 'model-techwear.jpg', image: img, src: img.src, origin:'demo' });
       if (typeof callback === 'function') callback(img);
     };
     img.onerror = () => {
@@ -2523,34 +2534,112 @@
     img.src = rawSrc;
   }
 
+  async function ensureBlueValentineAssets(callback) {
+    const photos = [
+      ['main','aespa-14','929ca399e19e398bf092cd383d7da8d4.jpg'],
+      ['support','aespa-15','959ac3d300b94737c8fdfa40c3b6affc.jpg'],
+      ['knit','aespa-02','1276d75c472be714899e57210bfa6838.jpg'],
+      ['camera','aespa-09','5561874c188110984eb60e0366b53bef.jpg']
+    ];
+    toast('正在载入图库示范与本地人像抠图…');
+    try {
+      for (const [key,libraryId,name] of photos) {
+        const id = 'asset-valentine-'+key;
+        let asset = imageAssets.get(id);
+        if (asset?.libraryId !== libraryId || !asset.image?.complete) {
+          const image = new Image(); image.src = 'samples/aespa/originals/'+name; await image.decode();
+          asset = { id,name,libraryId,image,src:image.src,origin:'demo' }; imageAssets.set(id,asset);
+        }
+        if (key === 'main' && !asset.cutoutImage) asset.cutoutImage = await window.posterCutout.removeBackground(asset.image);
+      }
+      callback();
+    } catch (error) { console.warn('Library demo failed',error); toast('图库示范未完成：'+error.message+'。请通过本地预览服务打开并重试。'); }
+  }
+  async function preparePinkDesktop(callback,isReset=false,templateLabel='模板四') {
+    const requested=snapshot(),userMode=!isReset && !!state.image;
+    const mainId=userMode?state.mainImageId:'asset-pink-hero';
+    try {
+      if(!userMode){
+        for(const [key,libraryId,name] of [['hero','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg'],['portrait','aespa-03','1c79f7a79b1d81ef67bfaacf07db06e5.jpg']]){
+          const id='asset-pink-'+key;
+          if(!imageAssets.get(id)?.image?.complete){
+            const image=new Image();image.src='samples/aespa/originals/'+name;await image.decode();
+            imageAssets.set(id,{id,name,libraryId,image,src:image.src,origin:'demo'});
+          }
+        }
+      }
+      if(snapshot()!==requested){toast('作品已修改，未替换成'+templateLabel+'。');return;}
+      const asset=imageAssets.get(mainId);
+      if(!asset.cutoutImage){toast('正在本地抠出'+templateLabel+'的前景人像…');asset.cutoutImage=await window.posterCutout.removeBackground(asset.image);}
+      if(snapshot()!==requested){toast('作品已修改，未替换成'+templateLabel+'。');return;}
+      callback();
+    }catch(error){console.warn('Desktop preparation failed',error);toast(templateLabel+'未载入：'+error.message+'。原作品保留，请重试。');}
+  }
+  function pinkDesktopReady(isReset=false) {
+    return !isReset && !!state.image
+      ? !!imageAssets.get(state.mainImageId)?.cutoutImage
+      : !!imageAssets.get('asset-pink-hero')?.cutoutImage && !!imageAssets.get('asset-pink-portrait')?.image?.complete;
+  }
+  const narrativeDemoPhotos={
+    6:[['main','aespa-05','29dfc7b07cb3b0d9e5605ebaf5590904.jpg'],['support','aespa-04','22d5f781dd29715f2453d731a52720e2.jpg'],['third','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg']],
+    7:[['main','aespa-12','84baabc702a5a862d97e3158ec2fc92c.jpg'],['support','aespa-05','29dfc7b07cb3b0d9e5605ebaf5590904.jpg'],['avatar','aespa-03','1c79f7a79b1d81ef67bfaacf07db06e5.jpg'],['extra','aespa-18','bb0e239ead798c31dc84a901bd29c4c0.jpg']]
+  };
+  function narrativeReady(index,isReset=false) {
+    const userMode=!isReset && !!state.image;
+    if(index===6 && userMode)return true;
+    if(!userMode && !narrativeDemoPhotos[index].every(([key])=>imageAssets.get('asset-story-'+index+'-'+key)?.image?.complete))return false;
+    if(index===6)return true;
+    const ids=userMode?[state.mainImageId,state.assets.find(a=>a.id!==state.mainImageId && imageAssets.has(a.id))?.id || state.mainImageId]:['asset-story-7-main','asset-story-7-support'];
+    return ids.every(id=>!!imageAssets.get(id)?.cutoutImage);
+  }
+  async function prepareNarrative(callback,index,isReset=false) {
+    const requested=snapshot(),userMode=!isReset && !!state.image;
+    try {
+      if(!userMode)for(const [key,libraryId,name] of narrativeDemoPhotos[index]){
+        const id='asset-story-'+index+'-'+key;
+        if(!imageAssets.get(id)?.image?.complete){const image=new Image();image.src='samples/aespa/originals/'+name;await image.decode();imageAssets.set(id,{id,name,libraryId,image,src:image.src,origin:'demo'});}
+      }
+      if(snapshot()!==requested){toast('作品已修改，未替换成模板'+(index+1)+'。');return;}
+      if(index===7){
+        const ids=userMode?[state.mainImageId,state.assets.find(a=>a.id!==state.mainImageId && imageAssets.has(a.id))?.id || state.mainImageId]:['asset-story-7-main','asset-story-7-support'];
+        for(const id of new Set(ids)){const asset=imageAssets.get(id);if(!asset.cutoutImage){toast('正在本地抠出模板八的人像…');asset.cutoutImage=await window.posterCutout.removeBackground(asset.image);}}
+      }
+      if(snapshot()!==requested){toast('作品已修改，未替换成模板'+(index+1)+'。');return;}
+      callback();
+    }catch(error){console.warn('Narrative collage preparation failed',error);toast('模板'+(index+1)+'未载入：'+error.message+'。原作品保留，请重试。');}
+  }
   function hasUserUploadedImages() {
-    const demoIds = new Set(['asset-karina-close', 'asset-karina-hands', 'asset-karina-crouch', 'asset-karina-sky', 'main-demo', 'asset-model-techwear']);
-    const demoNames = new Set(['karina-close.jpg', 'karina-hands.jpg', 'karina-crouch.jpg', 'karina-sky.jpg', 'demo.jpg', 'model-techwear.jpg']);
-    const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-') || n.startsWith('model-');
-    const isDemoId = (id) => !id || demoIds.has(id);
-
-    const hasUserAsset = (state.assets || []).some(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
-    const hasUserMain = Boolean(state.image && !isDemoId(state.mainImageId) && !isDemoName(state.imageName));
+    const hasUserAsset = (state.assets || []).some(a => !isDemoAsset(a) && imageAssets.has(a.id));
+    const hasUserMain = Boolean(state.image && state.mainImageId && !isDemoAsset({ id:state.mainImageId }));
     return hasUserAsset || hasUserMain;
   }
 
+  function isDemoAsset(asset) {
+    const origin = imageAssets.get(asset?.id)?.origin ?? asset?.origin;
+    if (origin) return origin === 'demo';
+    // Legacy scenes lack provenance. Their reserved IDs are reliable; filenames
+    // are user-controlled and must never decide whether an upload is preserved.
+    return !asset?.id || ['asset-karina-close','asset-karina-hands','asset-karina-crouch','asset-karina-sky','main-demo','asset-model-techwear'].includes(asset.id);
+  }
+
   // ==========================================
-  // 6 组精选滤镜模板 (FILTER TEMPLATES 01 - 06)
+  // 8 组精选滤镜模板 (FILTER TEMPLATES 01 - 08)
   // 纯视觉调色、底纸材质与印刷质感，不改动任何空间几何坐标
   // ==========================================
 
   // ==========================================
-  // 6 组精选滤镜模板 (FILTER TEMPLATES 01 - 06)
+  // 8 组精选滤镜模板 (FILTER TEMPLATES 01 - 08)
   // 纯视觉调色、底纸材质与印刷质感，不改动任何空间几何坐标
   // ==========================================
 
   // ==========================================
-  // 6 组精选滤镜模板 (FILTER TEMPLATES 01 - 06)
+  // 8 组精选滤镜模板 (FILTER TEMPLATES 01 - 08)
   // 纯视觉调色、底纸材质与印刷质感，不改动任何空间几何坐标
   // ==========================================
 
   function applyFilterTemplate01(showToast = true, toastMsg = '') {
     const previousPoster = motion.capture();
+    state.mainEdgeFade = 0;
     state.background = '#001fd4';
     state.backgroundStyle = 'electric-tiger';
     state.backgroundImageId = null;
@@ -2558,6 +2647,7 @@
     state.borderColor = '#ffffff';
     state.borderWidth = 4;
     state.filters = {
+      ...cleanFilters(),
       bw: 0, brightness: 4, contrast: 18, saturation: 110,
       halftone: 20, halftoneSize: 5, halftoneDensity: 65, halftoneAngle: 15,
       grain: 12, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
@@ -2592,30 +2682,34 @@
         t.color = '#ffbe0b'; t.badgeColor = '#002FA7';
       }
     });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === 'electric'));
     render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [1/1] (滤镜模板 01)：Aespa 电光虎纹与胶印色彩');
+    if (showToast) toast(toastMsg || `🎨 滤镜 REMIX [1/${filterRemixList.length}] (滤镜模板 01)：Aespa 电光虎纹与胶印色彩`);
   }
 
 
+  // Keep the face and central body clearer than the peripheral effect windows.
+  const template02DetailOpacities = [56, 34, 50, 44, 50, 30, 48];
+  const template02MainFinish = Object.freeze({ grain: 7, motionDistance: 4, motionAngle: 0 });
+
   function applyFilterTemplate02(showToast = true, toastMsg = '') {
     const previousPoster = motion.capture();
-    state.background = '#0a0c10';
-    state.backgroundStyle = 'ps-dark';
+    state.background = '#101010';
+    state.backgroundStyle = 'solid';
     state.backgroundImageId = null;
+    state.mainEdgeFade = 78;
     state.border = false;
     state.borderColor = '#1f2430';
     state.borderWidth = 0;
     state.filters = {
-      bw: 100, brightness: 18, contrast: 28, saturation: 100,
+      ...cleanFilters(),
+      bw: 100, brightness: -4, contrast: 12, saturation: 100,
       halftone: 0, halftoneSize: 6, halftoneDensity: 55, halftoneAngle: 15,
-      grain: 8, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
+      ...template02MainFinish, rough: 0, outline: 0, scan: 0, scanAngle: 0, paper: 0, dirty: 0,
       compression: 0, invert: 0, posterize: 0
     };
 
-    const targetOpacities = [56, 46, 50, 48, 52, 54, 52];
     (state.details || []).forEach((d, idx) => {
-      d.opacity = targetOpacities[idx] || 52;
+      d.opacity = template02DetailOpacities[idx] ?? 50;
       d.color = '#fbcfe8';
       d.lineWidth = 1.2;
       d.showHandles = true;
@@ -2629,7 +2723,7 @@
       d.tape = null;
       if (d.duotone) {
         d.duotoneDark = '#0d226b';
-        d.duotoneLight = (idx === 5) ? '#e8eeff' : '#d6e2ff';
+        d.duotoneLight = (idx === 5) ? '#f5deee' : '#eed4eb';
       }
     });
 
@@ -2645,13 +2739,11 @@
 
     (state.texts || []).forEach(t => {
       if (t.id === 't-hero' || t.kind === 'ps-title') {
-        t.color = '#ffffff';
+        t.color = t.kind === 'hero' ? '#c2d4ff' : '#ffffff';
       } else if (t.id === 't-sub') {
         t.color = '#cbd5e1';
-      } else if (t.id === 't-ps-logo') {
-        t.color = '#31a8ff';
-        t.badgeColor = '#001e36';
-        t.badgeBorderColor = '#31a8ff';
+      } else if (t.id === 't-issue') {
+        t.color = '#c2d4ff';
       } else if (t.kind === 'ps-recipe') {
         t.color = '#ffffff';
       } else if (t.id === 't-watermark') {
@@ -2660,33 +2752,78 @@
     });
 
     render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    if (showToast) toast(toastMsg || '🎨 滤镜 REMIX [2/2] (滤镜模板 02)：多维色度与深邃暗调滤镜');
+    if (showToast) toast(toastMsg || `🎨 滤镜 REMIX [2/${filterRemixList.length}] (滤镜模板 02)：多维色度与深邃暗调滤镜`);
   }
 
+  function applyFilterTemplate03(showToast = true, toastMsg = '') {
+    const previousPoster = motion.capture();
+    state.background = '#a8afd2'; state.backgroundStyle = 'blue-valentine';
+    state.backgroundTextureOpacity = 100; state.backgroundImageId = null;
+    state.border = false; state.mainEdgeFade = 0;
+    const cool = { ...cleanFilters(), saturation:70, contrast:5, grain:2, noiseSize:1,
+      duotone:true, duotoneDark:'#16203d', duotoneLight:'#e6e0f4', gradientGamma:1 };
+    state.filters = { ...cool };
+    state.secondaries.forEach((card,index) => {
+      card.filters = { ...cool, grain:3, ...(index === 0 ? {filterType:'dot_halftone',halftone:40,halftoneSize:3} : {}) };
+    });
+    if (state.posterPaper) state.posterPaper.headerColor = '#3152ed';
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    if (showToast) toast(toastMsg || '滤镜 REMIX [3/' + filterRemixList.length + '] · 蓝紫冷调与细颗粒');
+  }
+  function applyFilterTemplate04(showToast=true,toastMsg='') {
+    const previousPoster=motion.capture();
+    state.background='#f6f1f4';state.backgroundStyle='pink-paper';state.backgroundTextureOpacity=80;state.backgroundImageId=null;
+    state.border=false;state.mainEdgeFade=0;
+    state.filters={...cleanFilters(),saturation:72,contrast:-9,brightness:4,grain:3,noiseMonochrome:false};
+    state.secondaries.forEach((s,i)=>{s.filters={...cleanFilters(),saturation:i?85:76,contrast:-5,grain:2,noiseMonochrome:false};});
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    if(showToast)toast(toastMsg || '滤镜 REMIX [4/'+filterRemixList.length+'] · 柔和粉调与细颗粒');
+  }
+  function applyFilterDesktop(index,showToast=true,toastMsg='') {
+    const previousPoster=motion.capture();
+    state.background=index===4?'#7095a6':'#65978c';state.backgroundStyle='solid';state.backgroundImageId=null;
+    state.border=false;state.mainEdgeFade=0;
+    state.filters={...cleanFilters(),saturation:90,contrast:-3,grain:1,noiseMonochrome:false};
+    state.secondaries.forEach(s=>{s.filters=s.id==='desktop-background'
+      ? {...cleanFilters(),saturation:index===4?55:78,brightness:4,contrast:-8,blur:index===4?3:14,...(index===4?{duotone:true,duotoneDark:'#375b68',duotoneLight:'#d5e7e9'}:{})}
+      : {...cleanFilters(),saturation:94,contrast:-3,grain:1,noiseMonochrome:false};});
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    if(showToast)toast(toastMsg || '滤镜 REMIX ['+(index+1)+'/'+filterRemixList.length+'] · '+(index===4?'海蓝桌面与自然肤色':'柔焦背景与清晰照片'));
+  }
+  function applyFilterNarrative(index,showToast=true,toastMsg='') {
+    const previousPoster=motion.capture();state.background=index===6?'#201b16':'#ffffff';state.backgroundStyle='solid';state.backgroundImageId=null;state.border=false;state.mainEdgeFade=0;
+    state.filters=index===6?{...cleanFilters(),saturation:55,brightness:-30,contrast:-5,grain:2}:{...cleanFilters(),bw:100,contrast:12,grain:1};
+    state.secondaries.forEach(s=>{s.filters=index===6?{...cleanFilters(),saturation:80,brightness:3,contrast:-4,grain:2,noiseMonochrome:false}
+      : {...cleanFilters(),...(s.cutout?{bw:100,contrast:12,grain:1}:{saturation:85})};});
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    if(showToast)toast(toastMsg || '滤镜 REMIX ['+(index+1)+'/'+filterRemixList.length+'] · '+(index===6?'暖暗相册与清晰肤色':'黑白人物与电蓝图形'));
+  }
   const filterRemixList = [
     { id: 'filter-01', nameZh: 'Aespa 电光虎纹与胶印色彩', apply: applyFilterTemplate01 },
-    { id: 'filter-02', nameZh: '多维色度与深邃暗调滤镜', apply: applyFilterTemplate02 }
+    { id: 'filter-02', nameZh: '多维色度与深邃暗调滤镜', apply: applyFilterTemplate02 },
+    { id: 'filter-03', nameZh: '蓝紫冷调与细颗粒', apply: applyFilterTemplate03 },
+    { id: 'filter-04', nameZh: '柔和粉调与细颗粒', apply: applyFilterTemplate04 },
+    { id: 'filter-05', nameZh: '海蓝桌面与自然肤色', apply: (...args)=>applyFilterDesktop(4,...args) },
+    { id: 'filter-06', nameZh: '柔焦背景与清晰照片', apply: (...args)=>applyFilterDesktop(5,...args) },
+    { id: 'filter-07', nameZh: '暖暗相册与清晰肤色', apply: (...args)=>applyFilterNarrative(6,...args) },
+    { id: 'filter-08', nameZh: '黑白人物与电蓝图形', apply: (...args)=>applyFilterNarrative(7,...args) }
   ];
 
   // ==========================================
   // 通用用户图片/示范素材卡片槽位分配器
   // ==========================================
   function resolveSlotAssetIds(images, isReset) {
-    const isUserMode = !isReset && hasUserUploadedImages();
+    // REMIX retains current photos regardless of provenance; only explicit demo resets replace them.
+    const isUserMode = !isReset && !!state.image;
     let slot0Id, slot1Id, slot2Id, slot3Id;
 
     if (isUserMode) {
-      const demoIds = new Set(['asset-karina-close', 'asset-karina-hands', 'asset-karina-crouch', 'asset-karina-sky', 'main-demo']);
-      const demoNames = new Set(['karina-close.jpg', 'karina-hands.jpg', 'karina-crouch.jpg', 'karina-sky.jpg', 'demo.jpg']);
-      const isDemoName = (n) => !n || demoNames.has(n) || n.startsWith('karina-');
-      const isDemoId = (id) => !id || demoIds.has(id);
+      let userAssets = (state.assets || []).filter(a => imageAssets.has(a.id));
 
-      let userAssets = (state.assets || []).filter(a => !isDemoId(a.id) && !isDemoName(a.name) && imageAssets.has(a.id));
-
-      if (state.image && !isDemoId(state.mainImageId) && !isDemoName(state.imageName)) {
+      if (state.image && state.mainImageId) {
         const mid = state.mainImageId || makeId();
         if (!imageAssets.has(mid)) {
-          imageAssets.set(mid, { id: mid, name: state.imageName || 'user-image.jpg', image: state.image, src: state.image.src || '' });
+          imageAssets.set(mid, { id: mid, name: state.imageName || 'user-image.jpg', image: state.image, src: state.image.src || '', origin:'upload' });
         }
         if (!userAssets.some(a => a.id === mid)) {
           userAssets.unshift({ id: mid, name: state.imageName || 'user-image.jpg' });
@@ -2782,11 +2919,12 @@
   }
 
   // ==========================================
-  // 6 组精选排版模板 (LAYOUT TEMPLATES 01 - 06)
+  // 8 组精选排版模板 (LAYOUT TEMPLATES 01 - 08)
   // 纯空间几何构图，不覆盖用户已选定的滤镜或背景调色
   // ==========================================
 
   function applyLayoutTemplate01(images, isReset = false, showToast = true, toastMsg = '') {
+    state.posterPaper = null;
     remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
     const previousPoster = motion.capture();
 
@@ -2988,8 +3126,8 @@
       showLabel: false
     });
     const d2 = makeDetail(f2, 1, {
-      x: 330,
-      y: 520,
+      x: 65,
+      y: 915,
       w: 245,
       h: 140,
       rotation: 0
@@ -3026,10 +3164,10 @@
       showLabel: false
     });
     const d3 = makeDetail(f3, 2, {
-      x: 388,
-      y: 442,
+      x: 620,
+      y: 665,
       w: 240,
-      h: 110,
+      h: 90,
       rotation: 0
     });
     d3.color = '#002FA7';
@@ -3130,7 +3268,7 @@
       },
       {
         id: 't-eyecontact', kind: 'micro', content: 'Eye contact',
-        x: 505, y: 608, size: 11, weight: 600,
+        x: 620, y: 780, size: 11, weight: 600,
         font: 'ui-monospace, Consolas, monospace', color: '#ffffff',
         strokeColor: '#000000', strokeWidth: 2,
         rotation: 0, opacity: 90
@@ -3159,8 +3297,8 @@
     ];
 
     state.remixInfo = {
-      anchorZh: isUserMode ? '排版 REMIX [1/1] · Aespa 电光档案 (用户图片)' : '排版 REMIX [1/1] · Aespa 电光档案 (多图版)',
-      anchorEn: 'Layout REMIX [1/1] · Electric Archive',
+      anchorZh: isUserMode ? `排版 REMIX [1/${layoutRemixList.length}] · Aespa 电光档案 (用户图片)` : `排版 REMIX [1/${layoutRemixList.length}] · Aespa 电光档案 (多图版)`,
+      anchorEn: `Layout REMIX [1/${layoutRemixList.length}] · Electric Archive`,
       mainLayoutZh: '原色缩放主图 · 镂空电光虎纹底纸',
       mainLayoutEn: 'Scaled True-Color Main · Electric Tiger Base',
       typographyZh: '电光涂鸦与三行叠字',
@@ -3175,8 +3313,8 @@
     state.selected = null;
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
-      ? `LAYOUT [1/2] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'LAYOUT [1/2] / AESPA RICH MAN (MULTI-IMAGE)';
+      ? `LAYOUT [1/${layoutRemixList.length}] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : `LAYOUT [1/${layoutRemixList.length}] / AESPA RICH MAN (MULTI-IMAGE)`;
 
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
@@ -3187,18 +3325,19 @@
     motion.play(previousPoster);
     if (showToast) {
       const resolvedToast = toastMsg || (isUserMode
-        ? '📐 排版 REMIX [1/1] (排版模板 01)：已应用 Aespa 电光档案构图 (已适配您的专属图片)'
-        : '📐 排版 REMIX [1/1] (排版模板 01)：Aespa 电光档案构图');
+        ? `📐 排版 REMIX [1/${layoutRemixList.length}] (排版模板 01)：已应用 Aespa 电光档案构图 (已适配您的专属图片)`
+        : `📐 排版 REMIX [1/${layoutRemixList.length}] (排版模板 01)：Aespa 电光档案构图`);
       toast(resolvedToast);
     }
   }
 
 
   function applyLayoutTemplate02(images, isReset = false, showToast = true, toastMsg = '') {
+    state.posterPaper = null;
     remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
     const previousPoster = motion.capture();
 
-    const isUserMode = !isReset && hasUserUploadedImages();
+    const isUserMode = !isReset && !!state.image;
     let slot0Id, slot1Id, slot2Id, slot3Id;
 
     if (isUserMode) {
@@ -3229,14 +3368,16 @@
       state.secondaries = [];
     }
 
-    // 默认确保深色暗调影棚背景，彻底清除虎纹等干扰
-    state.background = '#0a0c10';
-    state.backgroundStyle = 'ps-dark';
+    // 参考图：中性近黑纸底、柔和黑白人物与蓝粉局部特效。
+    state.background = '#101010';
+    state.backgroundStyle = 'solid';
+    state.backgroundImageId = null;
+    state.mainEdgeFade = 78;
     state.border = false;
     state.borderWidth = 0;
     state.filters = {
-      ...(state.filters || cleanFilters()),
-      bw: 100, brightness: 18, contrast: 28, saturation: 100, grain: 8
+      ...cleanFilters(),
+      bw: 100, brightness: -4, contrast: 12, saturation: 100, ...template02MainFinish
     };
 
     // 1. 主图空间定位 (居中模特暗调底图，全幅沉浸)
@@ -3314,9 +3455,9 @@
     });
     const d1 = makeDetail(f1, 0, {
       x: 285, y: 185, w: 135, h: 175, rotation: 0,
-      opacity: 56,
+      opacity: template02DetailOpacities[0],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 28, brightness: 5, bw: 100,
+      filterType: 'mosaic_sharp', mosaicSize: 10, contrast: 28, brightness: 5, bw: 100, grain: 0,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3330,10 +3471,10 @@
     });
     const d2 = makeDetail(f2, 1, {
       x: 485, y: 265, w: 355, h: 280, rotation: 0,
-      opacity: 46,
+      opacity: template02DetailOpacities[1],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'color_halftone', halftoneStrength: 85, halftoneDensity: 65, halftoneSize: 6,
-      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
+      filterType: 'color_halftone', bw: 100, halftoneStrength: 90, halftoneContrast: 45, halftoneSize: 3, grain: 4,
+      duotoneDark: '#0d226b', duotoneLight: '#eed4eb', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3347,10 +3488,11 @@
     });
     const d3 = makeDetail(f3, 2, {
       x: 135, y: 300, w: 245, h: 195, rotation: 0,
-      opacity: 50,
+      opacity: template02DetailOpacities[2],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'circle_halftone', halftoneStrength: 82, grain: 24,
-      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
+      filterType: 'circle_halftone', halftoneStrength: 85, halftoneSize: 2, halftoneContrast: 0, contrast: -15,
+      halftoneOriginX: -50, halftoneOriginY: 50, grain: 10,
+      duotoneDark: '#0d226b', duotoneLight: '#eed4eb', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3364,16 +3506,17 @@
     });
     const d4 = makeDetail(f4, 3, {
       x: 590, y: 655, w: 240, h: 125, rotation: 0,
-      opacity: 48,
+      opacity: template02DetailOpacities[3],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'line_halftone', halftoneStrength: 82, halftoneAngle: 0, halftoneDensity: 60,
-      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
+      filterType: 'line_halftone', halftoneStrength: 90, halftoneSize: 3, halftoneContrast: 45, halftoneAngle: 0,
+      motionDistance: 18, motionAngle: 0, grain: 4,
+      duotoneDark: '#0d226b', duotoneLight: '#eed4eb', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
     });
 
-    // 视窗 5：中左侧袖/腰侧 · 20 像素 Bayer 位图点阵 + 渐变映射 (Bitmap 20px Dither + Gradient Map)
+    // 视窗 5：中左侧袖/腰侧 · 扩散抖动位图 + 渐变映射 (Diffusion Dither + Gradient Map)
     const f5 = makeFrame(5, {
       sourceId: secDitherId,
       x: 55, y: 675, w: 150, h: 205,
@@ -3381,10 +3524,10 @@
     });
     const d5 = makeDetail(f5, 4, {
       x: 55, y: 675, w: 150, h: 205, rotation: 0,
-      opacity: 52,
+      opacity: template02DetailOpacities[4],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'dither', ditherStep: 6, contrast: 30,
-      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
+      filterType: 'dither', bitmapMethod: 'diffusion', ditherStep: 2, contrast: 30, grain: 0,
+      duotoneDark: '#0d226b', duotoneLight: '#eed4eb', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3398,10 +3541,10 @@
     });
     const d6 = makeDetail(f6, 5, {
       x: 445, y: 690, w: 170, h: 405, rotation: 0,
-      opacity: 54,
+      opacity: template02DetailOpacities[5],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'threshold', thresholdLevel: 132, grain: 28,
-      duotoneDark: '#0d226b', duotoneLight: '#e8eeff', duotone: true,
+      filterType: 'threshold', thresholdLevel: 132, grain: 14,
+      duotoneDark: '#0d226b', duotoneLight: '#f5deee', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3415,10 +3558,10 @@
     });
     const d7 = makeDetail(f7, 6, {
       x: 70, y: 925, w: 295, h: 115, rotation: 0,
-      opacity: 52,
+      opacity: template02DetailOpacities[6],
       color: '#fbcfe8', lineWidth: 1.2, backingColor: 'transparent',
-      filterType: 'dot_halftone', halftoneStrength: 80, halftoneAngle: 45, halftoneDensity: 65, halftoneSize: 6,
-      duotoneDark: '#0d226b', duotoneLight: '#d6e2ff', duotone: true,
+      filterType: 'dot_halftone', halftoneStrength: 90, halftoneAngle: 45, halftoneContrast: 45, halftoneSize: 3, grain: 8,
+      duotoneDark: '#0d226b', duotoneLight: '#eed4eb', duotone: true,
       showHandles: true, handleColor: '#ffffff', handleStrokeColor: '#fbcfe8', handleSize: 6.5,
       showTag: false, lineOpacity: 0, connectorType: 'none',
       hasShadow: false, tape: null
@@ -3427,47 +3570,45 @@
     state.frames = [f1, f2, f3, f4, f5, f6, f7];
     state.details = [d1, d2, d3, d4, d5, d6, d7];
 
-    // 4. 排版文字 (1:1 还原日系原版教程海报文字配方与层次)
+    // 4. 先锋艺术标题；局部视窗保留日英双语特效配方。
     state.texts = [
-      // Top-Left Ps App Icon Badge
-      {
-        id: 't-ps-logo',
-        kind: 'badge',
-        badgeShape: 'ps-icon',
-        content: 'Ps',
-        x: 60, y: 44,
-        size: 30, weight: 800,
-        align: 'center',
-        font: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-        color: '#31a8ff',
-        badgeColor: '#001e36',
-        badgeBorderColor: '#31a8ff',
-        badgeWidth: 52, badgeHeight: 52,
-        opacity: 100
-      },
-      // Top Japanese Hero Title (with prominent '7')
+      // 大字、紧字距、描边与轻微倾斜，呼应模板 01 的标题层次。
       {
         id: 't-hero',
-        kind: 'ps-title',
-        content: '画像エフェクトの組み合わせ例 7 選',
-        x: 104, y: 44,
-        size: 28, weight: 900,
-        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
-        color: '#ffffff',
-        letterSpacing: 0.5,
+        kind: 'hero',
+        content: 'AFTER IMAGE',
+        x: 40, y: 14,
+        size: 82, weight: 900,
+        font: 'Impact, "Arial Black", sans-serif',
+        color: '#c2d4ff',
+        strokeColor: '#071540', strokeWidth: 3.5,
+        rotation: -1.25, scaleX: 1.2,
+        letterSpacing: -1.5,
         opacity: 100
       },
-      // English Subtitle
+      // 期刊式副标与数字索引，不再使用软件图标或教程标题。
       {
         id: 't-sub',
         kind: 'subtitle',
-        content: '7 Photoshop Image Effect Combinations That Work Well Together',
-        x: 106, y: 84,
-        size: 13, weight: 600,
-        font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        content: 'VISUAL EXPERIMENT / VOL. 02',
+        x: 42, y: 100,
+        size: 11, weight: 700,
+        font: 'ui-monospace, Consolas, monospace',
         color: '#cbd5e1',
-        letterSpacing: 0.2,
+        letterSpacing: 1.8,
         opacity: 95
+      },
+      {
+        id: 't-issue',
+        kind: 'caption',
+        content: '07',
+        x: 855, y: 17,
+        size: 78, weight: 900,
+        font: 'Impact, "Arial Black", sans-serif',
+        color: '#c2d4ff',
+        strokeColor: '#071540', strokeWidth: 3,
+        align: 'right', rotation: 1.5,
+        opacity: 100
       },
       // Recipe 1 (Top Center Headband - Mosaic + Halftone)
       {
@@ -3525,7 +3666,7 @@
       {
         id: 't-recipe-5',
         kind: 'ps-recipe',
-        content: 'モノクロ 2 階調 (20pixel)\nBitmap (20 pixels)\n+\nグラデーションマップ（調整レイヤー）\nGrain Effect (Adjustment Layer)',
+        content: 'モノクロ 2 階調 (拡散)\nDiffusion Dither (Bitmap)\n+\nグラデーションマップ（調整レイヤー）\nGradient Map (Adjustment Layer)',
         x: 218, y: 765,
         size: 10.5, weight: 700,
         font: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif',
@@ -3589,14 +3730,14 @@
     ];
 
     state.remixInfo = {
-      anchorZh: '排版 REMIX [2/2] · 先锋艺术多图拼贴',
-      anchorEn: 'Layout REMIX [2/2] · Avant-Garde Multi-Image Collage',
-      mainLayoutZh: '先锋排版 · 多图立体拼贴视窗 · 面部完全净空',
-      mainLayoutEn: 'Avant-Garde Typography · Multi-Image Physical Windows · Face Clear',
+      anchorZh: `排版 REMIX [2/${layoutRemixList.length}] · 先锋艺术多图拼贴`,
+      anchorEn: `Layout REMIX [2/${layoutRemixList.length}] · Avant-Garde Multi-Image Collage`,
+      mainLayoutZh: '黑白人物底图 · 七组透明特效视窗',
+      mainLayoutEn: 'Monochrome Portrait & Seven Transparent Effect Windows',
       typographyZh: '先锋大标题与 FIG 特效规格排版',
       typographyEn: 'Hero Avant-Garde Typography & Specimen Metadata',
-      backgroundZh: '深邃暗夜影棚微光',
-      backgroundEn: 'Deep Studio Dark Vignette',
+      backgroundZh: '近黑纸底 · 黑白人物边缘融合',
+      backgroundEn: 'Near-Black Paper / Blended Monochrome Portrait',
       strengthZh: isUserMode ? '专属多图装填' : '多图拼贴排版',
       strengthEn: isUserMode ? 'Custom Multi-Image Populated' : 'Multi-Image Specimen Layout',
       isManuallyEdited: false
@@ -3605,8 +3746,8 @@
     state.selected = null;
     emptyState.classList.add('is-hidden');
     status.textContent = isUserMode
-      ? `LAYOUT [2/2] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
-      : 'LAYOUT [2/2] / DYNAMIC COLLAGE 7';
+      ? `LAYOUT [2/${layoutRemixList.length}] · ${(state.imageName || 'CUSTOM IMAGE').toUpperCase()}`
+      : `LAYOUT [2/${layoutRemixList.length}] / DYNAMIC COLLAGE 7`;
 
     syncAllChildFramesOf('main');
     (state.secondaries || []).forEach(s => syncAllChildFramesOf(s.id));
@@ -3617,39 +3758,325 @@
     motion.play(previousPoster);
     if (showToast) {
       const resolvedToast = toastMsg || (isUserMode
-        ? '📐 排版 REMIX [2/2] (排版模板 02)：已应用错落微旋拼贴构图 (面部留空)'
-        : '📐 排版 REMIX [2/2] (排版模板 02)：错落微旋拼贴构图 (面部留空)');
+        ? `📐 排版 REMIX [2/${layoutRemixList.length}] (排版模板 02)：已应用错落微旋拼贴构图 (面部留空)`
+        : `📐 排版 REMIX [2/${layoutRemixList.length}] (排版模板 02)：错落微旋拼贴构图 (面部留空)`);
       toast(resolvedToast);
     }
   }
 
+  function applyLayoutTemplate03(images, isReset = false, showToast = true, toastMsg = '') {
+    const isUserMode = !isReset && !!state.image;
+    if (!isUserMode && (!imageAssets.get('asset-valentine-main')?.cutoutImage || !imageAssets.get('asset-valentine-camera')?.image?.complete)) {
+      ensureBlueValentineAssets(() => applyLayoutTemplate03(null,isReset,showToast,toastMsg)); return;
+    }
+    const previousPoster = motion.capture();
+    remixBaseSnapshot = null; remixLastResultSnapshot = null;
+    let ids;
+    if (isUserMode) {
+      resolveSlotAssetIds(null,false);
+      const others=state.assets.filter(asset=>asset.id!==state.mainImageId);
+      ids=Array.from({length:6},(_,i)=>others[i%Math.max(1,others.length)]?.id || state.mainImageId);
+      ids.splice(3,0,state.mainImageId);
+    } else {
+      const names=['main','support','knit','camera'];
+      state.assets=names.map(key=>{const asset=imageAssets.get('asset-valentine-'+key);return {id:asset.id,name:asset.name};});
+      state.mainImageId='asset-valentine-main';state.image=imageAssets.get(state.mainImageId).image;
+      state.imageName=imageAssets.get(state.mainImageId).name;
+      ids=['main','support','knit','camera','support','support','knit'].map(key=>'asset-valentine-'+key);
+    }
+    state.posterPaper={x:124,y:98,w:652,h:1002,headerColor:'#3152ed'};
+    state.main={id:'main-image',x:216,y:340,w:552,h:384,rotation:0,opacity:100,zoom:1,panX:0,panY:0,fit:'contain',lineWidth:0,cutout:!!imageAssets.get(state.mainImageId)?.cutoutImage};
+    const cards=[
+      [138,300,204,209],[351,300,200,209],[560,300,202,209],
+      [138,518,624,217],[138,625,289,358],[436,744,119,239],[564,744,198,239]
+    ];
+    state.secondaries=cards.map(([x,y,w,h],i)=>({id:makeId(),imageId:ids[i],x,y,w,h,rotation:0,opacity:100,lineWidth:0,filters:cleanFilters(),cutout:isUserMode && i===4 && !!imageAssets.get(ids[i])?.cutoutImage}));
+    state.fragments=[];state.frames=[];state.details=[];
+    const caption=(content,x,y,size,extra={})=>({id:makeId(),kind:'caption',content,x,y,size,font:'Arial, sans-serif',weight:'700',color:'#fafaff',opacity:100,rotation:0,align:'left',lineHeight:1.05,letterSpacing:-.5,...extra});
+    state.texts=[
+      caption('so done with love',169,153,29),
+      caption('so done with hurt',166,195,40),
+      caption('Blue\nValentine',662,152,20,{font:'Georgia, serif',weight:'400',align:'center',rotation:-15,badgeShape:'heart',badgeColor:'#cbd9ed',letterSpacing:0,lineHeight:1.05}),
+      caption('should I keep on loving you or not?',155,1008,11,{weight:'400',letterSpacing:0,backgroundColor:'#3152ed',backgroundPaddingX:8,backgroundPaddingY:2}),
+      caption('↻   ♫   ⓘ',158,1038,33,{weight:'400',color:'#81858c',letterSpacing:1}),
+      caption("SPINNIN'\nON IT",684,1032,23,{align:'center',backgroundColor:'#3152ed',backgroundPaddingX:24,backgroundPaddingY:10,lineHeight:.96,letterSpacing:-1})
+    ];
+    state.layers=[];
+    [0,1,2,3,5,6].forEach(i=>state.layers.push({type:'secondary',id:state.secondaries[i].id}));
+    state.layers.push({type:'main',id:'main-image'},{type:'secondary',id:state.secondaries[4].id});
+    state.texts.forEach(item=>state.layers.push({type:'text',id:item.id}));
+    state.selected=null;
+    state.remixInfo={anchorZh:'排版 REMIX [3/'+layoutRemixList.length+'] · 蓝色情绪拼贴',anchorEn:'Layout REMIX [3/'+layoutRemixList.length+'] · Blue Valentine',
+      mainLayoutZh:'白色唱片封套 · 前景叠压',mainLayoutEn:'White sleeve / foreground overlap',
+      typographyZh:'双行蓝底标题 · 唱片信息条',typographyEn:'Two-line headline / record footer',
+      backgroundZh:'蓝紫冷调撕纸背景',backgroundEn:'Periwinkle torn-paper backdrop',
+      strengthZh:isUserMode?'用户照片拼贴':'图库照片与自动抠图',strengthEn:isUserMode?'Uploaded photographs':'Library photos / automatic cutout',
+      narrativeZh:'主体跨格 · 照片分镜',narrativeEn:'Foreground / photo sequence',isManuallyEdited:false};
+    emptyState.classList.add('is-hidden');
+    renderImageTray();renderInspector();render();
+    if(isReset){history=[];historyIndex=-1;}
+    commit();updateRemixCard();updateMasterRemixControls();
+    if(zoomMode==='fit')requestAnimationFrame(fitWorkspace);
+    motion.play(previousPoster);
+    if(showToast)toast(toastMsg || '排版 REMIX [3/'+layoutRemixList.length+'] · 蓝色情绪拼贴');
+  }
+  function applyLayoutTemplate04(images,isReset=false,showToast=true,toastMsg='') {
+    if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset)){
+      preparePinkDesktop(()=>applyLayoutTemplate04(null,isReset,showToast,toastMsg),isReset);return;
+    }
+    const previousPoster=motion.capture(),isUserMode=!isReset && !!state.image;
+    remixBaseSnapshot=null;remixLastResultSnapshot=null;
+    let support;
+    if(isUserMode){resolveSlotAssetIds(null,false);support=state.assets.find(a=>a.id!==state.mainImageId)?.id || state.mainImageId;}
+    else {
+      state.assets=['hero','portrait'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
+      state.mainImageId='asset-pink-hero';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;support='asset-pink-portrait';
+    }
+    state.posterPaper=null;state.backgroundImageId=null;
+    state.main={id:'main-image',x:0,y:70,w:900,h:1130,rotation:0,opacity:100,zoom:1,panX:0,panY:0,fit:'cover',cutout:false};
+    state.secondaries=[
+      {id:makeId(),imageId:state.mainImageId,x:92,y:710,w:460,h:614,rotation:-5,cutout:!!imageAssets.get(state.mainImageId)?.cutoutImage},
+      {id:makeId(),imageId:support,x:677,y:609,w:202,h:264,rotation:0,windowFrame:true,windowTitle:'@yongyong',windowColor:'#e793bd',zoom:1.05,panY:92},
+      {id:makeId(),imageId:state.mainImageId,x:655,y:897,w:223,h:278,rotation:0,windowFrame:true,windowTitle:'little_star.jpg',windowColor:'#e793bd',zoom:1.65,panY:160}
+    ].map(s=>({opacity:100,lineWidth:0,filters:cleanFilters(),...s}));
+    state.fragments=[];state.frames=[];state.details=[];
+    const text=(content,x,y,size,extra={})=>({id:makeId(),kind:'caption',content,x,y,size,font:'Arial, sans-serif',weight:'700',color:'#da8eb3',opacity:100,rotation:0,align:'left',lineHeight:1.05,letterSpacing:0,...extra});
+    const sticker=(shape,x,y,w,h,content='',extra={})=>text(content,x,y,17,{badgeShape:shape,badgeWidth:w,badgeHeight:h,badgeColor:'#e99ac2',...extra});
+    state.texts=[
+      text('AESPA LOVE',30,20,116,{kind:'hero',font:'Comic Sans MS, Arial Rounded MT Bold, sans-serif',textStyle:'balloon',balloonDepth:5,balloonShine:95,letterSpacing:2,scaleX:1.08,scaleY:1.15,color:'#df91b8'}),
+      sticker('burst',23,259,230,158,'Wish you\nwere here!',{size:20,rotation:-8}),
+      sticker('heart-arrow',41,448,122,110,'',{rotation:-12}),
+      text('Good luck ☆\nin everything',35,567,21,{strokeColor:'#ffffff',strokeWidth:6}),
+      text('Little Star',30,644,43,{font:'Segoe Script, cursive',strokeColor:'#ffffff',strokeWidth:8,rotation:-4}),
+      sticker('folder',32,790,104,110,'FOLDERS',{size:13,color:'#263741'}),
+      sticker('globe',40,946,91,108,'INTERNET',{size:12,color:'#263741'}),
+      sticker('computer',29,1080,111,109,'MY COMPUTER',{size:11,color:'#263741'}),
+      sticker('folder',806,204,55,57),text('No.1',797,272,38,{strokeColor:'#ffffff',strokeWidth:6}),
+      sticker('ribbon',650,342,229,33,'今日もかわいい ★',{size:13,color:'#7896a4'}),
+      text('YONGYONG CLUB',669,557,19,{strokeColor:'#ffffff',strokeWidth:6,backgroundEnabled:true,backgroundColor:'#ebb4cf',backgroundPaddingX:6,backgroundPaddingY:5}),
+      sticker('checker-heart',846,649,48,46,'LOVE\nCLUB',{size:7,color:'#b06c97'}),sticker('checker-heart',633,1040,74,68,'LOVE\nYOU',{size:9,color:'#b06c97',rotation:10}),
+      ...[['star',309,171,26,28,-14,'#c6afd9'],['bunny',355,167,26,34,12,'#a4dbe9'],['checker-heart',398,178,28,27,-9,'#eaa6c8'],['flower',448,169,31,32,11,'#e79cc5'],['bunny',500,165,25,34,8,'#f5e8dc'],['flower',553,184,30,31,-8,'#b0d8dc'],['butterfly',318,223,37,32,-8,'#afd9df'],['bunny',377,216,25,35,9,'#e99ac2'],['checker-heart',449,221,30,29,-5,'#adcfdf'],['flower',505,230,30,30,6,'#eaa6c8'],['checker-heart',562,233,40,38,13,'#e99ac2']].map(([shape,x,y,w,h,rotation,badgeColor])=>sticker(shape,x,y,w,h,'',{rotation,badgeColor})),
+      text('友',192,560,42,{color:'#e28bb4',strokeColor:'#e3f2ed',strokeWidth:3,backgroundEnabled:true,backgroundColor:'#f8d5e7',backgroundPaddingX:8,backgroundPaddingY:5,rotation:4}),
+      text('☆',25,643,26,{strokeColor:'#ffffff',strokeWidth:5}),text('☆',232,657,25,{strokeColor:'#ffffff',strokeWidth:5}),
+      sticker('ribbon',744,315,135,23,'きみの夢をみるよ',{size:10,color:'#72aeb8'}),
+      sticker('book',760,438,109,80,'',{rotation:-7}),
+      sticker('checker-heart',637,765,62,58,'LOVE\nYOU',{size:8,color:'#b06c97',rotation:-8}),
+      sticker('checker-heart',838,1121,55,53,'LOVE\nCLUB',{size:7,color:'#b06c97',rotation:8})
+    ];
+    state.layers=[{type:'main',id:'main-image'},...state.secondaries.map(s=>({type:'secondary',id:s.id})),...state.texts.map(t=>({type:'text',id:t.id}))];
+    state.selected=null;state.remixInfo={anchorZh:'排版 REMIX [4/'+layoutRemixList.length+'] · 粉色桌面拼贴',anchorEn:'Pink Desktop',mainLayoutZh:'满版肖像 · 抠图前景 · 双窗口',mainLayoutEn:'Portrait / cutout / two windows',typographyZh:'气球标题与贴纸',typographyEn:'Balloon title / stickers',backgroundZh:'淡粉纸面',backgroundEn:'Pale pink paper',strengthZh:isUserMode?'用户照片拼贴':'自有图库与本地人像抠图',strengthEn:'Local portrait collage',isManuallyEdited:false};
+    emptyState.classList.add('is-hidden');renderImageTray();renderInspector();render();
+    if(isReset){history=[];historyIndex=-1;}commit();updateRemixCard();updateMasterRemixControls();
+    if(zoomMode==='fit')requestAnimationFrame(fitWorkspace);motion.play(previousPoster);
+    if(showToast)toast(toastMsg || '排版 REMIX [4/'+layoutRemixList.length+'] · 粉色桌面拼贴');
+  }
+  function applyLayoutDesktop(index,images,isReset=false,showToast=true,toastMsg='') {
+    if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset)){
+      preparePinkDesktop(()=>applyLayoutDesktop(index,null,isReset,showToast,toastMsg),isReset,index===4?'模板五':'模板六');return;
+    }
+    const previousPoster=motion.capture(),userMode=!isReset && !!state.image;
+    remixBaseSnapshot=null;remixLastResultSnapshot=null;
+    if(userMode)resolveSlotAssetIds(null,false);
+    else {
+      state.assets=['hero','portrait'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
+      state.mainImageId='asset-pink-hero';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;
+    }
+    const others=state.assets.filter(a=>a.id!==state.mainImageId),source=i=>others.length?others[i%others.length].id:state.mainImageId;
+    state.posterPaper=null;state.backgroundImageId=null;state.fragments=[];state.frames=[];state.details=[];state.texts=[];state.secondaries=[];state.layers=[];
+    const text=(content,x,y,size,extra={})=>{
+      const t={id:makeId(),kind:'caption',content,x,y,size,font:'Arial, sans-serif',weight:'400',color:'#f9fbfa',opacity:100,rotation:0,align:'left',lineHeight:1.15,...extra};
+      state.texts.push(t);state.layers.push({type:'text',id:t.id});return t;
+    };
+    const sticker=(shape,x,y,w,h,extra={})=>text('',x,y,14,{badgeShape:shape,badgeWidth:w,badgeHeight:h,badgeColor:'#f7f8f5',...extra});
+    const card=(imageId,x,y,w,h,extra={})=>{
+      const s={id:makeId(),imageId,x,y,w,h,opacity:100,rotation:0,lineWidth:0,filters:cleanFilters(),...extra};
+      state.secondaries.push(s);state.layers.push({type:'secondary',id:s.id});return s;
+    };
+    card(state.mainImageId,-35,-35,970,1270,{id:'desktop-background'});
+    state.main={id:'main-image',x:index===4?610:102,y:index===4?412:125,w:index===4?345:450,h:index===4?815:980,fit:'contain',cutout:!!imageAssets.get(state.mainImageId)?.cutoutImage,lineWidth:0,opacity:100,rotation:0,zoom:1,panX:0,panY:index===4?-140:-180};
+    const foregroundScale=Math.min(state.main.w/state.image.naturalWidth,state.main.h/state.image.naturalHeight);
+    // Align short portraits upward without clipping the head of a tall source.
+    state.main.panY=Math.max(-(state.main.h-state.image.naturalHeight*foregroundScale)/2,state.main.panY);
+    if(index===4){
+      sticker('doodle',570,36,330,550,{color:'#e7f0ec',opacity:70});
+      sticker('grid',52,531,704,565,{badgeColor:'#f1f0e7',color:'#77807a'});
+      card(source(0),106,696,277,357,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1',panY:100});
+      card(state.mainImageId,373,628,176,265,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1'});
+      card(source(1),393,900,160,154,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1',zoom:1.35});
+      card(state.mainImageId,568,688,146,157,{windowFrame:true,windowStyle:'circle',windowColor:'#fbfaf1',zoom:1.5,panY:65});
+      card(source(2),564,866,146,157,{windowFrame:true,windowStyle:'circle',windowColor:'#fbfaf1'});
+      sticker('panel',23,84,235,169,{content:'Recent',color:'#262d30',size:15,weight:700,cornerRadius:8,badgeColor:'#e9eae4'});
+      card(state.mainImageId,41,125,533,556,{windowFrame:true,windowStyle:'photo-booth',windowTitle:'Photo Booth ›\n1043 PHOTOS 521 VIDEOS',windowColor:'#f8f8f2',panY:75});
+      for(let i=0;i<5;i++)card(i%2?state.mainImageId:source(i),53+i*103,579,92,68,{lineWidth:1,color:'#6b7879',zoom:i===2?1.4:1});
+      card(source(0),599,76,267,324,{windowFrame:true,windowStyle:'airdrop',windowTitle:'AirDrop\nYongyong would like to share a photo.',windowColor:'#fafaf7'});
+      text('[INSTAGRAM] TODAY\nMY PHOTO DIARY',590,492,11,{weight:700});
+      state.layers.push({type:'main',id:'main-image'});
+      sticker('panel',25,24,189,25,{content:'Yongyong                 ⌕',color:'#74818a',size:11,badgeColor:'#f8f8f3'});
+      text('Home    Gallery    Events    Personal Photos    ≡',236,30,11,{letterSpacing:1});
+      text('DESIGNED BY\nYONGYONG',803,23,7,{weight:700});
+      text('⌂\n\n♟\n\n◎\n\n◇\n\n✎\n\n♥\n\nⓘ',867,852,18,{font:'Segoe UI Symbol',align:'center',lineHeight:1.15,strokeColor:'rgba(35,65,65,.35)',strokeWidth:1.2});
+      sticker('dock',254,1115,385,61,{badgeColor:'#e5e6df'});
+      text('PHOTO ARCHIVE / 05',24,1087,10,{rotation:-90});
+    }else {
+      sticker('focus',105,222,212,301,{size:13,content:'☾   Do Not Disturb\n♟   Personal\n♥\n▱   Sleep\n▣   Work',badgeColor:'#f7f7f2'});
+      state.layers.push({type:'main',id:'main-image'});
+      sticker('printer',455,172,354,63,{badgeColor:'#e1e3e2'});
+      sticker('panel',503,203,252,817,{badgeColor:'#fff',cornerRadius:0});
+      [0,1,2].forEach(i=>card(i===0?state.mainImageId:source(i-1),519,231+i*245,220,223,{panY:i===0?75:0}));
+      card(source(0),160,551,326,407,{rotation:-6,windowFrame:true,windowStyle:'airdrop',windowTitle:'AirDrop\nYongyong would like to share a photo.',windowColor:'#fafaf7'});
+      sticker('panel',441,659,174,31,{content:"God you're so pretty.",color:'#262b2a',size:12,badgeColor:'#fff'});
+      sticker('panel',146,43,610,64,{content:'▦     My Account    ›    Posts    ›    Today',color:'#979c9b',size:16,badgeColor:'#fff',cornerRadius:32});
+      sticker('flower',174,172,82,80,{badgeColor:'#fff'});
+      sticker('sparkle',23,336,53,87,{badgeColor:'#d1eee8'});
+      sticker('sparkle',777,464,64,112,{badgeColor:'#d1eee8'});
+      sticker('sparkle',822,533,31,53,{badgeColor:'#d1eee8'});
+      sticker('sparkle',95,674,30,67,{badgeColor:'#e3f4ef'});
+      text('📷',691,422,58,{rotation:-12,font:'Segoe UI Emoji'});
+      text('Aa\n\n∞\n\n▣\n\n◎\n\n⊖\n\n⌄',44,568,31,{font:'Segoe UI Symbol',lineHeight:1.08,strokeColor:'rgba(35,65,65,.35)',strokeWidth:1.2});
+      sticker('dock',157,1100,595,85,{badgeColor:'#e5e7df'});
+    }
+    const name=index===4?'Photo Booth':'AirDrop Diary';
+    state.selected=null;state.remixInfo={anchorZh:'排版 REMIX ['+(index+1)+'/'+layoutRemixList.length+'] · '+name,anchorEn:name,mainLayoutZh:index===4?'照片窗口 · 网格拼贴 · 右侧前景':'虚化背景 · 左侧前景 · 竖向照片条',mainLayoutEn:name,typographyZh:'桌面栏与照片信息',typographyEn:'Desktop / photo diary',backgroundZh:index===4?'海蓝照片桌面':'柔焦照片背景',backgroundEn:'Photo desktop',strengthZh:userMode?'用户照片拼贴':'自有图库与本地人像抠图',strengthEn:'Local portrait collage',isManuallyEdited:false};
+    emptyState.classList.add('is-hidden');renderImageTray();renderInspector();render();
+    if(isReset){history=[];historyIndex=-1;}commit();updateRemixCard();updateMasterRemixControls();
+    if(zoomMode==='fit')requestAnimationFrame(fitWorkspace);motion.play(previousPoster);
+    if(showToast)toast(toastMsg || '排版 REMIX ['+(index+1)+'/'+layoutRemixList.length+'] · '+name);
+  }
+  function applyLayoutNarrative(index,images,isReset=false,showToast=true,toastMsg='') {
+    if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !narrativeReady(index,isReset)){
+      prepareNarrative(()=>applyLayoutNarrative(index,null,isReset,showToast,toastMsg),index,isReset);return;
+    }
+    const previousPoster=motion.capture(),userMode=!isReset && !!state.image;
+    remixBaseSnapshot=null;remixLastResultSnapshot=null;
+    if(userMode)resolveSlotAssetIds(null,false);
+    else {
+      state.assets=narrativeDemoPhotos[index].map(([key])=>{const a=imageAssets.get('asset-story-'+index+'-'+key);return {id:a.id,name:a.name};});
+      state.mainImageId='asset-story-'+index+'-main';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;
+    }
+    const others=state.assets.filter(a=>a.id!==state.mainImageId),source=i=>others[i%Math.max(1,others.length)]?.id || state.mainImageId;
+    state.posterPaper=null;state.backgroundImageId=null;state.fragments=[];state.frames=[];state.details=[];state.secondaries=[];state.texts=[];state.layers=[];
+    const text=(content,x,y,size,extra={})=>{
+      const t={id:makeId(),kind:'caption',content,x,y,size,font:'Arial, sans-serif',weight:'400',color:index===6?'#fff':'#2222ff',rotation:0,opacity:100,align:'left',lineHeight:1.13,...extra};
+      state.texts.push(t);state.layers.push({type:'text',id:t.id});return t;
+    };
+    const sticker=(shape,x,y,w,h,extra={})=>text('',x,y,16,{badgeShape:shape,badgeWidth:w,badgeHeight:h,badgeColor:index===6?'#fff':'#2113ff',...extra});
+    const card=(imageId,x,y,w,h,extra={})=>{
+      const s={id:makeId(),imageId,x,y,w,h,rotation:0,opacity:100,lineWidth:0,filters:cleanFilters(),...extra};state.secondaries.push(s);state.layers.push({type:'secondary',id:s.id});return s;
+    };
+    const emoji=(content,x,y,size,extra={})=>text(content,x,y,size,{font:'Segoe UI Emoji',...extra});
+    const hand=(content,x,y,size,extra={})=>text(content,x,y,size,{font:'Comic Sans MS, cursive',weight:700,strokeColor:'#202018',strokeWidth:4,...extra});
+    if(index===6){
+      state.main={id:'main-image',x:0,y:0,w:900,h:1200,opacity:100,rotation:0,zoom:1,panX:0,panY:0,fit:'cover',cutout:false,lineWidth:0};state.layers.push({type:'main',id:'main-image'});
+      card(state.mainImageId,28,139,655,311,{lineWidth:4,color:'#fff',panY:65});
+      card(source(0),210,498,650,310,{lineWidth:4,color:'#fff',panY:100});
+      card(source(1),35,833,652,303,{lineWidth:4,color:'#fff',panY:115});
+      text('‹ Albums',28,20,34);text('Recents',64,82,41,{weight:700});
+      sticker('panel',625,13,142,49,{content:'Select',size:26,color:'#fff',badgeColor:'#74736c',cornerRadius:24});
+      sticker('panel',791,14,62,49,{content:'•••',size:24,color:'#fff',badgeColor:'#74736c',cornerRadius:24});
+      text('Aa   Create\n\n∞    Boomerang\n\n▣    Layout\n\n◎    Hands-Free\n\n◉    Multi-Capture\n\n⊖    Level\n\n⌃    Close',54,160,15,{lineHeight:1.06,strokeColor:'rgba(10,10,10,.5)',strokeWidth:1.2,backgroundColor:'#171717',backgroundOpacity:45,backgroundPaddingX:8,backgroundPaddingY:8});
+      emoji('🫶',659,96,78);
+      hand('Fancy\ndinner',723,212,28,{backgroundColor:'#80601d',backgroundPaddingX:5,backgroundPaddingY:1});
+      sticker('sketch-arrow',807,293,88,77,{rotation:92,strokeWidth:4});
+      hand('Small moments,\none photo at a time.\nKeep the good ones.',33,538,17);
+      sticker('sketch-arrow',80,611,92,70,{rotation:-14,strokeWidth:4});
+      emoji('🧸',75,731,101);
+      sticker('speech',768,519,71,58,{color:'#a4a4a0',badgeColor:'#fff',content:'•••',size:17});
+      hand('*yum yum',700,706,13);
+      hand('One more photo\nbefore heading home.',59,860,16);
+      emoji('🤎',91,964,78);emoji('🥢',647,847,91,{rotation:-17});
+      hand('Hot\nramen',717,923,29,{backgroundColor:'#80601d',backgroundPaddingX:5,backgroundPaddingY:0});
+      sticker('outline-box',711,915,76,39,{badgeColor:'#c63522',rotation:-4,strokeWidth:4});
+      sticker('sketch-arrow',833,985,53,43,{rotation:92,strokeWidth:4});emoji('🍜',695,1045,120);
+      text('Inicio    Galería    Sobre    Contacto    Perfil',68,1160,25);
+    }else {
+      const blue='#2113ff';state.main={id:'main-image',x:476,y:73,w:386,h:488,opacity:100,rotation:0,zoom:1,panX:0,panY:0,fit:'contain',cutout:!!imageAssets.get(state.mainImageId)?.cutoutImage,lineWidth:0,cutoutBorderWidth:11,cutoutBorderColor:'#fff',cutoutShadow:13};
+      sticker('panel',15,14,194,121,{badgeColor:'#d5d5d2',content:'this       like\nis           it,\nmy post',color:'#292a29',size:15,cornerRadius:0});
+      sticker('retro-window',80,45,203,103,{badgeColor:blue,content:'Photo archive\n01   02   03   04',size:10,color:'#dadfff'});
+      sticker('checker-panel',157,87,195,61,{badgeColor:'#171719'});
+      sticker('profile-card',41,140,465,267,{rotation:-6,badgeColor:blue,color:'#191919',content:'@yongyong\n'+state.assets.length+' posts | 21 photos | 08 templates\nMy personal photo archive\nTiny moments / kept close\nyongyong.visual',size:18});
+      card(source(1),76,176,107,111,{windowFrame:true,windowStyle:'circle',windowColor:'#fff',rotation:-6});
+      sticker('retro-window',678,83,207,189,{rotation:7,badgeColor:'#075ebc',content:'Window\n\n?????',size:22,color:'#161719'});
+      sticker('retro-window',25,624,272,241,{rotation:3,badgeColor:'#17137e',content:'Recycle Bin\nFile   Edit   View\nName               Size',size:15,color:'#444'});
+      card(source(2),47,706,167,109,{rotation:3,lineWidth:2,color:'#777'});
+      sticker('profile-card',458,733,390,250,{rotation:5,badgeColor:blue,color:'#191919',content:'PHOTO DIARY\n'+state.assets.length+' posts | 21 photos | 08 templates\nSaved on this device\nMy people / my memories\nFrom the photo archive',size:17});
+      card(source(0),464,775,83,94,{windowFrame:true,windowStyle:'circle',windowColor:'#fff',filters:{...cleanFilters(),bw:100}});
+      text('PERSONAL ARCHIVE',304,38,15,{color:'#77729b',letterSpacing:1.1});
+      text('Keep the moments.\nMake them yours.',222,485,17,{color:'#77729b',lineHeight:1.4});
+      text('A PHOTO DIARY',583,681,16,{color:'#77729b',letterSpacing:1});
+      text('Saved for later.',550,1018,20,{color:'#77729b'});
+      sticker('connector-path',393,328,181,301,{badgeColor:blue,strokeWidth:4});
+      text('?',74,439,99,{font:'Georgia, serif',weight:900,color:blue,rotation:-14});text('?',172,423,58,{font:'Georgia, serif',weight:900,color:blue,rotation:13});
+      state.layers.push({type:'main',id:'main-image'});
+      card(source(0),53,664,475,432,{fit:'contain',cutout:!!imageAssets.get(source(0))?.cutoutImage,cutoutBorderWidth:12,cutoutBorderColor:'#fff',cutoutShadow:13});
+      sticker('outline-box',444,69,334,273,{badgeColor:blue,strokeWidth:4});
+      sticker('outline-box',77,646,333,294,{badgeColor:blue,strokeWidth:4});
+      text('OH WOW',625,30,27,{font:'Arial Black, Arial',weight:900,color:'#fff',backgroundColor:blue,backgroundPaddingX:17,backgroundPaddingY:9});
+      text("WHO’S THIS?",246,609,22,{font:'Arial Black, Arial',weight:900,color:'#fff',backgroundColor:blue,backgroundPaddingX:13,backgroundPaddingY:8});
+      text('COOLEST',532,578,28,{font:'Arial Black, Arial',weight:900,color:'#fff',backgroundColor:blue,backgroundPaddingX:2,backgroundPaddingY:0});
+      [[779,267,43],[387,469,36],[57,596,46],[788,1020,48],[64,1112,36]].forEach(([x,y,size],i)=>text(i===2?'↻':i===3?'js':'!!!',x,y,size,{font:i===2||i===3?'Impact, Arial Black':'Arial, sans-serif',weight:i===2||i===3?900:700,letterSpacing:i===2||i===3?0:2,color:'#fff',backgroundColor:blue,backgroundPaddingX:10,backgroundPaddingY:4}));
+      sticker('computer',766,580,109,95,{badgeColor:'#acf2fa',color:blue});
+      sticker('retro-window',33,1106,232,94,{badgeColor:'#101c87',content:'ABC To: F\nDo you still think\nof me every day?',size:16,color:'#1e2391'});
+      sticker('recycle-bin',710,1044,158,147,{badgeColor:'#75aaff'});
+    }
+    const name=index===6?'After Hours Album':'Electric Blue Archive';
+    state.selected=null;state.remixInfo={anchorZh:'排版 REMIX ['+(index+1)+'/'+layoutRemixList.length+'] · '+name,anchorEn:name,mainLayoutZh:index===6?'暗色相册 · 三张错落照片':'黑白双人像 · 电蓝索引框',mainLayoutEn:name,typographyZh:index===6?'白色手写标注与箭头':'复古窗口与蓝色标签',typographyEn:'Photo diary / editable graphics',backgroundZh:index===6?'暖暗满版照片':'纯白桌面',backgroundEn:index===6?'Warm photo backdrop':'White desktop',strengthZh:userMode?'用户照片拼贴':'自有图库多图示范',strengthEn:'Local library collage',isManuallyEdited:false};
+    emptyState.classList.add('is-hidden');renderImageTray();renderInspector();render();
+    if(isReset){history=[];historyIndex=-1;}commit();updateRemixCard();updateMasterRemixControls();
+    if(zoomMode==='fit')requestAnimationFrame(fitWorkspace);motion.play(previousPoster);if(showToast)toast(toastMsg || '排版 REMIX ['+(index+1)+'/'+layoutRemixList.length+'] · '+name);
+  }
   const layoutRemixList = [
     { id: 'layout-01', nameZh: 'Aespa 电光档案构图', apply: applyLayoutTemplate01 },
-    { id: 'layout-02', nameZh: '图像选区采样 7 选构图', apply: applyLayoutTemplate02 }
+    { id: 'layout-02', nameZh: '图像选区采样 7 选构图', apply: applyLayoutTemplate02 },
+    { id: 'layout-03', nameZh: '蓝色情绪拼贴构图', apply: applyLayoutTemplate03 },
+    { id: 'layout-04', nameZh: '粉色桌面拼贴构图', apply: applyLayoutTemplate04 },
+    { id: 'layout-05', nameZh: 'Photo Booth 照片桌面构图', apply: (...args)=>applyLayoutDesktop(4,...args) },
+    { id: 'layout-06', nameZh: 'AirDrop 照片日记构图', apply: (...args)=>applyLayoutDesktop(5,...args) },
+    { id: 'layout-07', nameZh: '夜晚相册叙事构图', apply: (...args)=>applyLayoutNarrative(6,...args) },
+    { id: 'layout-08', nameZh: '电蓝黑白档案构图', apply: (...args)=>applyLayoutNarrative(7,...args) }
   ];
 
   const masterRemixList = [
     { nameZh: 'Aespa 电光档案', shortZh: 'Aespa 电光', layoutIdx: 0, filterIdx: 0 },
-    { nameZh: '图像特效搭配 7 选', shortZh: '特效 7 选', layoutIdx: 1, filterIdx: 1 }
+    { nameZh: '图像特效搭配 7 选', shortZh: '特效 7 选', layoutIdx: 1, filterIdx: 1 },
+    { nameZh: '蓝色情绪拼贴', shortZh: 'Blue Valentine', layoutIdx: 2, filterIdx: 2 },
+    { nameZh: '粉色桌面拼贴', shortZh: 'Pink Desktop', layoutIdx: 3, filterIdx: 3 },
+    { nameZh: 'Photo Booth 照片桌面', shortZh: 'Photo Booth', layoutIdx: 4, filterIdx: 4 },
+    { nameZh: 'AirDrop 照片日记', shortZh: 'AirDrop Diary', layoutIdx: 5, filterIdx: 5 },
+    { nameZh: '夜晚相册叙事', shortZh: 'After Hours Album', layoutIdx: 6, filterIdx: 6 },
+    { nameZh: '电蓝黑白档案', shortZh: 'Electric Blue Archive', layoutIdx: 7, filterIdx: 7 }
   ];
 
   let currentLayoutIndex = 0;
   let currentFilterIndex = 0;
   let currentMasterIndex = -1;
+  let historyTransactionDepth = 0;
+
+  function updateMasterRemixControls() {
+    const total = masterRemixList.length;
+    const m = masterRemixList[currentMasterIndex];
+    if (state.image) {
+      status.textContent = 'LAYOUT [' + (currentLayoutIndex + 1) + '/' + layoutRemixList.length + '] · '
+        + (state.imageName || layoutRemixList[currentLayoutIndex]?.nameZh || 'IMAGE').toUpperCase();
+    }
+    const dockSub = document.querySelector('#posterMasterRemixSub');
+    const dockTag = document.querySelector('#posterMasterRemixTag');
+    const toplineText = document.querySelector('#posterMasterRemixToplineText');
+    document.querySelectorAll('[data-poster-action="master-remix"]').forEach(button => {
+      button.title = `总 REMIX：保留当前图片，切换 ${total} 组模板的排版与滤镜`;
+    });
+    if (dockSub) dockSub.textContent = m
+      ? `保留当前图片 · 排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1}`
+      : masterRemixList.map((item, idx) => `[${idx + 1}/${total}] ${item.shortZh}`).join(' + ');
+    if (dockTag) dockTag.textContent = m ? `[${currentMasterIndex + 1}/${total}] ↻` : `${total} 组全套 ↻`;
+    if (toplineText) toplineText.textContent = m ? `[${currentMasterIndex + 1}/${total}] ${m.shortZh}` : `${total} 组全套轮播`;
+  }
 
   function cycleLayoutRemix() {
+    if (!state.image) { toast('请先上传图片，或选择一组示范作品。'); return; }
     const total = layoutRemixList.length;
     currentLayoutIndex = (currentLayoutIndex + 1) % total;
     const item = layoutRemixList[currentLayoutIndex];
-    if (item?.apply) {
-      if (typeof ensureKarinaMultiAssets === 'function') {
-        ensureKarinaMultiAssets(images => {
-          item.apply(images, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
-        });
-      } else {
-        item.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
-      }
-    }
+    item?.apply(null, false, true, `📐 排版 REMIX [${currentLayoutIndex + 1}/${total}]：${item.nameZh}`);
   }
 
   function cycleFilterRemix() {
@@ -3662,24 +4089,32 @@
   }
 
   function applyMasterRemixByIndex(index, images, isReset = false, customMsg = '') {
+    if(index>=6 && typeof window!=='undefined' && window.posterCutout?.removeBackground && !narrativeReady(index,isReset)){
+      prepareNarrative(()=>applyMasterRemixByIndex(index,images,isReset,customMsg),index,isReset);return;
+    }
+    if(index>=3 && index<=5 && typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset)){
+      preparePinkDesktop(()=>applyMasterRemixByIndex(index,images,isReset,customMsg),isReset,'模板'+(index+1));return;
+    }
+    // Flush a pending adjustment before the composed layout + filter operation.
+    commit();
     const total = masterRemixList.length;
     const resolvedIndex = ((index % total) + total) % total;
     const m = masterRemixList[resolvedIndex];
-    currentMasterIndex = isReset ? -1 : resolvedIndex;
+    currentMasterIndex = resolvedIndex;
     currentLayoutIndex = m.layoutIdx;
     currentFilterIndex = m.filterIdx;
 
-    layoutRemixList[m.layoutIdx].apply(images, isReset, false);
-    filterRemixList[m.filterIdx].apply(false);
+    historyTransactionDepth++;
+    try {
+      layoutRemixList[m.layoutIdx].apply(images, isReset, false);
+      filterRemixList[m.filterIdx].apply(false);
+    } finally {
+      historyTransactionDepth--;
+    }
+    updateMasterRemixControls();
+    commit();
 
-    const dockSub = document.querySelector('#posterMasterRemixSub');
-    if (dockSub) dockSub.textContent = `[${resolvedIndex + 1}/${total}] 排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1}`;
-    const dockTag = document.querySelector('#posterMasterRemixTag');
-    if (dockTag) dockTag.textContent = `[${resolvedIndex + 1}/${total}] ↻`;
-    const toplineText = document.querySelector('#posterMasterRemixToplineText');
-    if (toplineText) toplineText.textContent = `[${resolvedIndex + 1}/${total}] ${m.shortZh}`;
-
-    const isUserMode = !isReset && hasUserUploadedImages();
+    const isUserMode = !isReset && !!state.image;
     const resolvedToast = customMsg || (isUserMode
       ? `⚡ 总 REMIX [${resolvedIndex + 1}/${total}] 已生效：已为您的图片应用模板 0${resolvedIndex + 1} (${m.nameZh})`
       : `⚡ 总 REMIX [${resolvedIndex + 1}/${total}] 已生效：${m.nameZh} (排版 0${m.layoutIdx + 1} + 滤镜 0${m.filterIdx + 1})`);
@@ -3687,18 +4122,9 @@
   }
 
   function cycleMasterRemix() {
+    if (!state.image) { toast('请先上传图片，或选择一组示范作品。'); return; }
     const nextIndex = (currentMasterIndex + 1 + masterRemixList.length) % masterRemixList.length;
-    if (nextIndex === 0 && typeof ensureKarinaMultiAssets === 'function') {
-      ensureKarinaMultiAssets(images => {
-        applyMasterRemixByIndex(nextIndex, images, false);
-      });
-    } else if (nextIndex === 1 && typeof ensureModelTechwearAsset === 'function') {
-      ensureModelTechwearAsset(() => {
-        applyMasterRemixByIndex(nextIndex, null, false);
-      });
-    } else {
-      applyMasterRemixByIndex(nextIndex, null, false);
-    }
+    applyMasterRemixByIndex(nextIndex, null, false);
   }
 
   function applyTemplate01(images, isReset = false, toastMsg = '') {
@@ -3716,117 +4142,73 @@
   }
 
   function loadDemo(show = true) {
-    if (show && hasSecondaryImages() && !window.confirm('恢复示范模板会替换当前海报及历史记录。确定恢复吗？')) return;
+    if (show && (hasUserUploadedImages() || hasSecondaryImages() || state.remixInfo?.isManuallyEdited || history.length > 1) && !window.confirm('恢复示范模板会替换当前海报及历史记录。确定恢复吗？')) return;
+    if(show && typeof draftHasEdits !== 'undefined') draftHasEdits=true;
     ensureKarinaMultiAssets(images => {
+      if (!show && hasUserUploadedImages()) return;
       applyMasterRemixByIndex(0, images, true, show ? '示范模板已恢复为 Aespa 多图精选档案。' : '');
     });
   }
 
   function loadDemo02(show = true) {
-    if (show && hasSecondaryImages() && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？')) return;
+    if (show && (hasUserUploadedImages() || hasSecondaryImages() || state.remixInfo?.isManuallyEdited || history.length > 1) && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？')) return;
+    if(show && typeof draftHasEdits !== 'undefined') draftHasEdits=true;
     ensureModelTechwearAsset(() => {
+      if (!show && hasUserUploadedImages()) return;
       applyMasterRemixByIndex(1, null, true, show ? '已切换至示范模板 02：先锋暗调机能拆解。' : '');
     });
   }
 
-  function preset(name) {
-    if (name === 'electric' || name === 'template-01-electric') {
-      currentFilterIndex = 0; applyFilterTemplate01(true); return;
-    }
-    const all = {
-      red:      { background:'#d8d6d0', backgroundStyle:'scan',  accent:'#c32631', border:'#ffffff', borderWidth:7,
-                  filters:{bw:0,brightness:-2,contrast:32,saturation:110,halftone:0,halftoneSize:9,halftoneDensity:58,halftoneAngle:15,grain:14,rough:0,outline:0,scan:20,scanAngle:0,paper:16,dirty:10,compression:0,invert:0,posterize:0} },
-      blue:     { background:'#dbe3e9', backgroundStyle:'grid',  accent:'#1f54bd', border:'#171717', borderWidth:5,
-                  filters:{bw:0,brightness:0,contrast:25,saturation:100,halftone:0,halftoneSize:7,halftoneDensity:62,halftoneAngle:-15,grain:10,rough:0,outline:0,scan:12,scanAngle:90,paper:8,dirty:0,compression:0,invert:0,posterize:0} },
-      editorial:{ background:'#e4dfd3', backgroundStyle:'paper', accent:'#2355b7', border:'#ffffff', borderWidth:6,
-                  filters:{bw:0,brightness:2,contrast:28,saturation:100,halftone:0,halftoneSize:12,halftoneDensity:63,halftoneAngle:22,grain:18,rough:0,outline:0,scan:10,scanAngle:0,paper:35,dirty:12,compression:0,invert:0,posterize:0} },
-      chrome:   { background:'#0b1220', backgroundStyle:'liquid-chrome', accent:'#c8d8ff', border:'#ffffff', borderWidth:4,
-                  filters:{bw:0,brightness:5,contrast:30,saturation:80,halftone:0,halftoneSize:8,halftoneDensity:55,halftoneAngle:0,grain:18,rough:0,outline:0,scan:8,scanAngle:0,paper:0,dirty:0,compression:0,invert:0,posterize:0} },
-      xerox:    { background:'#d8d5cc', backgroundStyle:'solid', accent:'#111111', border:'#111111', borderWidth:0,
-                  filters:{bw:100,brightness:2,contrast:95,saturation:0,halftone:80,halftoneSize:15,halftoneDensity:48,halftoneAngle:-18,grain:65,rough:50,outline:0,scan:55,scanAngle:0,paper:65,dirty:70,compression:25,invert:0,posterize:45} }
-    };
-    const p = all[name]; if (!p) return;
-    const previousPoster = motion.capture();
-    state.background = p.background;
-    state.backgroundStyle = p.backgroundStyle || 'solid';
-    state.backgroundImageId = null;
-    state.border = true;
-    state.borderColor = p.border;
-    state.borderWidth = p.borderWidth;
-    state.filters = { ...cleanFilters(), ...p.filters };
-    (state.frames || []).forEach(f => { f.color = p.accent; f.tagBackground = p.accent; f.tagTextColor = '#ffffff'; });
-    (state.details || []).forEach(d => { d.color = p.accent; d.lineColor = p.accent; });
-    (state.texts || []).forEach(t => { if (t.kind === 'hero' || t.kind === 'repeat') t.color = p.accent; });
-    document.querySelectorAll('[data-poster-preset]').forEach(b => b.classList.toggle('is-active', b.dataset.posterPreset === name));
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
-    toast(`🎨 风格预设已应用：${name.toUpperCase()}`);
+  function loadDemo03(show = true) {
+    if (show && (hasUserUploadedImages() || hasSecondaryImages() || state.remixInfo?.isManuallyEdited || history.length > 1)
+      && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？')) return;
+    if(show && typeof draftHasEdits !== 'undefined') draftHasEdits=true;
+    const requestedScene = snapshot();
+    ensureBlueValentineAssets(() => {
+      if (snapshot() !== requestedScene) {toast('作品已修改，未替换成示范。');return;}
+      if (!show && hasUserUploadedImages()) return;
+      applyMasterRemixByIndex(2,null,true,show ? '示范 03 · 蓝色情绪拼贴' : '');
+    });
   }
-
-  function applyPosterBackground(style) {
-    const colors = {
-      'electric-tiger': '#001fd4',
-      'liquid-chrome': '#0b1220',
-      'pure-black': '#000000',
-      'pure-white': '#ffffff',
-      solid: '#efeee8',
-      grid: '#e5e9e8',
-      chrome: '#dbe7f4',
-      scan: '#e5dfd2',
-      dots: '#e9e6df',
-      'soft-y2k': '#e5e2ef',
-      blueprint: '#b9cbed'
-    };
-    if (style === 'electric-tiger') {
-      state.backgroundStyle = 'electric-tiger';
-      state.background = '#001fd4';
-      state.borderColor = '#ffffff';
-    } else if (style === 'liquid-chrome') {
-      state.backgroundStyle = 'liquid-chrome';
-      state.background = '#0b1220';
-      state.borderColor = '#ffffff';
-      (state.texts || []).forEach(t => {
-        if (['#111111', '#151515', '#161616', '#171717', '#000000', '#191816', '#181818'].includes(t.color)) {
-          t.color = '#ffffff';
-        }
-      });
-    } else if (style === 'pure-black') {
-      state.backgroundStyle = 'solid';
-      state.background = '#000000';
-      state.borderColor = '#ffffff';
-      (state.texts || []).forEach(t => {
-        if (['#111111', '#151515', '#161616', '#171717', '#000000', '#191816', '#181818'].includes(t.color)) {
-          t.color = '#ffffff';
-        }
-      });
-    } else if (style === 'pure-white') {
-      state.backgroundStyle = 'solid';
-      state.background = '#ffffff';
-      state.borderColor = '#111111';
-      (state.texts || []).forEach(t => {
-        if (['#ffffff', '#f5f5f5', '#fff'].includes(t.color)) {
-          t.color = '#111111';
-        }
-      });
-    } else {
-      state.backgroundStyle = style;
-      state.background = colors[style] || state.background;
-    }
-    setSelected(null,null); renderInspector(); render(); commit(); markManuallyEdited(); toast(`背景已切换 · ${style.toUpperCase()}`);
+  function loadDemo04(show=true) {
+    if(show && (hasUserUploadedImages() || hasSecondaryImages() || state.remixInfo?.isManuallyEdited || history.length>1)
+      && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？'))return;
+    if(show)draftHasEdits=true;
+    preparePinkDesktop(()=>applyMasterRemixByIndex(3,null,true,show?'示范 04 · 粉色桌面拼贴':''),true);
   }
-
+  function loadDemoDesktop(index,show=true) {
+    if(show && (hasUserUploadedImages() || hasSecondaryImages() || state.remixInfo?.isManuallyEdited || history.length>1)
+      && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？'))return;
+    if(show)draftHasEdits=true;
+    const apply=()=>applyMasterRemixByIndex(index,null,true,'示范 0'+(index+1)+' · '+masterRemixList[index].shortZh);
+    if(index>=6)prepareNarrative(apply,index,true);else preparePinkDesktop(apply,true,'模板'+(index+1));
+  }
   const layoutTemplates = [
     { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
-    { id: 'template-02-ps7', nameZh: '模板 02 · 图像特效搭配 7 选', apply: applyLayoutTemplate02 }
+    { id: 'template-02-ps7', nameZh: '模板 02 · 图像特效搭配 7 选', apply: applyLayoutTemplate02 },
+    { id: 'template-03-blue-valentine', nameZh: '模板 03 · 蓝色情绪拼贴', apply: applyLayoutTemplate03 },
+    { id: 'template-04-pink-desktop', nameZh: '模板 04 · 粉色桌面拼贴', apply: applyLayoutTemplate04 },
+    { id: 'template-05-photo-booth', nameZh: '模板 05 · Photo Booth 照片桌面', apply: (...args)=>applyLayoutDesktop(4,...args) },
+    { id: 'template-06-airdrop-diary', nameZh: '模板 06 · AirDrop 照片日记', apply: (...args)=>applyLayoutDesktop(5,...args) },
+    { id: 'template-07-after-hours', nameZh: '模板 07 · 夜晚相册叙事', apply: (...args)=>applyLayoutNarrative(6,...args) },
+    { id: 'template-08-electric-blue', nameZh: '模板 08 · 电蓝黑白档案', apply: (...args)=>applyLayoutNarrative(7,...args) }
   ];
 
   function applyLayoutTemplate(templateId) {
-    const idx = layoutRemixList.findIndex(x => x.id === templateId || x.nameZh.includes(templateId));
-    if (idx !== -1) {
-      currentLayoutIndex = idx;
-      layoutRemixList[idx].apply(null, false, true);
-    } else {
+    if (!templateId) {
       cycleLayoutRemix();
+      return true;
     }
+    const idx = layoutRemixList.findIndex((item, index) => item.id === templateId
+      || layoutTemplates[index]?.id === templateId || item.nameZh === templateId
+      || layoutTemplates[index]?.nameZh === templateId);
+    if (idx === -1) {
+      toast(`未找到排版模板：${templateId}`);
+      return false;
+    }
+    currentLayoutIndex = idx;
+    layoutRemixList[idx].apply(null, false, true);
+    return true;
   }
 
   function triggerMasterRemix() {
@@ -3841,21 +4223,43 @@
     cycleFilterRemix();
   }
 
+  function renderExportCanvas(width, height) {
+    const out = document.createElement('canvas');
+    out.width = width; out.height = height;
+    const previousContext = ctx, previousScale = renderScale, previousBefore = isBeforePreviewActive;
+    // Use a readback surface for repeatable image and gradient-text exports.
+    const exportContext = out.getContext('2d', {willReadFrequently:true});
+    if (!exportContext) throw new Error('无法创建高清导出画布。');
+    ctx = exportContext;
+    renderScale = width / W;
+    isBeforePreviewActive = false;
+    exportContext.save();
+    try {
+      exportContext.scale(width / W, height / H);
+      render(false);
+      return out;
+    } finally {
+      exportContext.restore();
+      ctx = previousContext;
+      renderScale = previousScale;
+      isBeforePreviewActive = previousBefore;
+    }
+  }
   function exportPoster() {
     if (!state.image) return toast('请先上传主图。');
     try {
-      render(false);
       const [targetW, targetH] = state.exportResolution || [1200, 1600];
-      const out = document.createElement('canvas');
-      out.width = targetW;
-      out.height = targetH;
-      const outCtx = out.getContext('2d');
-      outCtx.imageSmoothingEnabled = true;
-      outCtx.imageSmoothingQuality = 'high';
-      outCtx.drawImage(canvas, 0, 0, targetW, targetH);
+      const out = renderExportCanvas(targetW, targetH);
       const link = document.createElement('a');
       link.download = `collage-poster-${targetW}x${targetH}-${Date.now()}.png`;
       link.href = out.toDataURL('image/png');
+      const savedExport = $('#posterLastExportLink');
+      if (savedExport) {
+        savedExport.href = link.href;
+        savedExport.download = link.download;
+        savedExport.textContent = `保存刚导出的 PNG · ${targetW} × ${targetH}`;
+        savedExport.hidden = false;
+      }
       link.click();
       render();
       toast(`PNG 海报已导出 · ${targetW} × ${targetH}`);
@@ -3872,6 +4276,12 @@
     if (!a) return;
     if (a === 'demo') loadDemo();
     if (a === 'demo-02') loadDemo02();
+    if (a === 'demo-03') loadDemo03();
+    if (a === 'demo-04') loadDemo04();
+    if (a === 'demo-05') loadDemoDesktop(4);
+    if (a === 'demo-06') loadDemoDesktop(5);
+    if (a === 'demo-07') loadDemoDesktop(6);
+    if (a === 'demo-08') loadDemoDesktop(7);
     if (a === 'frame') addFrame();
     if (a === 'detail') addDetail();
     if (a === 'connector') toast('每张局部图已自动拥有连接线。');
@@ -3881,6 +4291,17 @@
     if (a === 'master-remix') { triggerMasterRemix(); return; }
     if (a === 'filter-remix') { remixFilters(); return; }
     if (a === 'remix') remixLayout($('#posterRemixStrength')?.value || 'medium');
+    if (a === 'cutout-current' || a === 'cutout-restore') {
+      if (cutoutBusy) return;
+      if (!state.image) { toast('请先上传一张人像照片。'); return; }
+      const type = state.selected?.type;
+      if (['main','secondary'].includes(type) && selectedObject()) setSelected(type, selectedObject());
+      else setSelected('main', state.main);
+      const object = selectedObject(), asset = imageAssets.get(state.selected.type === 'secondary' ? object.imageId : state.mainImageId);
+      const enabled = !!(object.cutout && asset?.cutoutImage);
+      if (a === 'cutout-current' ? !enabled : enabled) togglePersonCutout();
+      return;
+    }
     if (['hero', 'subtitle', 'caption', 'micro', 'repeat'].includes(a)) addText(a);
     if (a === 'select-main') {
       if (!state.main) state.main = makeMain();
@@ -3911,8 +4332,6 @@
   });
   $('.poster-tools').addEventListener('input', handleInspectorInput);
   $('.poster-tools').addEventListener('change', handleInspectorInput);
-  document.querySelectorAll('[data-poster-preset]').forEach((b) => b.addEventListener('click', () => preset(b.dataset.posterPreset)));
-  document.querySelectorAll('[data-poster-background]').forEach((b) => b.addEventListener('click', () => applyPosterBackground(b.dataset.posterBackground)));
   $('#posterBackgroundClear')?.addEventListener('click', () => { state.backgroundImageId = null; renderInspector(); render(); commit(); markManuallyEdited(); toast('自定义背景图已移除。'); });
   $('#posterExportButton').addEventListener('click', exportPoster);
   const resSelect = $('#posterResolutionSelect');
@@ -3929,15 +4348,19 @@
         const tag = tagMap[resSelect.value] || `${Math.round(w / 1000 * 10) / 10}K`;
         if (resTag) resTag.textContent = tag;
         if (exportBtn) exportBtn.title = `导出高清 PNG (${w} × ${h} · ${tag})`;
+        scheduleDraftSave();
         toast(`海报导出分辨率已设为 ${w} × ${h} (${tag})`);
       }
     });
   }
   function handleInspectorInput(e) {
-    const c = e.target, p = c.dataset.prop || c.dataset.global;
+    const c = e.target; let p = c.dataset.prop || c.dataset.global;
     if (!p) return;
-    let root = c.dataset.global ? (p in state.filters ? state.filters : state) : selectedObject();
+    let root = c.dataset.global ? (inspectorFilterKeys.has(p) || p in state.filters ? state.filters : state) : selectedObject();
+    if (p === 'paperEnabled') {state.posterPaper=c.checked?{x:124,y:98,w:652,h:1002,color:'#fafaff',headerColor:'#3152ed',headerH:178}:null;renderInspector();render();commit();markManuallyEdited();return;}
+    if (p.startsWith('paper_')) {root=state.posterPaper;p=p.slice(6);}
     if (!root) return;
+    if (p === 'backgroundEnabled' && c.checked && !root.backgroundColor) root.backgroundColor='#3152ed';
 
     if (p === 'mainOpacity' || p === 'mainZoom' || p === 'mainPanX' || p === 'mainPanY' || p === 'mainRotation') {
       if (!state.main) state.main = makeMain();
@@ -4000,6 +4423,12 @@
     }
 
     if (state.selected?.type === 'secondary' && !c.dataset.global) {
+      if (p === 'imageId') {
+        if (root.imageId === c.value || !imageAssets.has(c.value) || !state.assets.some(a=>a.id===c.value)) return;
+        root.imageId = c.value; root.cutout = false;
+        renderImageTray(); renderInspector(); render(); commit(); markManuallyEdited();
+        return;
+      }
       if (p === 'secAppearance') {
         const v = c.value;
         root.appearance = v;
@@ -4034,7 +4463,7 @@
         markManuallyEdited();
         return;
       }
-      if (['bw','brightness','contrast','saturation','halftone','halftoneSize','halftoneDensity','halftoneAngle','scan','scanAngle','grain','rough','paper','dirty','compression','outline','invert','posterize'].includes(p)) {
+      if (inspectorFilterKeys.has(p)) {
         if (!root.filters) root.filters = cleanFilters();
         root = root.filters;
       }
@@ -4049,9 +4478,17 @@
         syncFrameRelativeToParent(root);
       }
     }
-    if (p === 'filterType' && state.selected?.type === 'detail') {
+    if (p === 'filterType') {
+      const strengthKey = c.dataset.global || state.selected?.type === 'secondary' ? 'halftone' : 'halftoneStrength';
+      if (['color_halftone','dot_halftone','circle_halftone','line_halftone','halftone'].includes(root.filterType) && (root[strengthKey] ?? 0) === 0) {
+        root[strengthKey] = 75;
+      } else if (root.filterType === 'original') {
+        root[strengthKey] = 0;
+      }
+      if (['duotone','gradient_map'].includes(root.filterType)) root.duotone = true;
       renderInspector();
     }
+    if (p === 'bitmapMethod') renderInspector();
     scheduleRender();
     const out = c.closest('.poster-field')?.querySelector('output');
     if (out) out.textContent = c.value;
@@ -4067,16 +4504,6 @@
     const filterTemplateBtn = e.target.closest('[data-poster-filter-template]');
     if (filterTemplateBtn) {
       applyFilterTemplate01(true);
-      return;
-    }
-    const presetBtn = e.target.closest('[data-poster-preset]');
-    if (presetBtn) {
-      preset(presetBtn.dataset.posterPreset);
-      return;
-    }
-    const bgPresetBtn = e.target.closest('[data-poster-background]');
-    if (bgPresetBtn) {
-      applyPosterBackground(bgPresetBtn.dataset.posterBackground);
       return;
     }
     const rerollChromeBtn = e.target.closest('[data-poster-action="reroll-chrome"]');
@@ -4165,8 +4592,10 @@
       renderInspector();
       return;
     }
+    if (a === 'cutout') { togglePersonCutout(); return; }
     if (a === 'reset-filters') {
       state.filters = cleanFilters();
+      state.mainEdgeFade = 0;
       if (state.main) {
         state.main.opacity = 100;
         state.main.zoom = 1;
@@ -4250,6 +4679,7 @@
           state.image = mainAsset.image;
           state.imageName = mainAsset.name;
           state.mainImageId = mainAsset.id;
+          state.main.cutout = false;
           ensureMainLayer();
           emptyState.classList.add('is-hidden');
           status.textContent = `MAIN IMAGE / ${mainAsset.name}`;
@@ -4265,6 +4695,7 @@
             state.secondaries.forEach((sec, idx) => {
               const targetAsset = loaded[idx % loaded.length];
               sec.imageId = targetAsset.id;
+              sec.cutout = false;
             });
           } else if (loaded.length > 1) {
             for (let i = 1; i < loaded.length; i++) {
@@ -4292,6 +4723,7 @@
               state.image = asset.image;
               state.imageName = asset.name;
               state.mainImageId = asset.id;
+              state.main.cutout = false;
               ensureMainLayer();
               emptyState.classList.add('is-hidden');
               status.textContent = `MAIN IMAGE / ${asset.name}`;
@@ -4319,7 +4751,7 @@
         const image = new Image();
         image.onload = () => {
           const id = makeId();
-          newlyLoaded[index] = { id, name: file.name, image, src: reader.result };
+          newlyLoaded[index] = { id, name: file.name, image, src: reader.result, origin:'upload' };
           stepDone();
         };
         image.onerror = () => {
@@ -4516,6 +4948,10 @@
     initDrag(resizerRight, false);
   }
 
+  window.addEventListener('beforeunload',e=>{if(draftDirty){e.preventDefault();e.returnValue='';}});
+  $('#posterSaveDraftButton')?.addEventListener('click',()=>{saveDraftNow();});
+  window.posterSaveDraft = saveDraftNow;
+  window.posterDraftPending = () => draftDirty;
   window.posterState = state;
   window.posterImageAssets = imageAssets;
   window.posterSetMainImage = setMainImage;
@@ -4538,6 +4974,9 @@
   window.posterApplyTemplate02 = applyTemplate02;
   window.posterLoadDemo = loadDemo;
   window.posterLoadDemo02 = loadDemo02;
+  window.posterLoadDemo03 = loadDemo03;
+  window.posterApplyLayoutTemplate03 = applyLayoutTemplate03;
+  window.posterApplyFilterTemplate03 = applyFilterTemplate03;
   window.posterApplyLayoutTemplate01 = applyLayoutTemplate01;
   window.posterApplyFilterTemplate01 = applyFilterTemplate01;
   window.posterApplyLayoutTemplate02 = applyLayoutTemplate02;
@@ -4545,5 +4984,5 @@
   Object.defineProperty(window, 'posterHistory', { get: () => history, configurable: true });
   window.posterSyncAllChildFramesOf = syncAllChildFramesOf;
   window.posterRender = render;
-  renderInspector();render();loadDemo02(false);requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
+  renderInspector();render();initializePoster();requestAnimationFrame(fitWorkspace);updateRemixCard();setupPosterResizers();
 })();

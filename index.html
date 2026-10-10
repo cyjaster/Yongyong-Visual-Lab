@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261001-readable" />
-    <link rel="stylesheet" href="poster.css?v=20261001-readable" />
+    <link rel="stylesheet" href="poster.css?v=20261009-cutout-direct" />
   </head>
   <body>
     <div class="app-shell">
@@ -297,9 +297,16 @@
               </div>
               <div class="poster-image-tray" id="posterImageTray"></div>
             </div>
-            <div class="poster-demo-button-row" style="display:flex;gap:6px;margin-bottom:6px;">
-              <button class="poster-action poster-demo-button" style="flex:1;padding:8px 6px;font-size:12px;display:flex;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo" title="恢复 Aespa 电光多图示范"><span>示范 01</span><kbd>DEMO 01</kbd></button>
-              <button class="poster-action poster-demo-button" style="flex:1;padding:8px 6px;font-size:12px;display:flex;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-02" title="查看先锋机能模特 7 选拆解"><span>示范 02</span><kbd>DEMO 02</kbd></button>
+            <span class="poster-tool-label">示范作品 · 会更换图片和排版</span>
+            <div class="poster-demo-button-row" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px;">
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo" title="恢复 Aespa 电光多图示范"><span>示范 01</span><kbd>DEMO 01</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-02" title="查看先锋机能模特 7 选拆解"><span>示范 02</span><kbd>DEMO 02</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-03" title="查看蓝色情绪拼贴示范"><span>示范 03</span><kbd>DEMO 03</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-04" title="查看粉色桌面拼贴示范"><span>示范 04</span><kbd>DEMO 04</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-05" title="查看Photo Booth 照片桌面示范"><span>示范 05</span><kbd>DEMO 05</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-06" title="查看AirDrop 照片日记示范"><span>示范 06</span><kbd>DEMO 06</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-07" title="查看夜晚相册叙事示范"><span>示范 07</span><kbd>DEMO 07</kbd></button>
+              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-08" title="查看电蓝黑白档案示范"><span>示范 08</span><kbd>DEMO 08</kbd></button>
             </div>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
             <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
@@ -370,27 +377,8 @@
           </details>
 
           <details class="poster-tool-group poster-remix-group" open>
-            <summary class="poster-tool-summary">排版 REMIX 设置 <small>LAYOUT REMIX</small></summary>
-            <label class="poster-remix-strength" for="posterRemixStrength">
-              <span>REMIX Strength</span>
-              <select id="posterRemixStrength" aria-label="随机排版强度">
-                <option value="light">Light · 克制微调</option>
-                <option value="medium" selected>Medium · 标准平衡</option>
-                <option value="wild">Wild · 大胆实验</option>
-              </select>
-            </label>
-            <label class="poster-remix-strength" for="posterCompositionMode">
-              <span>Composition</span>
-              <select id="posterCompositionMode" aria-label="构图模式">
-                <option value="balanced" selected>Balanced · 结构平衡</option>
-                <option value="experimental">Experimental · 破格构图</option>
-              </select>
-            </label>
-            <label class="poster-remix-copy" for="posterRemixCopy">
-              <input id="posterRemixCopy" type="checkbox" checked />
-              <span><b>Shuffle Copy</b><small>标题与信息文案一起变化</small></span>
-            </label>
-            <small>4 种视觉锚点 · 70/30 混乱预算</small>
+            <summary class="poster-tool-summary">模板切换 <small>LAYOUT REMIX</small></summary>
+            <small>排版 REMIX 切换模板构图；总 REMIX 同时切换构图与滤镜。</small>
             <div class="poster-remix-status" id="posterRemixStatus" aria-live="polite"></div>
           </details>
           </div>
@@ -401,20 +389,27 @@
               <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
               <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
             </div>
-            <button class="poster-master-remix-dock" id="posterMasterRemixDock" type="button" data-poster-action="master-remix" title="总 REMIX：循环切换 2 组精选总效果（排版+滤镜）">
+            <p class="poster-cutout-target" id="posterCutoutTarget" role="status" aria-live="polite">当前照片：主图</p>
+            <button class="poster-action" id="posterCutoutEntry" type="button" data-poster-action="cutout-current">✂ 自动抠图</button>
+            <button class="poster-action" id="posterCutoutRestore" type="button" data-poster-action="cutout-restore" hidden>↩ 恢复背景</button>
+            <p class="poster-cutout-hint">先点画布中的照片，再点自动抠图</p>
+            <button class="poster-master-remix-dock" id="posterMasterRemixDock" type="button" data-poster-action="master-remix" title="总 REMIX：保留当前图片，切换 8 组模板的排版与滤镜">
               <div class="master-dock-top">
                 <div class="master-dock-header">
                   <span class="master-dock-spark">⚡</span>
                   <span class="master-dock-title">总 REMIX</span>
                 </div>
-                <span class="master-dock-tag" id="posterMasterRemixTag">2 组全套 ↻</span>
+                <span class="master-dock-tag" id="posterMasterRemixTag">8 组全套 ↻</span>
               </div>
-              <div class="master-dock-sub" id="posterMasterRemixSub">[1/2] Aespa 电光 + [2/2] 特效 7 选</div>
+              <div class="master-dock-sub" id="posterMasterRemixSub">八组模板 · 保留当前图片</div>
             </button>
             <div class="poster-dock-primary">
               <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="排版 REMIX ↻"><b>排版 REMIX ↻</b></button>
               <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
             </div>
+            <a id="posterLastExportLink" hidden>保存刚导出的 PNG</a>
+            <button class="poster-action" id="posterSaveDraftButton" type="button">保存可编辑草稿</button>
+            <small id="posterDraftStatus" role="status" aria-live="polite">草稿 · 准备中</small>
             <small>LOCAL ONLY · 图片仅在本地处理</small>
           </section>
         </aside>
@@ -424,10 +419,10 @@
         <section class="poster-stage" aria-label="海报编辑画布">
           <div class="poster-stage-topline">
             <span id="posterStatus">上传主图后开始索引</span>
-            <button class="poster-master-remix-topline" type="button" data-poster-action="master-remix" title="总 REMIX：循环切换 6 组精选总效果（排版+滤镜）">
+            <button class="poster-master-remix-topline" type="button" data-poster-action="master-remix" title="总 REMIX：保留当前图片，切换 8 组模板的排版与滤镜">
               <span class="master-spark">⚡</span>
               <span class="master-label">总 REMIX</span>
-              <span class="master-template" id="posterMasterRemixToplineText">6 组全套轮播</span>
+              <span class="master-template" id="posterMasterRemixToplineText">8 组全套轮播</span>
               <span class="master-badge">1-CLICK</span>
             </button>
             <div class="poster-resolution-badge-wrap" title="切换海报分辨率 (当前默认 1.2K 推荐)">
@@ -494,8 +489,12 @@
     <script src="mode-switcher.js?v=20260921-2"></script>
     <script src="assets/demo-collage-data.js"></script>
     <script src="poster-motion.js?v=20260930-paper"></script>
-    <script src="poster-composition.js?v=20260930-editorial"></script>
     <script src="poster-liquid-chrome.js?v=20261001-v1"></script>
-    <script src="poster.js?v=20261004-ps7"></script>
+    <script src="poster-filter-engine.js?v=20261009-native-export"></script>
+    <script src="poster-pixels.js?v=20261009-stable"></script>
+    <script src="poster-draft.js?v=20261009-local"></script>
+    <script src="poster-cutout.js?v=20261009-stable"></script>
+    <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
+    <script src="poster.js?v=20261010-function-fit-font-backing"></script>
   </body>
 </html>

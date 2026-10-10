@@ -1,0 +1,11 @@
+# Local duplicate checkout and original archive; gallery originals are committed.
+/Yongyong-Visual-Lab/
+/aespa.zip
+/node_modules/
+
+# Keep the current acceptance exports; historical runs remain local.
+/samples/results/*
+!/samples/results/template-function-acceptance/
+/samples/results/template-function-acceptance/*
+!/samples/results/template-function-acceptance/20261010/
+/samples/results/template-function-acceptance/20261010/source-before/

@@ -117,3 +117,31 @@ card.height = 1440;
 3. 给每个图层增加一个可编辑名称，例如“粉色柔光”，并把名称写进 JSON。
 
 完成这三个练习，你就基本掌握了这个项目的数据结构、界面事件和 Canvas 输出链。
+
+
+## 2026-10-09：像素源与可编辑草稿
+
+poster-pixels.js 在照片首次渲染前缓存画布和首次解码像素；copyPixels 向分割提供独立 RGBA 副本，不能再次读共享渲染画布。poster-cutout.js 仍按需加载本地 MediaPipe CPU，分割使用独立画布。
+
+poster-draft.js 只负责 IndexedDB current 记录事务；poster.js 复用 snapshot／restore 收集照片、正在使用的透明缓存、背景与导出尺寸，排队保存，并在事务成功后更新状态。commit／restore／分辨率编辑触发保存；失败保持 dirty 和 beforeunload 保护。initializePoster 校验并解码后恢复，snapshot 冲突保护新上传；无草稿回到模板一。只保存当前作品，刷新前的历史不序列化。
+
+
+## 2026-10-09：第四组模板与装饰渲染
+
+poster-decor.js 提供 PosterDecor.draw／bounds：特殊气球字与八种原生 Canvas 贴纸共用现有 Text 对象；badgeWidth／Height 决定图形大小，bounds 让点击图形本体能选中。普通文字仍走原渲染路径。poster.js 的 applyLayoutTemplate04 组织主图、三个辅图和装饰；applyFilterTemplate04 只设置调色，三个模板注册表均增加第四组。
+
+preparePinkDesktop 按上传／示范身份加载主图并调用既有本地分割；前后比较 snapshot，准备成功才执行模板回调。示范 04 来源固定为自有图库 20／03；总 REMIX 保留上传素材，示范按钮显式重置。默认初始化仍为模板一，已有 IndexedDB 草稿优先恢复。
+
+drawSecondaryImage 将 windowFrame 的标题栏从照片高度里扣除，按 zoom／pan 限制有效裁切，再画标题栏。sourceRect 为关联取样复用照片区域与裁切参数，旋转围绕完整卡片中心。Inspector 增加窗口／取景、气球字／高光及贴纸形状等现有字段控件，继续通过统一输入与历史保存。
+
+renderExportCanvas 和 raster 的 2D 上下文使用 willReadFrequently，当前 Edge 实测避免局部窗口／渐变文字的重复导出差异。poster.css 的 1040px 三列断点隐藏两条分栏把手。真实行为检查在 checks/template04-browser-check.cjs，只上传 03／20 并下载 PNG；离线回归补窗口取样几何与四模板循环。
+
+
+## 2026-10-09：当前素材与示范来源分开
+
+cycleMasterRemix／cycleLayoutRemix 直接调用模板，不加载别组示范；resolveSlotAssetIds 及模板 02／03／04、第四模板准备改为按当前照片存在且非显式重置判断保留。hasUserUploadedImages 保留给真正的首次上传、启动保护等来源判断。旧变量 isUserMode 在排版分配中现在表示保留当前照片，不表示将示范标成上传。显式 loadDemo 的 isReset=true 才进入内置素材分配。checks/pre-template05-remix-browser-check.cjs 以示范四自身的 20／03 原照片执行循环、换主、取消／确认示范、导出和草稿检查。
+
+
+## 2026-10-10：模板四细颗粒与新图形
+
+poster-decor.js 的 shapes、sticker 与 bounds 接入 heart-arrow／flower／butterfly／book，poster.js 的徽章选择同步列出。checker 接收 badgeColor，burst 使用薄荷细格纹；图标白描边按 badge 尺寸缩小。applyLayoutTemplate04 更新装饰坐标、细字与窗口标题；applyFilterTemplate04 使用原噪声参数和彩色模式、轻纸纹。drawPosterBackground 新增 pink-paper 固定种子图案，复用 backgroundTextureOpacity 和 Inspector 背景选择。统一状态快照与草稿直接保存这些已有字段，不新增序列化分支。检查脚本输出改为日期目录 20261010-texture-details，并增加参数关闭与新图形改色的实际 PNG 断言。
