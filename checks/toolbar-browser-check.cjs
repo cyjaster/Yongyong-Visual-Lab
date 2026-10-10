@@ -21,6 +21,7 @@ const base=process.env.POSTER_BASE_URL||'http://localhost:8089/';
    });
    assert.equal(geometry.inStage,true);assert.equal(geometry.masters,1);assert.equal(geometry.overflow,false);
    assert.ok(geometry.dock.bottom<=geometry.viewport.top,'Toolbar must not overlap canvas');
+   if(width>820)assert.ok(geometry.dock.height<=100,'Compact toolbar must stay within 100px');
    if(width>820){assert.ok(geometry.side.height>650,'Sidebar must use the full available height');assert.ok(geometry.side.right<=geometry.dock.left);}
    for(const b of geometry.buttons){assert.ok(b.left>=geometry.dock.left-1&&b.right<=geometry.dock.right+1,b.text+' must fit toolbar');}
    await page.locator('.poster-stage-topline').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,'toolbar-'+width+'.png')});

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261001-readable" />
-    <link rel="stylesheet" href="poster.css?v=20261010-top-toolbar" />
+    <link rel="stylesheet" href="poster.css?v=20261011-compact-toolbar" />
   </head>
   <body>
     <div class="app-shell">
@@ -412,13 +412,10 @@
               <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
               <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
             </div>
-            <button class="poster-action" id="posterCutoutEntry" type="button" data-poster-action="cutout-current">✂ 自动抠图</button>
+            <button class="poster-action" id="posterCutoutEntry" title="先点画布中的照片，再点自动抠图；照片只在本机处理" type="button" data-poster-action="cutout-current">✂ 自动抠图</button>
             <button class="poster-action" id="posterCutoutRestore" type="button" data-poster-action="cutout-restore" hidden>↩ 恢复背景</button>
             </div>
-            <div class="poster-toolbar-status">
-            <p class="poster-cutout-target" id="posterCutoutTarget" role="status" aria-live="polite">当前照片：主图</p>
-            <p class="poster-cutout-hint">先点画布中的照片，再点自动抠图</p>
-            </div>
+
             <div class="poster-toolbar-row">
             <button class="poster-master-remix-dock" id="posterMasterRemixDock" type="button" data-poster-action="master-remix" title="总 REMIX：保留当前图片，切换 8 组模板的排版与滤镜">
               <div class="master-dock-top">
@@ -437,8 +434,9 @@
             <button class="poster-action" id="posterSaveDraftButton" type="button">保存草稿</button>
             </div>
             <div class="poster-toolbar-status">
+            <p class="poster-cutout-target" id="posterCutoutTarget" role="status" aria-live="polite">当前照片：主图</p>
             <small id="posterDraftStatus" role="status" aria-live="polite">草稿 · 准备中</small>
-            <small>LOCAL ONLY · 图片仅在本地处理</small>
+
             </div>
           </section>
           </div>
