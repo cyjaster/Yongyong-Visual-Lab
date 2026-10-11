@@ -73,7 +73,7 @@ body.is-resizing-poster canvas {
   pointer-events: none !important;
 }
 /* Canvas actions stay in normal flow, leaving the entire sidebar scrollable. */
-.poster-action-dock { flex-basis: 100%; min-width: 0; padding: 6px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); letter-spacing: normal; }
+.poster-action-dock { flex-basis: 100%; min-width: 0; padding: 6px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; gap: 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); letter-spacing: normal; }
 .poster-toolbar-row { display: contents; }
 .poster-toolbar-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .poster-action-dock .poster-action, .poster-action-dock .poster-remix-button { width: auto; margin: 0; min-height: 28px; padding: 4px 6px; justify-content: center; font-size: 11px; }
@@ -85,6 +85,8 @@ body.is-resizing-poster canvas {
 #posterCutoutRestore, #posterExportButton, #posterSaveDraftButton { border-color: var(--line); }
 .poster-cutout-target { margin: 0; color: var(--ink); font-size: 10px; font-weight: 700; }
 .poster-toolbar-status small { color: var(--muted); font-size: 10px; }
+.poster-action-dock .poster-filter-remix-button { width: auto; min-height: 28px; margin: 0; padding: 4px 6px; justify-content: center; font-size: 11px; font-weight: 700; }
+.poster-toolbar-status #posterSaveDraftButton { min-height: 22px; padding: 2px 6px; font-size: 10px; margin-left: auto; }
 .poster-tool-summary { display: flex; gap: 8px; align-items: baseline; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; }
 .poster-tool-summary::-webkit-details-marker { display: none; }
 .poster-tool-summary small { color: var(--muted); font: 10px ui-monospace, Consolas, monospace; }
@@ -172,8 +174,6 @@ body.is-resizing-poster canvas {
 .poster-remix-button:hover { border-color: var(--ink); color: var(--white); background: var(--ink); }
 .poster-remix-button:hover b { color: var(--white); }
 .poster-filter-remix-button { width: 100%; min-height: 48px; margin: 4px 0 10px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; overflow: hidden; position: relative; border: 1px solid #002FA7; border-radius: 3px; color: #ffffff; background: #002FA7; cursor: pointer; transition: all 120ms ease; }
-.poster-filter-remix-button b { font: 900 14px ui-monospace, Consolas, monospace; letter-spacing: .06em; color: #ffffff; }
-.poster-filter-remix-button small { font: 700 8.5px ui-monospace, Consolas, monospace; letter-spacing: .08em; color: #eaf0ff; }
 .poster-filter-remix-button:hover { background: #002075; border-color: #002075; box-shadow: 0 2px 8px rgba(0, 47, 167, 0.28); }
 .poster-remix-group > small { display: block; margin-top: 7px; color: var(--muted); font-size: 8px; line-height: 1.45; }
 .poster-remix-status { margin-top: 9px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
@@ -311,7 +311,6 @@ body.is-resizing-poster canvas {
 [data-inspector-pane] .poster-label-main { font-size: 12px; }
 [data-inspector-pane] .poster-field { padding: 7px 0; }
 .poster-inspector-tabs button:focus-visible, .poster-inspector-nav select:focus-visible { outline: 2px solid #002fa7; outline-offset: 2px; }
-[data-inspector-pane] .poster-filter-remix-button { padding: 6px 8px !important; font-size: 12px !important; box-shadow: none !important; }
 .poster-accordion .poster-field { padding: 8px 0; }
 .poster-field { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .poster-field:last-child { border-bottom: 0; }
@@ -473,5 +472,6 @@ body.is-resizing-poster canvas {
 @media (hover: none) { .poster-viewport::after { display: none; } }
 @media (prefers-reduced-motion: reduce) { .poster-viewport::after { transition: none; } }
 
-@media (max-width: 520px) { .poster-action-dock .poster-action, .poster-action-dock .poster-remix-button, .poster-action-dock .poster-history-actions button, .poster-master-remix-dock { min-height: 34px; } }
+@media (max-width: 520px) { .poster-action-dock .poster-action, .poster-action-dock .poster-remix-button, .poster-action-dock .poster-filter-remix-button, .poster-action-dock .poster-history-actions button, .poster-master-remix-dock { min-height: 34px; } }
 @media (max-width: 520px) { .master-dock-tag { display: none; } }
+@media (max-width: 520px) { .poster-action-dock .poster-remix-button b, .poster-action-dock .poster-filter-remix-button { font-size: 10px; white-space: nowrap; } }
