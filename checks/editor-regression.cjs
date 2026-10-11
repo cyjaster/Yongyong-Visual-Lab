@@ -237,6 +237,8 @@ vm.runInNewContext(`
   let history = [], historyIndex = -1, historyTimer = 0;
   const toast = () => {}, renderImageTray = () => {}, renderInspector = () => {}, render = () => {}, updateRemixCard = () => {};
   const hasUserUploadedImages = () => true;
+  let captures = 0, transitions = 0;
+  const motion = {capture:()=>{ captures++; return {}; },play:()=>{ transitions++; }};
   const layoutRemixList = ['A','B','C'].map((scene,idx) => ({id:'layout-0'+(idx+1),apply:()=>{ state.scene=scene; commit(); }}));
   const filterRemixList = ['a','b','c'].map(style => ({apply:()=>{ state.style=style; commit(); }}));
   const masterRemixList = ['A','B','C'].map((shortZh,idx) => ({layoutIdx:idx,filterIdx:idx,shortZh,nameZh:shortZh}));
@@ -248,6 +250,8 @@ vm.runInNewContext(`
   ${section('  function applyLayoutTemplate(', '  function triggerMasterRemix(')}
   currentMasterIndex=0; commit();
   applyMasterRemixByIndex(1,null);
+  assert.equal(captures,1,'A composed REMIX captures once');
+  assert.equal(transitions,1,'A composed REMIX plays once');
   assert.equal(history.length,2,'One total REMIX must create exactly one composed history step');
   assert.equal(state.scene,'B'); assert.equal(state.style,'b');
   undo();

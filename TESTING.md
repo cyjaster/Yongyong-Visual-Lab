@@ -1,5 +1,7 @@
 # 网站验收入口
 
+界面动效第一批见[2026-10-12验收记录](UI_MOTION_REVIEW.md)。画布底部“界面动效”默认跟随系统，可选开启／关闭；分别检查按钮反馈、外观／布局／高级选项卡、总／排版REMIX纸片转场、滤镜REMIX淡化，快速重复或失焦后不能残留覆盖层。拖滑块不播放面板动效；草稿刷新后不能出现“上传照片”的空提示。动效浏览器专项：`node checks/ui-motion-browser-check.cjs`，需先启动本地服务，比较基线`b2289a8`；结果存本地`samples/results/ui-motion/20261012/`。
+
 动效前基线及失焦收尾修复见[2026-10-11验收存档](PRE_MOTION_REVIEW.md)。检查拖动中模拟窗口blur后局部立即更新，随后松手不能重复提交，撤销重做精确恢复。每批动效保存开关、性能和草稿恢复对照。
 
 - 在线编辑器：https://cyjaster.github.io/Yongyong-Visual-Lab/#poster

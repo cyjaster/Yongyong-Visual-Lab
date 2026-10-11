@@ -1771,7 +1771,9 @@
     if (layer.type === 'text') { const t = state.texts.find((v) => v.id === layer.id); if (t) drawText(t); }
   }
   function ensureMainLayer() { if (state.image && !state.layers.some((v) => v.type === 'main')) state.layers.unshift({ type: 'main', id: 'main-image' }); }
-  function render(showSelection = true) { ctx.clearRect(0, 0, W, H); drawPosterBackground(); drawPosterPaper(); if (!state.image) { ctx.strokeStyle = 'rgba(20,20,20,.08)'; for (let n = 25; n < W; n += 50) { ctx.beginPath(); ctx.moveTo(n, 0); ctx.lineTo(n, H); ctx.stroke(); } for (let n = 25; n < H; n += 50) { ctx.beginPath(); ctx.moveTo(0, n); ctx.lineTo(W, n); ctx.stroke(); } } ensureMainLayer(); state.layers.forEach(drawLayer); if (state.border) { ctx.strokeStyle = state.borderColor; ctx.lineWidth = state.borderWidth; ctx.strokeRect(18, 18, W - 36, H - 36); } if (showSelection) drawSelection(); }
+  function render(showSelection = true) {
+    emptyState.classList.toggle('is-hidden', !!state.image);
+    ctx.clearRect(0, 0, W, H); drawPosterBackground(); drawPosterPaper(); if (!state.image) { ctx.strokeStyle = 'rgba(20,20,20,.08)'; for (let n = 25; n < W; n += 50) { ctx.beginPath(); ctx.moveTo(n, 0); ctx.lineTo(n, H); ctx.stroke(); } for (let n = 25; n < H; n += 50) { ctx.beginPath(); ctx.moveTo(0, n); ctx.lineTo(W, n); ctx.stroke(); } } ensureMainLayer(); state.layers.forEach(drawLayer); if (state.border) { ctx.strokeStyle = state.borderColor; ctx.lineWidth = state.borderWidth; ctx.strokeRect(18, 18, W - 36, H - 36); } if (showSelection) drawSelection(); }
   let renderFrameRequested = false;
   function scheduleRender(showSelection = true) {
     if (!renderFrameRequested) {
@@ -2279,7 +2281,9 @@
     if (key !== inspectorViewKey) { inspectorViewKey = key; inspectorTab = 'look'; inspectorEffect = ''; }
     const nodes = Array.from(inspector.children);
     const panes = Object.fromEntries(['look','layout','advanced'].map(name => {
-      const pane = document.createElement('div'); pane.dataset.inspectorPane = name; return [name,pane];
+      const pane = document.createElement('div'); pane.dataset.inspectorPane = name;
+      pane.id = 'poster-inspector-pane-' + name; pane.setAttribute('role', 'tabpanel');
+      pane.setAttribute('aria-labelledby', 'poster-inspector-tab-' + name); return [name,pane];
     }));
     const layoutSections = new Set(['TRANSFORM','CROP','WINDOW & CROP']);
     const lookSections = new Set(['BACKGROUND & PAPER','COLOR & TONALITY','IMAGE','APPEARANCE','TYPOGRAPHY','FRAME','CONNECTOR','LABEL']);
@@ -2325,7 +2329,7 @@
       list.forEach((object,i) => choices.push([type+':'+object.id,label+' '+String(i+1).padStart(2,'0')]));
     }
     const header = document.createElement('div'); header.className = 'poster-inspector-nav';
-    header.innerHTML = '<label for="posterInspectorTarget">当前调整</label><select id="posterInspectorTarget">'+choices.map(([value,label])=>'<option value="'+escapeHTML(value)+'" '+(value===key?'selected':'')+'>'+escapeHTML(label)+'</option>').join('')+'</select><p class="poster-help">'+(state.selected?'只调整当前对象；其他对象保留各自设置。':'只调整背景、纸框和外框。照片效果请选主图或辅图。')+'</p><div class="poster-inspector-tabs" role="tablist" aria-label="编辑分类">'+[['look','外观'],['layout','布局'],['advanced','高级']].map(([value,label])=>'<button type="button" role="tab" data-inspector-tab="'+value+'" aria-selected="'+(value===inspectorTab)+'">'+label+'</button>').join('')+'</div>';
+    header.innerHTML = '<label for="posterInspectorTarget">当前调整</label><select id="posterInspectorTarget">'+choices.map(([value,label])=>'<option value="'+escapeHTML(value)+'" '+(value===key?'selected':'')+'>'+escapeHTML(label)+'</option>').join('')+'</select><p class="poster-help">'+(state.selected?'只调整当前对象；其他对象保留各自设置。':'只调整背景、纸框和外框。照片效果请选主图或辅图。')+'</p><div class="poster-inspector-tabs" role="tablist" aria-label="编辑分类">'+[['look','外观'],['layout','布局'],['advanced','高级']].map(([value,label])=>'<button type="button" role="tab" id="poster-inspector-tab-'+value+'" aria-controls="poster-inspector-pane-'+value+'" tabindex="'+(value===inspectorTab?'0':'-1')+'" data-inspector-tab="'+value+'" aria-selected="'+(value===inspectorTab)+'">'+label+'</button>').join('')+'</div>';
     const advanced = Array.from(panes.advanced.querySelectorAll(':scope > details'));
     if (advanced.length) {
       const picker = document.createElement('div'); picker.className = 'poster-field';
@@ -2742,7 +2746,7 @@
   // ==========================================
 
   function applyFilterTemplate01(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
+    const previousPoster = historyTransactionDepth ? null : motion.capture();
     state.mainEdgeFade = 0;
     state.background = '#001fd4';
     state.backgroundStyle = 'electric-tiger';
@@ -2786,7 +2790,7 @@
         t.color = '#ffbe0b'; t.badgeColor = '#002FA7';
       }
     });
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster, 'filter');
     if (showToast) toast(toastMsg || `🎨 滤镜 REMIX [1/${filterRemixList.length}] (滤镜模板 01)：Aespa 电光虎纹与胶印色彩`);
   }
 
@@ -2796,7 +2800,7 @@
   const template02MainFinish = Object.freeze({ grain: 7, motionDistance: 4, motionAngle: 0 });
 
   function applyFilterTemplate02(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
+    const previousPoster = historyTransactionDepth ? null : motion.capture();
     state.background = '#101010';
     state.backgroundStyle = 'solid';
     state.backgroundImageId = null;
@@ -2855,12 +2859,12 @@
       }
     });
 
-    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster);
+    render(); renderInspector(); commit(); markManuallyEdited(); motion.play(previousPoster, 'filter');
     if (showToast) toast(toastMsg || `🎨 滤镜 REMIX [2/${filterRemixList.length}] (滤镜模板 02)：多维色度与深邃暗调滤镜`);
   }
 
   function applyFilterTemplate03(showToast = true, toastMsg = '') {
-    const previousPoster = motion.capture();
+    const previousPoster = historyTransactionDepth ? null : motion.capture();
     state.background = '#a8afd2'; state.backgroundStyle = 'blue-valentine';
     state.backgroundTextureOpacity = 100; state.backgroundImageId = null;
     state.border = false; state.mainEdgeFade = 0;
@@ -2871,35 +2875,35 @@
       card.filters = { ...cool, grain:3, ...(index === 0 ? {filterType:'dot_halftone',halftone:40,halftoneSize:3} : {}) };
     });
     if (state.posterPaper) state.posterPaper.headerColor = '#3152ed';
-    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster, 'filter');
     if (showToast) toast(toastMsg || '滤镜 REMIX [3/' + filterRemixList.length + '] · 蓝紫冷调与细颗粒');
   }
   function applyFilterTemplate04(showToast=true,toastMsg='') {
-    const previousPoster=motion.capture();
+    const previousPoster=historyTransactionDepth ? null : motion.capture();
     state.background='#f6f1f4';state.backgroundStyle='pink-paper';state.backgroundTextureOpacity=80;state.backgroundImageId=null;
     state.border=false;state.mainEdgeFade=0;
     state.filters={...cleanFilters(),saturation:72,contrast:-9,brightness:4,grain:3,noiseMonochrome:false};
     state.secondaries.forEach((s,i)=>{s.filters={...cleanFilters(),saturation:i?85:76,contrast:-5,grain:2,noiseMonochrome:false};});
-    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster, 'filter');
     if(showToast)toast(toastMsg || '滤镜 REMIX [4/'+filterRemixList.length+'] · 柔和粉调与细颗粒');
   }
   function applyFilterDesktop(index,showToast=true,toastMsg='') {
-    const previousPoster=motion.capture();
+    const previousPoster=historyTransactionDepth ? null : motion.capture();
     state.background=index===4?'#7095a6':'#65978c';state.backgroundStyle='solid';state.backgroundImageId=null;
     state.border=false;state.mainEdgeFade=0;
     state.filters={...cleanFilters(),saturation:90,contrast:-3,grain:1,noiseMonochrome:false};
     state.secondaries.forEach(s=>{s.filters=s.id==='desktop-background'
       ? {...cleanFilters(),saturation:index===4?55:78,brightness:4,contrast:-8,blur:index===4?3:14,...(index===4?{duotone:true,duotoneDark:'#375b68',duotoneLight:'#d5e7e9'}:{})}
       : {...cleanFilters(),saturation:94,contrast:-3,grain:1,noiseMonochrome:false};});
-    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster, 'filter');
     if(showToast)toast(toastMsg || '滤镜 REMIX ['+(index+1)+'/'+filterRemixList.length+'] · '+(index===4?'海蓝桌面与自然肤色':'柔焦背景与清晰照片'));
   }
   function applyFilterNarrative(index,showToast=true,toastMsg='') {
-    const previousPoster=motion.capture();state.background=index===6?'#201b16':'#ffffff';state.backgroundStyle='solid';state.backgroundImageId=null;state.border=false;state.mainEdgeFade=0;
+    const previousPoster=historyTransactionDepth ? null : motion.capture();state.background=index===6?'#201b16':'#ffffff';state.backgroundStyle='solid';state.backgroundImageId=null;state.border=false;state.mainEdgeFade=0;
     state.filters=index===6?{...cleanFilters(),saturation:55,brightness:-30,contrast:-5,grain:2}:{...cleanFilters(),bw:100,contrast:12,grain:1};
     state.secondaries.forEach(s=>{s.filters=index===6?{...cleanFilters(),saturation:80,brightness:3,contrast:-4,grain:2,noiseMonochrome:false}
       : {...cleanFilters(),...(s.cutout?{bw:100,contrast:12,grain:1}:{saturation:85})};});
-    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster);
+    render();renderInspector();commit();markManuallyEdited();motion.play(previousPoster, 'filter');
     if(showToast)toast(toastMsg || '滤镜 REMIX ['+(index+1)+'/'+filterRemixList.length+'] · '+(index===6?'暖暗相册与清晰肤色':'黑白人物与电蓝图形'));
   }
   const filterRemixList = [
@@ -3030,7 +3034,7 @@
   function applyLayoutTemplate01(images, isReset = false, showToast = true, toastMsg = '') {
     state.posterPaper = null;
     remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
-    const previousPoster = motion.capture();
+    const previousPoster = historyTransactionDepth ? null : motion.capture();
 
     const { isUserMode, slot0Id, slot1Id, slot2Id, slot3Id } = resolveSlotAssetIds(images, isReset);
 
@@ -3439,7 +3443,7 @@
   function applyLayoutTemplate02(images, isReset = false, showToast = true, toastMsg = '') {
     state.posterPaper = null;
     remixBaseSnapshot = null; remixLastResultSnapshot = null; lastRemixCopyName = ''; lastRemixAnchorName = ''; lastRemixFramePatternName = '';
-    const previousPoster = motion.capture();
+    const previousPoster = historyTransactionDepth ? null : motion.capture();
 
     const isUserMode = !isReset && !!state.image;
     let slot0Id, slot1Id, slot2Id, slot3Id;
@@ -3873,7 +3877,7 @@
     if (!isUserMode && (!imageAssets.get('asset-valentine-main')?.cutoutImage || !imageAssets.get('asset-valentine-camera')?.image?.complete)) {
       ensureBlueValentineAssets(() => applyLayoutTemplate03(null,isReset,showToast,toastMsg)); return;
     }
-    const previousPoster = motion.capture();
+    const previousPoster = historyTransactionDepth ? null : motion.capture();
     remixBaseSnapshot = null; remixLastResultSnapshot = null;
     let ids;
     if (isUserMode) {
@@ -3928,7 +3932,7 @@
     if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset)){
       preparePinkDesktop(()=>applyLayoutTemplate04(null,isReset,showToast,toastMsg),isReset);return;
     }
-    const previousPoster=motion.capture(),isUserMode=!isReset && !!state.image;
+    const previousPoster=historyTransactionDepth ? null : motion.capture(),isUserMode=!isReset && !!state.image;
     remixBaseSnapshot=null;remixLastResultSnapshot=null;
     let support,third;
     if(isUserMode){resolveSlotAssetIds(null,false);const others=state.assets.filter(a=>a.id!==state.mainImageId);support=others[0]?.id || state.mainImageId;third=others[1]?.id || state.mainImageId;}
@@ -3978,7 +3982,7 @@
     if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset,index===5)){
       preparePinkDesktop(()=>applyLayoutDesktop(index,null,isReset,showToast,toastMsg),isReset,index===4?'模板五':'模板六',index===5);return;
     }
-    const previousPoster=motion.capture(),userMode=!isReset && !!state.image;
+    const previousPoster=historyTransactionDepth ? null : motion.capture(),userMode=!isReset && !!state.image;
     remixBaseSnapshot=null;remixLastResultSnapshot=null;
     if(userMode)resolveSlotAssetIds(null,false);
     else {
@@ -4051,7 +4055,7 @@
     if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !narrativeReady(index,isReset)){
       prepareNarrative(()=>applyLayoutNarrative(index,null,isReset,showToast,toastMsg),index,isReset);return;
     }
-    const previousPoster=motion.capture(),userMode=!isReset && !!state.image;
+    const previousPoster=historyTransactionDepth ? null : motion.capture(),userMode=!isReset && !!state.image;
     remixBaseSnapshot=null;remixLastResultSnapshot=null;
     if(userMode)resolveSlotAssetIds(null,false);
     else {
@@ -4209,6 +4213,8 @@
     currentLayoutIndex = m.layoutIdx;
     currentFilterIndex = m.filterIdx;
 
+    // One snapshot for the composed operation, rather than two intermediate transitions.
+    const previousPoster = motion.capture();
     historyTransactionDepth++;
     try {
       layoutRemixList[m.layoutIdx].apply(images, isReset, false);
@@ -4218,6 +4224,7 @@
     }
     updateMasterRemixControls();
     commit();
+    motion.play(previousPoster);
 
     const isUserMode = !isReset && !!state.image;
     const resolvedToast = customMsg || (isUserMode
@@ -4603,7 +4610,19 @@
   }
   inspector.addEventListener('click', e => {
     const tab = e.target.closest('[data-inspector-tab]');
-    if (tab) { inspectorTab=tab.dataset.inspectorTab; renderInspector(); }
+    if (tab && tab.dataset.inspectorTab !== inspectorTab) {
+      inspectorTab=tab.dataset.inspectorTab; renderInspector();
+      inspector.querySelector('[aria-selected="true"]').focus({preventScroll:true});
+      motion.reveal(inspector.querySelector('[data-inspector-pane]:not([hidden])'));
+    }
+  });
+  inspector.addEventListener('keydown', e => {
+    const tab = e.target.closest('[data-inspector-tab]');
+    if (!tab || !['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
+    e.preventDefault();
+    const tabs = Array.from(inspector.querySelectorAll('[data-inspector-tab]'));
+    const index = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (tabs.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[index].click();
   });
   inspector.addEventListener('change', e => {
     if (e.target.id==='posterInspectorEffect') { inspectorEffect=e.target.value; renderInspector(); }
@@ -4914,7 +4933,7 @@
   viewport.addEventListener('wheel',(e)=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const r=viewport.getBoundingClientRect();zoomBy(e.deltaY < 0 ? .08 : -.08,{x:e.clientX-r.left,y:e.clientY-r.top});},{passive:false});
   viewport.addEventListener('pointerdown',(e)=>{if(!spaceDown)return;e.preventDefault();e.stopPropagation();pan={x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.classList.add('is-panning');viewport.setPointerCapture(e.pointerId);},true);
   viewport.addEventListener('pointermove',(e)=>{
-    if (e.pointerType !== 'touch') {
+    if (e.pointerType !== 'touch' && $('#posterWorkspace').dataset.motion === 'on' && !drag && !pan) {
       const rect = viewport.getBoundingClientRect();
       viewport.style.setProperty('--scan-x', `${((e.clientX - rect.left) / rect.width) * 100}%`);
       viewport.style.setProperty('--scan-y', `${((e.clientY - rect.top) / rect.height) * 100}%`);

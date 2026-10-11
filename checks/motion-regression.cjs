@@ -4,17 +4,18 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const listeners = {};
 const active = [];
+const workspace = { dataset: {} };
 const eventTarget = { addEventListener(type, fn) { listeners[type] = fn; } };
 function element() {
   return {
     ...eventTarget, style: {}, children: [],
-    setAttribute() {},
+    setAttribute() {}, closest() { return workspace; },
     getContext() { return { drawImage() {} }; },
     append(child) { this.children.push(child); },
     remove() { this.removed = true; },
-    animate() {
+    animate(frames, options) {
       let finish;
-      const animation = { finished: new Promise(resolve => { finish = resolve; }),
+      const animation = { frames, options, finished: new Promise(resolve => { finish = resolve; }),
         cancel() { this.cancelled = true; finish(); }, finish: () => finish() };
       active.push(animation);
       return animation;
@@ -31,9 +32,13 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   const wrap = element(), preference = { ...eventTarget, value: 'auto' };
   const motion = window.createPosterMotion(canvas, wrap, preference);
   assert.equal(motion.capture(), null, 'Auto respects reduced motion');
+  assert.equal(workspace.dataset.motion, 'off', 'UI feedback follows the same preference');
   preference.value = 'on';
+  listeners.change();
+  assert.equal(workspace.dataset.motion, 'on');
   motion.play(motion.capture());
   assert.equal(wrap.children[0].children.length, 5);
+  assert.ok(active.every(a => a.options.duration + (a.options.delay || 0) <= 560), 'Template transition finishes within 560ms');
   const first = wrap.children[0];
   motion.play(motion.capture());
   await new Promise(setImmediate);
@@ -45,7 +50,21 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   active.forEach(animation => animation.finish());
   await new Promise(setImmediate);
   assert.ok(wrap.children[2].removed, 'Completed transition cleans up');
+  motion.play(motion.capture(), 'filter');
+  assert.equal(wrap.children[3].children.length, 1, 'Filter transition reuses its one snapshot');
+  assert.equal(active.at(-1).options.duration, 160);
+  listeners.blur();
+  assert.ok(wrap.children[3].removed, 'Window blur cancels the transition');
+  motion.reveal(element());
+  assert.equal(active.at(-1).options.duration, 180);
+  const paneAnimation = active.at(-1);
+  listeners.keydown();
+  assert.ok(paneAnimation.cancelled, 'New input cancels panel motion');
   preference.value = 'off';
+  listeners.change();
   assert.equal(motion.capture(), null);
-  console.log('Motion regression passed: reduced motion, strips, restart, input cancellation, cleanup.');
+  const count = active.length;
+  motion.reveal(element());
+  assert.equal(active.length, count, 'Off disables panel animation too');
+  console.log('Motion regression passed: preference, short strips, filter fade, panels, restart, input/blur cancellation, cleanup.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

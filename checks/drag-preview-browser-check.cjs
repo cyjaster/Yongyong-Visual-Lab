@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {execFileSync}=require('node:child_process');
 const packages='C:/Users/24369/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/';
 const {chromium}=require(packages+'playwright'),sharp=require(packages+'sharp');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'samples/results/drag-preview/20261011-blur-fix');
+const root=path.resolve(__dirname,'..'),out=process.env.DRAG_CHECK_OUT||path.join(root,'samples/results/drag-preview/20261011-blur-fix');
 const baseline=execFileSync('git',['show','e5770a9:poster.js'],{cwd:root,encoding:'utf8'});
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'samples/aespa/manifest.json'))),samples=[manifest.images[2],manifest.images[19]];
 const report={checks:[],performance:[],exports:[],errors:[]};let browser,page;
