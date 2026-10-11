@@ -2350,7 +2350,7 @@
       inspectorTitle.innerHTML = '滤镜与质感 <small>FILTERS & TEXTURE</small>';
 
       const filterRemixBanner = `<div class="poster-inspector-remix-banner" style="margin-bottom:12px;">
-        <button class="poster-filter-remix-button" type="button" data-poster-action="filter-remix" style="width:100%;padding:10px 14px;background:#002FA7;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(0,47,167,0.25);transition:all 0.15s ease;">
+        <button class="poster-filter-remix-button" type="button" data-poster-action="filter-remix" style="width:100%;padding:10px 14px;background:#002FA7;color:#fff;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(0,47,167,0.25);transition:all 0.15s ease;">
           <span>滤镜 REMIX ↻</span>
           <small style="opacity:0.85;font-weight:400;font-size:11px;">循环切换 ${filterRemixList.length} 组精选滤镜调色</small>
         </button>
