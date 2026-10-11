@@ -1,6 +1,6 @@
 # 网站验收入口
 
-动效前基线与已知问题见[2026-10-11验收存档](PRE_MOTION_REVIEW.md)。新增动效前先复测失焦收尾问题；每批保存动效开关、性能和草稿恢复对照。
+动效前基线及失焦收尾修复见[2026-10-11验收存档](PRE_MOTION_REVIEW.md)。检查拖动中模拟窗口blur后局部立即更新，随后松手不能重复提交，撤销重做精确恢复。每批动效保存开关、性能和草稿恢复对照。
 
 - 在线编辑器：https://cyjaster.github.io/Yongyong-Visual-Lab/#poster
 - 本轮八组模板对照：https://cyjaster.github.io/Yongyong-Visual-Lab/samples/results/template-function-acceptance/20261010/index.html

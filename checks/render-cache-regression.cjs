@@ -23,3 +23,21 @@ for(let i=0;i<4;i++)draw('large-'+i,photo,rect,3000,3000);assert.ok(filteredImag
 draw('oversize',photo,rect,5000,5000);assert.equal(filteredImageCache.has('oversize'),false);
 `,{assert});
 console.log('PASS: source/crop/size/filter invalidation, deferred crop release, export bypass, edge fade and bounded cache');
+
+const finish=source.slice(source.indexOf('  function finishCanvasDrag()'),source.indexOf("  canvas.addEventListener('pointerup', finishCanvasDrag)"));
+const blurStart=source.indexOf("  window.addEventListener('blur',()=>{");
+const blur=source.slice(blurStart,source.indexOf('\n  });',blurStart)+7);
+vm.runInNewContext(`
+let drag=null,calls=[],spaceDown=false,pan=null,onBlur;
+const window={addEventListener(type,fn){if(type==='blur')onBlur=fn;}},viewport={classList:{remove(){}}};
+const syncFrameRelativeToParent=()=>calls.push('frame'),syncAllChildFramesOf=()=>calls.push('children'),commit=()=>calls.push('commit'),markManuallyEdited=()=>calls.push('edited'),renderInspector=()=>calls.push('inspector'),render=()=>calls.push('render');
+`+finish+blur+`
+for(const type of ['frame','main','secondary','connector']){
+ drag={type,item:{id:'item'}};calls=[];spaceDown=true;pan={};
+ onBlur();assert.equal(drag,null);assert.equal(spaceDown,false);assert.equal(pan,null);
+ assert.ok(calls.includes('render'),'Blur must redraw the final preview');
+ if(type!=='connector')assert.deepEqual(calls,type==='frame'?['frame','commit','edited','inspector','render']:['children','commit','edited','inspector','render']);
+ const count=calls.length;finishCanvasDrag();onBlur();assert.equal(calls.length,count,'Repeated release must be neutral');
+}
+`,{assert});
+console.log('PASS: window blur uses final drag synchronization, history, redraw and idempotent release');

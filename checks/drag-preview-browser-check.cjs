@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {execFileSync}=require('node:child_process');
 const packages='C:/Users/24369/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/';
 const {chromium}=require(packages+'playwright'),sharp=require(packages+'sharp');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'samples/results/drag-preview/20261011');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'samples/results/drag-preview/20261011-blur-fix');
 const baseline=execFileSync('git',['show','e5770a9:poster.js'],{cwd:root,encoding:'utf8'});
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'samples/aespa/manifest.json'))),samples=[manifest.images[2],manifest.images[19]];
 const report={checks:[],performance:[],exports:[],errors:[]};let browser,page;
@@ -20,7 +20,14 @@ async function dragFrame(cancel=false){
  const beforeDetail=await canvasHash(page,true),geometry=await page.evaluate(()=>{const f=posterState.frames.at(-1),r=document.querySelector('#posterCanvas').getBoundingClientRect();return {x:r.x+(f.x+25)*r.width/900,y:r.y+(f.y+25)*r.height/1200,sx:r.width/900,sy:r.height/1200};});
  await page.mouse.move(geometry.x,geometry.y);await page.mouse.down();assert.equal(await page.evaluate(()=>posterState.selected.id),await page.evaluate(()=>posterState.frames.at(-1).id));await settle();
  for(let i=1;i<=6;i++){await page.mouse.move(geometry.x+i*12*geometry.sx,geometry.y+i*7*geometry.sy);await settle();assert.equal(await canvasHash(page,true),beforeDetail,'Detail stays frozen until release');}
- if(cancel)await page.locator('#posterCanvas').dispatchEvent('pointercancel',{pointerId:1});await page.mouse.up();await settle();assert.notEqual(await canvasHash(page,true),beforeDetail,'Final sampling updates on release/cancel');
+ if(cancel==='blur'){
+  await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await settle();
+  assert.notEqual(await canvasHash(page,true),beforeDetail,'Window blur updates final sampling immediately');
+  const history=await page.evaluate(()=>JSON.stringify(posterHistory));
+  await page.mouse.up();await settle();
+  assert.equal(await page.evaluate(()=>JSON.stringify(posterHistory)),history,'Pointerup after blur must not commit twice');
+ }else{if(cancel)await page.locator('#posterCanvas').dispatchEvent('pointercancel',{pointerId:1});await page.mouse.up();await settle();}
+ assert.notEqual(await canvasHash(page,true),beforeDetail,'Final sampling updates on release/cancel/blur');
 }
 (async()=>{
  fs.mkdirSync(out,{recursive:true});browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
@@ -41,7 +48,9 @@ async function dragFrame(cancel=false){
   if(list.length===2){const id=await page.evaluate(()=>posterState.assets[1].id);await page.locator('[data-asset-id="'+id+'"] [data-tray-action="set-main"]').click();const swapped=await sources();for(let i=0;i<8;i++){await step();assert.deepEqual(await sources(),swapped);}}
   await select('main');await page.locator('[data-poster-action="frame"]').click();await control('x',260);await control('y',260);await control('w',100);await control('h',110);await control('rotation',0);await page.locator('[data-poster-action="detail"]').first().click();await control('x',650);await control('y',780);await control('w',200);await control('h',230);await control('rotation',0);await control('filterType','color_halftone');await control('halftoneStrength',90);
   const label=list.map(a=>a.id).join('-'),base=await png(label+'-before');await select('frame',await page.evaluate(()=>posterState.frames.length-1));await dragFrame();const final=await png(label+'-released');assert.notEqual(await pixels(final),await pixels(base));await page.locator('[data-poster-action="undo"]').first().click();assert.equal(await pixels(await png(label+'-undo')),await pixels(base));await page.locator('[data-poster-action="redo"]').first().click();assert.equal(await pixels(await png(label+'-redo')),await pixels(final));
-  await select('frame',await page.evaluate(()=>posterState.frames.length-1));await dragFrame(true);await png(label+'-cancel');await select('detail',await page.evaluate(()=>posterState.details.length-1));const preview=await canvasHash();await control('halftoneStrength',0);assert.notEqual(await canvasHash(),preview,'Changed filters invalidate preview cache');await control('halftoneStrength',90);
+  await select('frame',await page.evaluate(()=>posterState.frames.length-1));await dragFrame(true);await png(label+'-cancel');
+  const beforeBlur=await png(label+'-before-blur');await select('frame',await page.evaluate(()=>posterState.frames.length-1));await dragFrame('blur');const blurred=await png(label+'-blur');await page.locator('[data-poster-action="undo"]').first().click();assert.equal(await pixels(await png(label+'-blur-undo')),await pixels(beforeBlur));await page.locator('[data-poster-action="redo"]').first().click();assert.equal(await pixels(await png(label+'-blur-redo')),await pixels(blurred));
+  await select('detail',await page.evaluate(()=>posterState.details.length-1));const preview=await canvasHash();await control('halftoneStrength',0);assert.notEqual(await canvasHash(),preview,'Changed filters invalidate preview cache');await control('halftoneStrength',90);
   await page.locator('#posterResolutionSelect').selectOption('3000x4000');await png(label+'-3000x4000');await page.locator('#posterResolutionSelect').selectOption('1200x1600');const draft=await png(label+'-draft');await page.locator('#posterSaveDraftButton').click();await page.waitForFunction(()=>!posterDraftPending());await page.reload();await page.waitForFunction(()=>window.posterState?.image?.complete);assert.equal(await pixels(await png(label+'-draft-restored')),await pixels(draft));await page.locator('#posterMotionPreference').selectOption('off');console.log('PASS drag/upload '+label);
  }
  for(const width of [968,390]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}

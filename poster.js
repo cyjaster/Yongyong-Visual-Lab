@@ -4935,7 +4935,7 @@
   });
   window.addEventListener('blur',()=>{
     spaceDown=false; pan=null; viewport.classList.remove('is-panning');
-    if(drag){drag=null;commit();renderInspector();}
+    finishCanvasDrag();
   });
 
 
