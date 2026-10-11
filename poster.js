@@ -2659,12 +2659,12 @@
       callback();
     } catch (error) { console.warn('Library demo failed',error); toast('图库示范未完成：'+error.message+'。请通过本地预览服务打开并重试。'); }
   }
-  async function preparePinkDesktop(callback,isReset=false,templateLabel='模板四') {
+  async function preparePinkDesktop(callback,isReset=false,templateLabel='模板四',fourPhotos=false) {
     const requested=snapshot(),userMode=!isReset && !!state.image;
     const mainId=userMode?state.mainImageId:'asset-pink-hero';
     try {
       if(!userMode){
-        for(const [key,libraryId,name] of [['hero','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg'],['portrait','aespa-03','1c79f7a79b1d81ef67bfaacf07db06e5.jpg'],['camera','aespa-09','5561874c188110984eb60e0366b53bef.jpg']]){
+        for(const [key,libraryId,name] of [['hero','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg'],['portrait','aespa-03','1c79f7a79b1d81ef67bfaacf07db06e5.jpg'],['camera','aespa-09','5561874c188110984eb60e0366b53bef.jpg'],...(fourPhotos?[['outdoor','aespa-15','959ac3d300b94737c8fdfa40c3b6affc.jpg']]:[])]){
           const id='asset-pink-'+key;
           if(!imageAssets.get(id)?.image?.complete){
             const image=new Image();image.src='samples/aespa/originals/'+name;await image.decode();
@@ -2679,10 +2679,10 @@
       callback();
     }catch(error){console.warn('Desktop preparation failed',error);toast(templateLabel+'未载入：'+error.message+'。原作品保留，请重试。');}
   }
-  function pinkDesktopReady(isReset=false) {
+  function pinkDesktopReady(isReset=false,fourPhotos=false) {
     return !isReset && !!state.image
       ? !!imageAssets.get(state.mainImageId)?.cutoutImage
-      : !!imageAssets.get('asset-pink-hero')?.cutoutImage && ['portrait','camera'].every(key=>imageAssets.get('asset-pink-'+key)?.image?.complete);
+      : !!imageAssets.get('asset-pink-hero')?.cutoutImage && ['portrait','camera',...(fourPhotos?['outdoor']:[])].every(key=>imageAssets.get('asset-pink-'+key)?.image?.complete);
   }
   const narrativeDemoPhotos={
     6:[['main','aespa-05','29dfc7b07cb3b0d9e5605ebaf5590904.jpg'],['support','aespa-04','22d5f781dd29715f2453d731a52720e2.jpg'],['third','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg']],
@@ -3975,14 +3975,14 @@
     if(showToast)toast(toastMsg || '排版 REMIX [4/'+layoutRemixList.length+'] · 粉色桌面拼贴');
   }
   function applyLayoutDesktop(index,images,isReset=false,showToast=true,toastMsg='') {
-    if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset)){
-      preparePinkDesktop(()=>applyLayoutDesktop(index,null,isReset,showToast,toastMsg),isReset,index===4?'模板五':'模板六');return;
+    if(typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset,index===5)){
+      preparePinkDesktop(()=>applyLayoutDesktop(index,null,isReset,showToast,toastMsg),isReset,index===4?'模板五':'模板六',index===5);return;
     }
     const previousPoster=motion.capture(),userMode=!isReset && !!state.image;
     remixBaseSnapshot=null;remixLastResultSnapshot=null;
     if(userMode)resolveSlotAssetIds(null,false);
     else {
-      state.assets=['hero','portrait','camera'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
+      state.assets=['hero','portrait','camera',...(index===5?['outdoor']:[])].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
       state.mainImageId='asset-pink-hero';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;
     }
     const others=state.assets.filter(a=>a.id!==state.mainImageId),source=i=>others.length?others[i%others.length].id:state.mainImageId;
@@ -4028,7 +4028,7 @@
       sticker('printer',455,172,354,63,{badgeColor:'#e1e3e2'});
       sticker('panel',503,203,252,817,{badgeColor:'#fff',cornerRadius:0});
       [0,1,2].forEach(i=>card(i===0?state.mainImageId:source(i-1),519,231+i*245,220,223,{panY:i===0?75:0}));
-      card(source(0),160,551,326,407,{rotation:-6,windowFrame:true,windowStyle:'airdrop',windowTitle:'AirDrop\nYongyong would like to share a photo.',windowColor:'#fafaf7'});
+      card(source(2),160,551,326,407,{rotation:-6,windowFrame:true,windowStyle:'airdrop',windowTitle:'AirDrop\nYongyong would like to share a photo.',windowColor:'#fafaf7'});
       sticker('panel',441,659,174,31,{content:"God you're so pretty.",color:'#262b2a',size:12,badgeColor:'#fff'});
       sticker('panel',146,43,610,64,{content:'▦     My Account    ›    Posts    ›    Today',color:'#979c9b',size:16,badgeColor:'#fff',cornerRadius:32});
       sticker('flower',174,172,82,80,{badgeColor:'#fff'});
@@ -4197,8 +4197,8 @@
     if(index>=6 && typeof window!=='undefined' && window.posterCutout?.removeBackground && !narrativeReady(index,isReset)){
       prepareNarrative(()=>applyMasterRemixByIndex(index,images,isReset,customMsg),index,isReset);return;
     }
-    if(index>=3 && index<=5 && typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset)){
-      preparePinkDesktop(()=>applyMasterRemixByIndex(index,images,isReset,customMsg),isReset,'模板'+(index+1));return;
+    if(index>=3 && index<=5 && typeof window!=='undefined' && window.posterCutout?.removeBackground && !pinkDesktopReady(isReset,index===5)){
+      preparePinkDesktop(()=>applyMasterRemixByIndex(index,images,isReset,customMsg),isReset,'模板'+(index+1),index===5);return;
     }
     // Flush a pending adjustment before the composed layout + filter operation.
     commit();
@@ -4286,7 +4286,7 @@
       && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？'))return;
     if(show)draftHasEdits=true;
     const apply=()=>applyMasterRemixByIndex(index,null,true,'示范 0'+(index+1)+' · '+masterRemixList[index].shortZh);
-    if(index>=6)prepareNarrative(apply,index,true);else preparePinkDesktop(apply,true,'模板'+(index+1));
+    if(index>=6)prepareNarrative(apply,index,true);else preparePinkDesktop(apply,true,'模板'+(index+1),index===5);
   }
   const layoutTemplates = [
     { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
