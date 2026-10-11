@@ -1,5 +1,7 @@
 # 网站验收入口
 
+动效前基线与已知问题见[2026-10-11验收存档](PRE_MOTION_REVIEW.md)。新增动效前先复测失焦收尾问题；每批保存动效开关、性能和草稿恢复对照。
+
 - 在线编辑器：https://cyjaster.github.io/Yongyong-Visual-Lab/#poster
 - 本轮八组模板对照：https://cyjaster.github.io/Yongyong-Visual-Lab/samples/results/template-function-acceptance/20261010/index.html
 - 示例图库：https://cyjaster.github.io/Yongyong-Visual-Lab/samples/aespa/index.html
