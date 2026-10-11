@@ -60,7 +60,7 @@ console.log('PASS: main filters invoke the real engine once, map last, and prese
 const state={filters:{bw:0},selected:null};
 let selected=null;
 const routing = vm.createContext({assert,state,selectedObject:()=>selected,cleanFilters:()=>({}),
-  scheduleRender:()=>{},renderInspector:()=>{},commit:()=>{},markManuallyEdited:()=>{},syncLeftControls:()=>{},
+  scheduleRender:()=>{},renderInspector:()=>{},syncInspectorDependencies:()=>{},commit:()=>{},markManuallyEdited:()=>{},syncLeftControls:()=>{},
   syncAllChildFramesOf:()=>{},syncFrameRelativeToParent:()=>{}});
 vm.runInContext(section('  const inspectorFilterKeys =','  const inspectorPatternTypes =')+section('  function handleInspectorInput(','  inspector.addEventListener('),routing);
 const input=(prop,value,global=false,type='range')=>{

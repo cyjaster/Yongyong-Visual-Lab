@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261001-readable" />
-    <link rel="stylesheet" href="poster.css?v=20261011-compact-toolbar" />
+    <link rel="stylesheet" href="poster.css?v=20261011-unified-inspector" />
   </head>
   <body>
     <div class="app-shell">
@@ -430,12 +430,12 @@
 
               <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="排版 REMIX ↻"><b>排版 REMIX ↻</b></button>
               <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
-            <a id="posterLastExportLink" hidden>保存刚导出的 PNG</a>
             <button class="poster-action" id="posterSaveDraftButton" type="button">保存草稿</button>
             </div>
             <div class="poster-toolbar-status">
             <p class="poster-cutout-target" id="posterCutoutTarget" role="status" aria-live="polite">当前照片：主图</p>
             <small id="posterDraftStatus" role="status" aria-live="polite">草稿 · 准备中</small>
+            <a id="posterLastExportLink" hidden>保存刚导出的 PNG</a>
 
             </div>
           </section>
@@ -463,7 +463,7 @@
         <aside class="poster-inspector" aria-label="拼贴海报滤镜面板">
           <div class="poster-inspector-heading">
             <div style="display:flex;align-items:center;justify-content:space-between;">
-              <p class="eyebrow" style="margin:0;">03 / FILTERS & TEXTURE</p>
+              <p class="eyebrow" style="margin:0;">03 / EDIT OBJECT</p>
               <button class="poster-deselect-button" id="posterDeselectButton" type="button" style="display:none;" title="返回海报全局设置">全局 POSTER ↗</button>
             </div>
             <span class="poster-selected-label" id="posterInspectorSelection">FILTERS · TEXTURE</span>
@@ -496,6 +496,6 @@
     <script src="poster-draft.js?v=20261009-local"></script>
     <script src="poster-cutout.js?v=20261009-stable"></script>
     <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261010-top-toolbar"></script>
+    <script src="poster.js?v=20261011-unified-inspector"></script>
   </body>
 </html>

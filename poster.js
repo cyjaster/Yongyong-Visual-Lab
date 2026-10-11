@@ -2239,7 +2239,93 @@
     } catch (error) { console.warn('Person cutout failed',error);toast('抠图未完成：'+error.message); }
     finally { cutoutBusy = false;cutoutLabel = '';renderInspector(); }
   }
+  let inspectorTab = 'look', inspectorViewKey = '', inspectorEffect = '';
   function renderInspector() {
+    renderInspectorContent();
+    organizeInspector();
+  }
+  function organizeInspector() {
+    const key = state.selected ? state.selected.type + ':' + state.selected.id : 'canvas';
+    if (key !== inspectorViewKey) { inspectorViewKey = key; inspectorTab = 'look'; inspectorEffect = ''; }
+    const nodes = Array.from(inspector.children);
+    const panes = Object.fromEntries(['look','layout','advanced'].map(name => {
+      const pane = document.createElement('div'); pane.dataset.inspectorPane = name; return [name,pane];
+    }));
+    const layoutSections = new Set(['TRANSFORM','CROP','WINDOW & CROP']);
+    const lookSections = new Set(['BACKGROUND & PAPER','COLOR & TONALITY','IMAGE','APPEARANCE','TYPOGRAPHY','FRAME','CONNECTOR','LABEL']);
+    nodes.forEach(node => {
+      const section = node.querySelector(':scope > summary .acc-en')?.textContent;
+      const pane = layoutSections.has(section) || node.matches('.poster-layer-order,.poster-section-label') ? 'layout' : lookSections.has(section) || node.querySelector('[data-prop="imageId"]') ? 'look' : 'advanced';
+      panes[pane].append(node);
+      if (node.matches('details')) node.open = pane !== 'advanced';
+      if (section === 'STYLE') node.querySelectorAll('.poster-field').forEach(field => {
+        if (field.querySelector('[data-prop="brightness"],[data-prop="contrast"],[data-prop="saturation"]')) panes.look.append(field);
+      });
+      if (section === 'TRANSFORM') node.querySelectorAll('.poster-field').forEach(field => {
+        if (field.querySelector('input[type="number"]')) field.classList.add('inspector-coordinate');
+      });
+    });
+    if (state.selected?.type === 'text') {
+      const fine = document.createElement('details'); fine.className='poster-accordion';
+      fine.innerHTML='<summary><span class="acc-zh">文字细节</span><span class="acc-en">TEXT DETAILS</span></summary><div class="poster-accordion-body"></div>';
+      panes.look.querySelectorAll('.poster-field').forEach(field=>{
+        if(field.querySelector('[data-prop="weight"],[data-prop="letterSpacing"],[data-prop="lineHeight"],[data-prop="align"],[data-segmented-for="writingMode"]')) fine.lastElementChild.append(field);
+      });
+      panes.advanced.prepend(fine);
+    }
+    // Keep every existing control and binding, but separate canvas-only geometry.
+    if (!state.selected) {
+      const paper = document.createElement('details'); paper.className = 'poster-accordion';
+      paper.innerHTML = '<summary><span class="acc-zh">纸框与外框</span><span class="acc-en">PAPER & BORDER</span></summary><div class="poster-accordion-body"></div>';
+      const position=document.createElement('details');position.className='poster-accordion';position.open=true;
+      position.innerHTML='<summary><span class="acc-zh">纸框位置</span><span class="acc-en">PAPER POSITION</span></summary><div class="poster-accordion-body"></div>';
+      panes.look.querySelectorAll('.poster-field').forEach(field => {
+        const control = field.querySelector('[data-global]'); const prop = control?.dataset.global || '';
+        if (['paper_x','paper_y','paper_w','paper_h'].includes(prop)) {field.classList.add('inspector-coordinate');position.lastElementChild.append(field);}
+        else if (prop.startsWith('paper_') || ['paperEnabled','border','borderColor','borderWidth'].includes(prop)) paper.lastElementChild.append(field);
+      });
+      panes.advanced.prepend(paper);
+      if(position.lastElementChild.children.length)panes.layout.append(position);
+      inspectorTitle.textContent = '画布'; inspectorSelection.textContent = '背景 · 纸框 · 外框';
+      if (holdBeforeButton) holdBeforeButton.style.display = 'none';
+    }
+    const choices = [['canvas','画布背景']];
+    if (state.image) choices.push(['main:'+state.main.id,'主图']);
+    for (const [type,list,label] of [['secondary',state.secondaries,'辅图'],['fragment',state.fragments,'图像碎片'],['frame',state.frames,'索引框'],['detail',state.details,'局部图'],['text',state.texts,'文字'],['connector',state.details,'连接线']]) {
+      list.forEach((object,i) => choices.push([type+':'+object.id,label+' '+String(i+1).padStart(2,'0')]));
+    }
+    const header = document.createElement('div'); header.className = 'poster-inspector-nav';
+    header.innerHTML = '<label for="posterInspectorTarget">当前调整</label><select id="posterInspectorTarget">'+choices.map(([value,label])=>'<option value="'+escapeHTML(value)+'" '+(value===key?'selected':'')+'>'+escapeHTML(label)+'</option>').join('')+'</select><p class="poster-help">'+(state.selected?'只调整当前对象；其他对象保留各自设置。':'只调整背景、纸框和外框。照片效果请选主图或辅图。')+'</p><div class="poster-inspector-tabs" role="tablist" aria-label="编辑分类">'+[['look','外观'],['layout','布局'],['advanced','高级']].map(([value,label])=>'<button type="button" role="tab" data-inspector-tab="'+value+'" aria-selected="'+(value===inspectorTab)+'">'+label+'</button>').join('')+'</div>';
+    const advanced = Array.from(panes.advanced.querySelectorAll(':scope > details'));
+    if (advanced.length) {
+      const picker = document.createElement('div'); picker.className = 'poster-field';
+      picker.innerHTML = '<label for="posterInspectorEffect">选择效果或详细设置</label><select id="posterInspectorEffect"><option value="">请选择</option>'+advanced.map((node,i)=>{
+        const code=node.querySelector(':scope > summary .acc-en')?.textContent || String(i);node.dataset.inspectorEffect=code;
+        return '<option value="'+escapeHTML(code)+'" '+(code===inspectorEffect?'selected':'')+'>'+escapeHTML(node.querySelector(':scope > summary .acc-zh')?.textContent || code)+'</option>';
+      }).join('')+'</select>';
+      if (!advanced.some(node=>node.dataset.inspectorEffect===inspectorEffect)) inspectorEffect='';
+      panes.advanced.prepend(picker);
+      advanced.forEach(node=>{node.hidden=node.dataset.inspectorEffect!==inspectorEffect;node.open=true;});
+
+    }
+    for (const name of Object.keys(panes)) panes[name].hidden=name!==inspectorTab;
+    if (!panes.layout.children.length) panes.layout.innerHTML='<p class="poster-help">在高级 → 纸框与外框开启内层纸框后，可在这里调整位置和尺寸。</p>';
+    inspectorTitle.textContent=header.querySelector('select').selectedOptions[0].textContent;
+    inspectorSelection.textContent=state.selected?'编辑当前对象':'背景 · 纸框 · 外框';
+    inspector.replaceChildren(header,panes.look,panes.layout,panes.advanced);
+    syncInspectorDependencies();
+    const deselectBtn=$('#posterDeselectButton'); if(deselectBtn)deselectBtn.style.display='none';
+  }
+  function syncInspectorDependencies() {
+      const dependencies=[['GRADIENT MAP','duotone',['duotoneDark','duotoneLight','gradientGamma']],['MOTION BLUR','motionDistance',['motionAngle']],['NOISE','grain',['noiseDistribution','noiseMonochrome','noiseSize']],['PERSON CUTOUT',null,['cutoutBorderWidth','cutoutBorderColor','cutoutShadow']],['WINDOW & CROP','windowFrame',['windowColor','windowStyle','windowTitle']],['TEXT EFFECT','textStyle',['balloonDepth','balloonShine'],'balloon'],['BADGE & BACKING','backgroundEnabled',['backgroundColor','backgroundOpacity','backgroundPaddingX','backgroundPaddingY']]];
+      for(const [section,key,props,required] of dependencies){
+        const group=Array.from(inspector.querySelectorAll('.poster-accordion')).find(node=>node.querySelector(':scope > summary .acc-en')?.textContent===section);if(!group)continue;
+        const control=key?group.querySelector('[data-prop="'+key+'"],[data-global="'+key+'"]'):null;
+        const enabled=required?control?.value===required:key?(control?.type==='checkbox'?control.checked:Number(control?.value)>0):!!selectedObject()?.cutout;
+        for(const prop of props) group.querySelectorAll('[data-prop="'+prop+'"],[data-global="'+prop+'"]').forEach(input=>{input.disabled=!enabled;input.title=enabled?'':'先启用该效果或增加强度';});
+      }
+  }
+  function renderInspectorContent() {
     syncLeftControls();
     const o = selectedObject();
     const photoSelected = !!o && ['main','secondary'].includes(state.selected?.type);
@@ -2299,18 +2385,8 @@
       + range('外框线宽','Border Width','borderWidth',state.borderWidth,1,18,1,true);
       const bgAccordion = accordion('背景与纸张', 'BACKGROUND & PAPER', bgPresetsContent, true);
 
-      const colorAccordion = accordion('图像调色', 'COLOR & TONALITY', `${range('主图透明度','Image Opacity','mainOpacity',state.main?.opacity??100,0,100,1,true,'调节主图与背景的融合透明度')}${range('底图边缘融合','Main Edge Blend','mainEdgeFade',state.mainEdgeFade??0,0,100,1,true,'柔化照片边缘，让底图融入纸张背景')}${range('黑白','B&W','bw',state.filters.bw??0,0,100,1,true,'将彩色转换为黑白基调')}${range('亮度','Brightness','brightness',state.filters.brightness??0,-70,80,1,true,'调节画面整体明暗曝光')}${range('对比度','Contrast','contrast',state.filters.contrast??0,-50,120,1,true,'拉开明暗反差与视觉冲击')}${range('饱和度','Saturation','saturation',state.filters.saturation??100,0,200,1,true,'控制色彩纯度与鲜艳度')}<div class="poster-field" style="margin-top:6px;"><button type="button" class="poster-action" data-poster-action="reset-filters" style="width:100%;">恢复原图清晰质感 / RESET FILTERS</button></div>`, true);
 
-      inspector.innerHTML = accordion('人像抠图','PERSON CUTOUT','<button type="button" class="poster-action poster-action-primary" data-poster-action="select-main">选择主图抠图 ↗</button><p class="poster-help">点击画布中的辅图，可单独抠出该照片的人像。已抠图的照片可恢复背景。</p>',true)
-        + filterRemixBanner
-        + bgAccordion
-        + colorAccordion
-        + inspectorImagePatterns(state.filters,true)
-        + accordion('扫描纹', 'SCANLINES', `${range('扫描线','Scanline','scan',state.filters.scan??0,0,100,1,true,'模拟复印或显像管扫描条纹')}${segmented('扫描方向','Scan Direction','scanAngle',state.filters.scanAngle??0,[[0,'横向','Horizontal'],[90,'纵向','Vertical']],true,'切换横向或纵向扫描条纹')}`)
-        + inspectorMotionNoise(state.filters,true)
-        + inspectorGradientControls(state.filters,true)
-        + accordion('质感', 'TEXTURE', `${range('粗糙度','Roughness','rough',state.filters.rough??0,0,100,1,true,'增加复印 / 阈值化的粗粝感')}${range('纸张纹理','Paper Texture','paper',state.filters.paper??0,0,100,1,true,'模拟旧报纸与复印纸纤维杂质')}${range('脏版印刷','Dirty Print','dirty',state.filters.dirty??0,0,100,1,true,'增加墨点、污渍和印刷缺陷')}${range('压缩损坏','Compression','compression',state.filters.compression??0,0,100,1,true,'模拟低质量数字图片的块状损坏')}`)
-        + accordion('风格化', 'STYLIZE', `${range('轮廓','Outline','outline',state.filters.outline,0,100,1,true,'提取高对比边缘描边线条')}${range('反相','Invert','invert',state.filters.invert,0,100,1,true,'翻转明暗与底片反色')}${range('色阶压缩','Color Compression / Posterize','posterize',state.filters.posterize,0,100,1,true,'减少颜色层级，形成块面效果')}<p class="poster-help">所有质感均可从 Clean 的 0% 推到 Destroyed 的 100%。</p>`);
+      inspector.innerHTML = bgAccordion + accordion('模板调色配方','TEMPLATE FILTERS','<p class="poster-help">切换模板的照片调色配方；保留排版与素材。</p>'+filterRemixBanner);
       return;
     }
     if (state.selected.type === 'main') {
@@ -2324,6 +2400,11 @@
         + inspectorImagePatterns(state.filters,true)
         + inspectorMotionNoise(state.filters,true)
         + inspectorGradientControls(state.filters,true)
+        + accordion('扫描纹','SCANLINES',range('扫描线','Scanline','scan',state.filters.scan??0,0,100,1,true)+segmented('扫描方向','Direction','scanAngle',state.filters.scanAngle??0,[[0,'横向','Horizontal'],[90,'纵向','Vertical']],true))
+        + accordion('质感','TEXTURE',range('粗糙度','Roughness','rough',state.filters.rough??0,0,100,1,true)+range('纸张纹理','Paper','paper',state.filters.paper??0,0,100,1,true)+range('脏版印刷','Dirty','dirty',state.filters.dirty??0,0,100,1,true)+range('压缩损坏','Compression','compression',state.filters.compression??0,0,100,1,true))
+        + accordion('风格化','STYLIZE',range('轮廓','Outline','outline',state.filters.outline??0,0,100,1,true)+range('反相','Invert','invert',state.filters.invert??0,0,100,1,true)+range('色阶压缩','Posterize','posterize',state.filters.posterize??0,0,100,1,true))
+        + accordion('边缘融合','EDGE BLEND',range('底图边缘融合','Edge Blend','mainEdgeFade',state.mainEdgeFade??0,0,100,1,true))
+        + accordion('重置主图','RESET MAIN','<button type="button" class="poster-action" data-poster-action="reset-filters">重置主图取景与效果</button>')
         + layerControls();
       return;
     }
@@ -4470,6 +4551,7 @@
     }
     if (c.type === 'number' && (c.value === '' || !Number.isFinite(c.valueAsNumber))) return;
     root[p] = c.type === 'checkbox' ? c.checked : (c.type === 'range' || c.type === 'number' ? Number(c.value) : c.value);
+    if (['duotone','motionDistance','grain','windowFrame','backgroundEnabled','textStyle'].includes(p)) syncInspectorDependencies();
     if (['w', 'h'].includes(p)) root[p] = Math.max(20, root[p]);
     if (['x','y','w','h','rotation'].includes(p)) {
       if (state.selected?.type === 'secondary' || state.selected?.type === 'main') {
@@ -4488,13 +4570,30 @@
       if (['duotone','gradient_map'].includes(root.filterType)) root.duotone = true;
       renderInspector();
     }
-    if (p === 'bitmapMethod') renderInspector();
+    if (p === 'bitmapMethod' || p === 'backgroundStyle') renderInspector();
     scheduleRender();
     const out = c.closest('.poster-field')?.querySelector('output');
     if (out) out.textContent = c.value;
     commit(false);
     markManuallyEdited();
   }
+  inspector.addEventListener('click', e => {
+    const tab = e.target.closest('[data-inspector-tab]');
+    if (tab) { inspectorTab=tab.dataset.inspectorTab; renderInspector(); }
+  });
+  inspector.addEventListener('change', e => {
+    if (e.target.id==='posterInspectorEffect') { inspectorEffect=e.target.value; renderInspector(); }
+    if (e.target.id==='posterInspectorTarget') {
+      const value=e.target.value;
+      if (value==='canvas') setSelected(null,null);
+      else {
+        const split=value.indexOf(':'), type=value.slice(0,split), id=value.slice(split+1);
+        const lists={main:[state.main],secondary:state.secondaries,fragment:state.fragments,frame:state.frames,detail:state.details,text:state.texts,connector:state.details};
+        const object=lists[type]?.find(item=>item.id===id);if(object)setSelected(type,object);
+      }
+      render();
+    }
+  });
   inspector.addEventListener('input', handleInspectorInput);
   inspector.addEventListener('change', (e) => {
     handleInspectorInput(e);

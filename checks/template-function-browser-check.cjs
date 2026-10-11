@@ -15,7 +15,10 @@ async function elements(){await page.locator('summary').filter({hasText:'海报�
 async function selectCard(index){await elements();await page.locator('[data-poster-action="select-secondary"]').nth(index).click();}
 async function selectText(index){await elements();await page.locator('[data-poster-action="select-text"]').nth(index).click();}
 async function control(prop,value,global=false){
-  const c=page.locator('[data-'+(global?'global':'prop')+'="'+prop+'"]').first();await c.evaluate(e=>{const d=e.closest('details');if(d)d.open=true;});
+  const c=page.locator('[data-'+(global?'global':'prop')+'="'+prop+'"]').first();
+  const nav=await c.evaluate(e=>({pane:e.closest('[data-inspector-pane]')?.dataset.inspectorPane,effect:e.closest('[data-inspector-effect]')?.dataset.inspectorEffect}));
+  if(nav.pane)await page.locator('[data-inspector-tab="'+nav.pane+'"]').click();
+  if(nav.effect)await page.locator('#posterInspectorEffect').selectOption(nav.effect);await c.evaluate(e=>{const d=e.closest('details');if(d)d.open=true;});
   if(await c.evaluate(e=>e.tagName)==='SELECT')await c.selectOption(String(value));
   else if(await c.getAttribute('type')==='checkbox')await c.setChecked(value);
   else if(['range','color'].includes(await c.getAttribute('type'))){await c.evaluate((e,v)=>{e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},value);}
