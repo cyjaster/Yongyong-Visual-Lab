@@ -45,7 +45,7 @@ async function uploaded(n,list){await demo(n);await page.locator('#posterImageIn
   await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);
   await page.locator('#posterMotionPreference').selectOption('off');assert.equal(await page.locator('.poster-demo-button-row button').count(),8);
   for(const n of [5,6]){
-    await demo(n);assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),['aespa-20','aespa-03']);
+    await demo(n);assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),['aespa-20','aespa-03','aespa-09']);
     const base=await png('demo-0'+n);await page.screenshot({path:path.join(out,'workspace-0'+n+'.png')});
     const frameIndex=await page.evaluate(()=>posterState.secondaries.findIndex(s=>s.windowStyle==='airdrop'));
     await selectCard(frameIndex);await control('windowFrame',false);const off=await png('template-0'+n+'-frame-off');assert.notEqual(hash(base),hash(off));

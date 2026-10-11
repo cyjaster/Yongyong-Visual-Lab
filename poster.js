@@ -2641,7 +2641,7 @@
     const mainId=userMode?state.mainImageId:'asset-pink-hero';
     try {
       if(!userMode){
-        for(const [key,libraryId,name] of [['hero','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg'],['portrait','aespa-03','1c79f7a79b1d81ef67bfaacf07db06e5.jpg']]){
+        for(const [key,libraryId,name] of [['hero','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg'],['portrait','aespa-03','1c79f7a79b1d81ef67bfaacf07db06e5.jpg'],['camera','aespa-09','5561874c188110984eb60e0366b53bef.jpg']]){
           const id='asset-pink-'+key;
           if(!imageAssets.get(id)?.image?.complete){
             const image=new Image();image.src='samples/aespa/originals/'+name;await image.decode();
@@ -2659,7 +2659,7 @@
   function pinkDesktopReady(isReset=false) {
     return !isReset && !!state.image
       ? !!imageAssets.get(state.mainImageId)?.cutoutImage
-      : !!imageAssets.get('asset-pink-hero')?.cutoutImage && !!imageAssets.get('asset-pink-portrait')?.image?.complete;
+      : !!imageAssets.get('asset-pink-hero')?.cutoutImage && ['portrait','camera'].every(key=>imageAssets.get('asset-pink-'+key)?.image?.complete);
   }
   const narrativeDemoPhotos={
     6:[['main','aespa-05','29dfc7b07cb3b0d9e5605ebaf5590904.jpg'],['support','aespa-04','22d5f781dd29715f2453d731a52720e2.jpg'],['third','aespa-20','d794141e2aa031b6a919dfddf078b2d0.jpg']],
@@ -3907,18 +3907,18 @@
     }
     const previousPoster=motion.capture(),isUserMode=!isReset && !!state.image;
     remixBaseSnapshot=null;remixLastResultSnapshot=null;
-    let support;
-    if(isUserMode){resolveSlotAssetIds(null,false);support=state.assets.find(a=>a.id!==state.mainImageId)?.id || state.mainImageId;}
+    let support,third;
+    if(isUserMode){resolveSlotAssetIds(null,false);const others=state.assets.filter(a=>a.id!==state.mainImageId);support=others[0]?.id || state.mainImageId;third=others[1]?.id || state.mainImageId;}
     else {
-      state.assets=['hero','portrait'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
-      state.mainImageId='asset-pink-hero';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;support='asset-pink-portrait';
+      state.assets=['hero','portrait','camera'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
+      state.mainImageId='asset-pink-hero';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;support='asset-pink-portrait';third='asset-pink-camera';
     }
     state.posterPaper=null;state.backgroundImageId=null;
     state.main={id:'main-image',x:0,y:70,w:900,h:1130,rotation:0,opacity:100,zoom:1,panX:0,panY:0,fit:'cover',cutout:false};
     state.secondaries=[
       {id:makeId(),imageId:state.mainImageId,x:92,y:710,w:460,h:614,rotation:-5,cutout:!!imageAssets.get(state.mainImageId)?.cutoutImage},
       {id:makeId(),imageId:support,x:677,y:609,w:202,h:264,rotation:0,windowFrame:true,windowTitle:'@yongyong',windowColor:'#e793bd',zoom:1.05,panY:92},
-      {id:makeId(),imageId:state.mainImageId,x:655,y:897,w:223,h:278,rotation:0,windowFrame:true,windowTitle:'little_star.jpg',windowColor:'#e793bd',zoom:1.65,panY:160}
+      {id:makeId(),imageId:third,x:655,y:897,w:223,h:278,rotation:0,windowFrame:true,windowTitle:'little_star.jpg',windowColor:'#e793bd',zoom:third===state.mainImageId?1.65:1,panY:third===state.mainImageId?160:60}
     ].map(s=>({opacity:100,lineWidth:0,filters:cleanFilters(),...s}));
     state.fragments=[];state.frames=[];state.details=[];
     const text=(content,x,y,size,extra={})=>({id:makeId(),kind:'caption',content,x,y,size,font:'Arial, sans-serif',weight:'700',color:'#da8eb3',opacity:100,rotation:0,align:'left',lineHeight:1.05,letterSpacing:0,...extra});
@@ -3959,7 +3959,7 @@
     remixBaseSnapshot=null;remixLastResultSnapshot=null;
     if(userMode)resolveSlotAssetIds(null,false);
     else {
-      state.assets=['hero','portrait'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
+      state.assets=['hero','portrait','camera'].map(key=>{const a=imageAssets.get('asset-pink-'+key);return {id:a.id,name:a.name};});
       state.mainImageId='asset-pink-hero';state.image=imageAssets.get(state.mainImageId).image;state.imageName=imageAssets.get(state.mainImageId).name;
     }
     const others=state.assets.filter(a=>a.id!==state.mainImageId),source=i=>others.length?others[i%others.length].id:state.mainImageId;
@@ -3983,12 +3983,13 @@
       sticker('grid',52,531,704,565,{badgeColor:'#f1f0e7',color:'#77807a'});
       card(source(0),106,696,277,357,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1',panY:100});
       card(state.mainImageId,373,628,176,265,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1'});
-      card(source(1),393,900,160,154,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1',zoom:1.35});
+      card(source(1),393,900,160,154,{windowFrame:true,windowStyle:'polaroid',windowColor:'#f8f7f1',panY:60});
       card(state.mainImageId,568,688,146,157,{windowFrame:true,windowStyle:'circle',windowColor:'#fbfaf1',zoom:1.5,panY:65});
       card(source(2),564,866,146,157,{windowFrame:true,windowStyle:'circle',windowColor:'#fbfaf1'});
       sticker('panel',23,84,235,169,{content:'Recent',color:'#262d30',size:15,weight:700,cornerRadius:8,badgeColor:'#e9eae4'});
       card(state.mainImageId,41,125,533,556,{windowFrame:true,windowStyle:'photo-booth',windowTitle:'Photo Booth ›\n1043 PHOTOS 521 VIDEOS',windowColor:'#f8f8f2',panY:75});
-      for(let i=0;i<5;i++)card(i%2?state.mainImageId:source(i),53+i*103,579,92,68,{lineWidth:1,color:'#6b7879',zoom:i===2?1.4:1});
+      const stripSources=[state.mainImageId,...others.map(a=>a.id)];
+      for(let i=0;i<5;i++)card(stripSources[i%stripSources.length],53+i*103,579,92,68,{lineWidth:1,color:'#6b7879',zoom:i===2?1.4:1});
       card(source(0),599,76,267,324,{windowFrame:true,windowStyle:'airdrop',windowTitle:'AirDrop\nYongyong would like to share a photo.',windowColor:'#fafaf7'});
       text('[INSTAGRAM] TODAY\nMY PHOTO DIARY',590,492,11,{weight:700});
       state.layers.push({type:'main',id:'main-image'});

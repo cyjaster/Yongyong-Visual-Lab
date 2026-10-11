@@ -26,10 +26,10 @@ async function cycle(){const before=await page.evaluate(()=>({id:posterState.mai
  page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://localhost:8089/')&&!r.url().startsWith('data:'))report.remote.push(r.url());});
  await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);assert.equal(await page.evaluate(()=>posterState.backgroundStyle),'electric-tiger');
  await page.locator('#posterMotionPreference').selectOption('off');await demo();
- assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),['aespa-20','aespa-03']);
+ assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),['aespa-20','aespa-03','aespa-09']);
  assert.equal(await page.evaluate(()=>posterState.secondaries.filter(s=>s.windowFrame).length),2);
  const defaultPng=await png('demo-default-1200x1600');await page.screenshot({path:path.join(out,'workspace-1600.png')});
- report.checks.push('Fresh browser defaults template 01; demo 04 uses only own gallery 20/03, one original hero, one locally cut foreground and two windows');
+ report.checks.push('Fresh browser defaults template 01; demo 04 uses own gallery 20/03/09, one original hero, one locally cut foreground and two distinct photo windows');
  assert.equal(await page.evaluate(()=>posterState.backgroundStyle),'pink-paper');
  assert.equal(await page.evaluate(()=>posterState.filters.noiseMonochrome),false);
  assert.equal(await page.evaluate(()=>posterState.filters.paper),0);

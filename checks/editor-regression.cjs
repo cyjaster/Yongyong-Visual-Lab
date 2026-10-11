@@ -359,11 +359,13 @@ vm.runInNewContext(`
   assert.equal(state.mainImageId, uid, "Template 03 preserves the main photo");
   triggerMasterRemix();
   assert.equal(state.secondaries.length,3,'Template 04 has a foreground and two desktop windows');
+  assert.deepEqual(state.secondaries.map(s=>s.imageId),[uid,u2,u3],'Template 04 assigns the third photo to its second window');
   assert.equal(state.texts[0].textStyle,'balloon');
   assert.equal(JSON.stringify(state.assets),uploadedPool);
   triggerMasterRemix();
   assert.equal(currentMasterIndex,4);
   assert.equal(state.secondaries.filter(s=>s.windowStyle==='photo-booth').length,1);
+  assert.deepEqual(state.secondaries.filter(s=>s.y===579).map(s=>s.imageId),[uid,u2,u3,uid,u2],'Photo Booth thumbnails rotate through all three photos');
   triggerMasterRemix();
   assert.equal(currentMasterIndex,5);
   assert.equal(state.secondaries.find(s=>s.id==='desktop-background').filters.blur,14);
