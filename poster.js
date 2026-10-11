@@ -1096,6 +1096,32 @@
     tc.restore();
   }
 
+  const filteredImageCache = new Map();
+  let filteredImageCachePixels = 0;
+  function cachedFilteredImage(id, source, rect, w, h, options, defer = false, edgeFade = 0) {
+    const preview = renderScale === 1;
+    const crop = rect || [state.main.zoom, state.main.panX, state.main.panY, state.main.fit];
+    const key = JSON.stringify([crop, w, h, options, edgeFade]);
+    const cached = preview && filteredImageCache.get(id);
+    if (cached && cached.source === source && (defer || cached.key === key)) return cached.image;
+    const image = filteredImage(source, rect, w, h, options);
+    if (edgeFade) blendMainEdges(image, state.main, edgeFade);
+    // Cache only editor previews, capped at 32 surfaces / 64 MiB of RGBA pixels.
+    if (preview) {
+      const previous = filteredImageCache.get(id);
+      if (previous) { filteredImageCachePixels -= previous.pixels; filteredImageCache.delete(id); }
+      const pixels = image.width * image.height;
+      if (pixels <= 16 * 1024 * 1024) {
+        while (filteredImageCache.size >= 32 || filteredImageCachePixels + pixels > 16 * 1024 * 1024) {
+          const oldest = filteredImageCache.keys().next().value;
+          filteredImageCachePixels -= filteredImageCache.get(oldest).pixels;
+          filteredImageCache.delete(oldest);
+        }
+        filteredImageCache.set(id, { source, key, image, pixels }); filteredImageCachePixels += pixels;
+      }
+    }
+    return image;
+  }
   function filteredImage(source, rect, w, h, o) {
     source = (typeof window !== 'undefined' && window.PosterPixels?.normalize(source)) || source;
     const result = raster(w * renderScale, h * renderScale, (rc, target) => {
@@ -1327,7 +1353,8 @@
     const rect = sourceRect(f); if (!rect) return;
     const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'detail' && state.selected.id === d.id;
     const opts = isTargetBefore ? { bw:0, brightness:0, contrast:0, saturation:100, grain:0, rough:0, outline:0, invert:0, posterize:0, compression:0, scan:0, paper:0, dirty:0, halftone:0 } : detailOptions(d);
-    const cut = filteredImage(srcImg, rect, d.w, d.h, opts);
+    const defer = drag?.type === 'frame' && drag.item.id === f.id && !isTargetBefore;
+    const cut = cachedFilteredImage('detail:'+d.id, srcImg, rect, d.w, d.h, opts, defer);
     ctx.save(); ctx.globalAlpha = (d.opacity ?? 100) / 100; transformBox(ctx, d);
     if (d.hasShadow) {
       ctx.save();
@@ -1416,7 +1443,7 @@
     const sy = Math.max(0,Math.min(ih-sh,(ih-sh)/2-(s.panY || 0)/scale));
     const full=s.fit==='contain';
     const cover=full?imageCover(img,{...s,x:0,y:0,w:p.w,h:photoH}):{x:0,y:0,w:p.w,h:photoH};
-    const cut = filteredImage(isTargetBefore ? asset.image : img, full?{sx:0,sy:0,sw:iw,sh:ih}:{sx,sy,sw,sh}, cover.w, cover.h, opts);
+    const cut = cachedFilteredImage('secondary:'+s.id, isTargetBefore ? asset.image : img, full?{sx:0,sy:0,sw:iw,sh:ih}:{sx,sy,sw,sh}, cover.w, cover.h, opts);
     ctx.save(); ctx.globalAlpha = (s.opacity ?? 100) / 100; transformBox(ctx, s);
     if (s.backingColor) { ctx.fillStyle = s.backingColor; ctx.fillRect(-2, -2, s.w + 4, s.h + 4); }
     if(s.windowFrame)window.PosterDecor?.windowFrame(ctx,s);
@@ -1453,7 +1480,7 @@
     if (!state.image) return;
     const isTargetBefore = isBeforePreviewActive && state.selected?.type === 'fragment' && state.selected.id === fragment.id;
     const opts = isTargetBefore ? { bw:0, brightness:0, contrast:0, saturation:100, grain:0, rough:0, outline:0, invert:0, posterize:0, compression:0, scan:0, paper:0, dirty:0, halftone:0 } : detailOptions(fragment);
-    const cut = filteredImage(state.image, fragmentSourceRect(fragment), fragment.w, fragment.h, opts);
+    const cut = cachedFilteredImage('fragment:'+fragment.id, state.image, fragmentSourceRect(fragment), fragment.w, fragment.h, opts);
     ctx.save();
     ctx.globalAlpha = (fragment.opacity ?? 100) / 100;
     transformBox(ctx, fragment);
@@ -1712,8 +1739,7 @@
     const box = state.main || makeMain();
     const isTargetBefore = isBeforePreviewActive && (!state.selected || state.selected.type === 'main');
     const image = !isTargetBefore && box.cutout && imageAssets.get(state.mainImageId)?.cutoutImage || state.image;
-    const main = filteredImage(image, null, box.w, box.h, isTargetBefore ? cleanFilters() : state.filters);
-    if (!isTargetBefore) blendMainEdges(main, box, state.mainEdgeFade);
+    const main = cachedFilteredImage('main', image, null, box.w, box.h, isTargetBefore ? cleanFilters() : state.filters, false, isTargetBefore ? 0 : state.mainEdgeFade);
     ctx.save(); ctx.globalAlpha = (box.opacity ?? 100) / 100; transformBox(ctx, box);
     if(box.cutout && !isTargetBefore)window.PosterDecor?.cutoutBacking(ctx,main,box.w,box.h,box,renderScale);
     if (box.fragmented && !isTargetBefore) {
@@ -2064,7 +2090,8 @@
     }
     scheduleRender();
   });
-  canvas.addEventListener('pointerup', () => {
+  function finishCanvasDrag() {
+    if (!drag) return;
     if (drag && drag.type !== 'connector') {
       if (drag.type === 'secondary' || drag.type === 'main') {
         syncAllChildFramesOf(drag.item.id);
@@ -2076,8 +2103,11 @@
     }
     drag = null;
     renderInspector();
-  });
-  canvas.addEventListener('pointercancel', () => { drag = null; });
+    render();
+  }
+  canvas.addEventListener('pointerup', finishCanvasDrag);
+  canvas.addEventListener('pointercancel', finishCanvasDrag);
+  canvas.addEventListener('lostpointercapture', finishCanvasDrag);
 
   const range = (zh, en, key, value, min, max, step = 1, global = false, hint = '') =>
     `<div class="poster-field"><div class="range-title"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div><output>${value}</output></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<input type="range" data-${global ? 'global' : 'prop'}="${key}" min="${min}" max="${max}" step="${step}" value="${value}"></div>`;

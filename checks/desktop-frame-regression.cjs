@@ -34,7 +34,7 @@ for(const style of ['desktop','photo-booth','airdrop','polaroid','circle']){
   for(const [key,val] of Object.entries({sx:150,sy:160,sw:70,sh:80}))assert.ok(Math.abs(r[key]-val)<1e-8,style+' contains with zoom/offset and correct linked sampling '+key);
 }
 const canvasCalls=[],drawing=new Proxy({},{get:(o,k)=>k in o?o[k]:(...a)=>canvasCalls.push([k,...a]),set:(o,k,v)=>(o[k]=v,true)});
-const drawContext=vm.createContext({window:{PosterDecor:window.PosterDecor},ctx:drawing,imageAssets:new Map([['photo',{image}]]),isBeforePreviewActive:false,state,renderScale:1,cleanFilters:()=>({}),transformBox(){},filteredImage:(img,rect,w,h,opts)=>({img,rect,w,h,opts})});
+const drawContext=vm.createContext({window:{PosterDecor:window.PosterDecor},ctx:drawing,imageAssets:new Map([['photo',{image}]]),isBeforePreviewActive:false,state,renderScale:1,cleanFilters:()=>({}),transformBox(){},cachedFilteredImage:(id,img,rect,w,h,opts)=>({img,rect,w,h,opts})});
 vm.runInContext(section('  function imageCover(', '  function getSourceImageForFrame(')+section('  function drawSecondaryImage(', '  function drawFragment('),drawContext);
 const s={id:'fit-card',imageId:'photo',x:0,y:0,w:475,h:432,fit:'contain',zoom:1};drawContext.drawSecondaryImage(s);
 const actual=canvasCalls.find(c=>c[0]==='drawImage');assert.ok(actual);assert.equal(actual[1].rect.sw,900);assert.equal(actual[1].rect.sh,1200);assert.equal(actual[4]/actual[5],900/1200);assert.equal(actual[3],0);assert.ok(actual[2]>0,'portrait has horizontal margins rather than cropping');assert.ok(canvasCalls.some(c=>c[0]==='clip'));
