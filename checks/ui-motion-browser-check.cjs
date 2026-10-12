@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'samples/results/ui-m
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'samples/aespa/manifest.json'))),samples=[manifest.images[2],manifest.images[19]];
 const report={baseline:'b2289a8',checks:[],performance:[],exports:[],errors:[]};let browser,page;
 const settle=p=>p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-const idle=p=>p.waitForFunction(()=>!document.querySelector('.poster-paper-transition')&&document.getAnimations().every(a=>a.playState!=='running'));
+const idle=p=>p.waitForFunction(()=>!document.querySelector('.poster-paper-transition')&&document.getAnimations().every(a=>a.effect?.getTiming().iterations===Infinity||a.playState!=='running'));
 const pixels=async file=>crypto.createHash('sha256').update(await sharp(file).raw().toBuffer()).digest('hex');
 async function png(p,name){const pending=p.waitForEvent('download');await p.locator('#posterExportButton').click();const file=path.join(out,name+'.png');await(await pending).saveAs(file);assert.equal((await sharp(file).metadata()).width,1200);report.exports.push(name+'.png');return pixels(file);}
 async function template(p,n){while(!(await p.locator('#posterMasterRemixTag').textContent()).includes('['+n+'/8]')){const tag=await p.locator('#posterMasterRemixTag').textContent();await p.locator('#posterMasterRemixDock').click();await p.waitForFunction(tag=>document.querySelector('#posterMasterRemixTag').textContent!==tag,tag);}await settle(p);await idle(p);}

@@ -3,7 +3,19 @@ window.createPosterMotion = (canvas, wrap, preference) => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const workspace = wrap.closest('.poster-workspace');
   let overlay = null, animations = [];
+  let ambientTimer = 0, pointerHeld = false, focused = document.hasFocus();
   const enabled = () => preference.value === 'on' || (preference.value === 'auto' && !reduced.matches);
+  const syncAmbient = () => {
+    document.body.dataset.ambient = enabled() && !reduced.matches && !document.hidden && focused ? 'on' : 'off';
+  };
+  const resumeAmbient = () => {
+    clearTimeout(ambientTimer);
+    if (!pointerHeld) ambientTimer = setTimeout(() => { document.body.dataset.ambientEditing = 'false'; }, 1200);
+  };
+  const resetAmbient = () => {
+    clearTimeout(ambientTimer); pointerHeld = false;
+    document.body.dataset.ambientEditing = 'false'; syncAmbient();
+  };
   const cancel = () => {
     animations.forEach((animation) => animation.cancel());
     animations = [];
@@ -65,17 +77,28 @@ window.createPosterMotion = (canvas, wrap, preference) => {
   const syncPreference = () => {
     cancel();
     workspace.dataset.motion = enabled() ? 'on' : 'off';
+    syncAmbient();
+  };
+  const pauseForEditing = (event) => {
+    cancel();
+    if (!event?.target?.closest('#posterWorkspace, .workspace')) return;
+    if (event.type === 'pointerdown') pointerHeld = true;
+    document.body.dataset.ambientEditing = 'true'; resumeAmbient();
   };
   // Finish immediately before editing, exporting, zooming or undoing.
-  document.addEventListener('pointerdown', cancel, true);
-  document.addEventListener('keydown', cancel, true);
-  document.addEventListener('wheel', cancel, { passive: true, capture: true });
-  document.addEventListener('visibilitychange', cancel);
-  window.addEventListener('visual-lab-mode-change', cancel);
+  document.addEventListener('pointerdown', pauseForEditing, true);
+  document.addEventListener('keydown', pauseForEditing, true);
+  document.addEventListener('input', pauseForEditing, true);
+  document.addEventListener('wheel', pauseForEditing, { passive: true, capture: true });
+  ['pointerup', 'pointercancel'].forEach(type => document.addEventListener(type, () => { pointerHeld = false; resumeAmbient(); }, true));
+  document.addEventListener('visibilitychange', () => { cancel(); resetAmbient(); });
+  window.addEventListener('visual-lab-mode-change', () => { cancel(); resetAmbient(); });
   window.addEventListener('resize', cancel);
-  window.addEventListener('blur', cancel);
+  window.addEventListener('blur', () => { focused = false; cancel(); resetAmbient(); });
+  window.addEventListener('focus', () => { focused = true; syncAmbient(); });
   preference.addEventListener('change', syncPreference);
   reduced.addEventListener('change', syncPreference);
+  document.body.dataset.ambientEditing = 'false';
   syncPreference();
   return { capture, play, cancel, reveal };
 };

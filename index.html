@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
-    <link rel="stylesheet" href="styles.css?v=20261001-readable" />
-    <link rel="stylesheet" href="poster.css?v=20261012-ui-motion" />
+    <link rel="stylesheet" href="styles.css?v=20261012-ambient" />
+    <link rel="stylesheet" href="poster.css?v=20261012-ambient" />
   </head>
   <body>
     <div class="app-shell">
@@ -18,6 +18,8 @@
             <small>Filter / Collage · 本地视觉实验室</small>
           </span>
         </a>
+
+        <label class="poster-motion-control">界面动效 <select id="posterMotionPreference" aria-label="界面动效"><option value="on">开启</option><option value="auto" selected>跟随系统</option><option value="off">关闭</option></select></label>
 
         <nav class="mode-switcher" aria-label="工作模式">
           <button class="mode-tab is-active" type="button" data-mode="filter" aria-pressed="true"><span>01</span> Filter Lab</button>
@@ -449,7 +451,6 @@
           </div>
           <div class="poster-stage-footer">
             <p class="poster-stage-note">索引框松开后更新局部效果 · Space 平移 · Ctrl / ⌘ + 滚轮缩放</p>
-              <label class="poster-motion-control">界面动效 <select id="posterMotionPreference" aria-label="界面动效"><option value="on">开启</option><option value="auto" selected>跟随系统</option><option value="off">关闭</option></select></label>
             <div class="poster-zoom-controls" role="group" aria-label="画布缩放">
               <button type="button" data-zoom-action="out" aria-label="缩小">−</button>
               <button class="poster-zoom-value" type="button" data-zoom-action="actual" id="posterZoomValue" aria-label="恢复百分之百">100%</button>
@@ -490,7 +491,7 @@
     <script src="app.js"></script>
     <script src="mode-switcher.js?v=20260921-2"></script>
     <script src="assets/demo-collage-data.js"></script>
-    <script src="poster-motion.js?v=20261012-ui-motion"></script>
+    <script src="poster-motion.js?v=20261012-ambient"></script>
     <script src="poster-liquid-chrome.js?v=20261001-v1"></script>
     <script src="poster-filter-engine.js?v=20261009-native-export"></script>
     <script src="poster-pixels.js?v=20261009-stable"></script>

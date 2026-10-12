@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const listeners = {};
 const active = [];
 const workspace = { dataset: {} };
+const body = { dataset: {} }, timers = new Map(); let timerId = 0;
 const eventTarget = { addEventListener(type, fn) { listeners[type] = fn; } };
 function element() {
   return {
@@ -24,8 +25,10 @@ function element() {
 }
 const window = { ...eventTarget };
 const reduced = { ...eventTarget, matches: true };
+const document = { ...eventTarget, body, hidden: false, hasFocus: () => true, createElement: element };
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../poster-motion.js'), 'utf8'), {
-  window, document: { ...eventTarget, createElement: element }, matchMedia: () => reduced
+  window, document, matchMedia: () => reduced,
+  setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id)
 });
 (async () => {
   const canvas = { ...element(), width: 900, height: 1200 };
@@ -36,6 +39,19 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   preference.value = 'on';
   listeners.change();
   assert.equal(workspace.dataset.motion, 'on');
+  assert.equal(body.dataset.ambient, 'off', 'Continuous motion always respects reduced motion');
+  reduced.matches = false; listeners.change();
+  assert.equal(body.dataset.ambient, 'on');
+  const editingEvent = type => ({ type, target: { closest: () => workspace } });
+  listeners.pointerdown(editingEvent('pointerdown'));
+  assert.equal(body.dataset.ambientEditing, 'true');
+  assert.equal(timers.size, 0, 'Do not resume while a pointer is held');
+  listeners.pointerup();
+  assert.equal(timers.size, 1);
+  listeners.input(editingEvent('input'));
+  assert.equal(timers.size, 1, 'Repeated edits replace the idle timer');
+  timers.values().next().value(); timers.clear();
+  assert.equal(body.dataset.ambientEditing, 'false');
   motion.play(motion.capture());
   assert.equal(wrap.children[0].children.length, 5);
   assert.ok(active.every(a => a.options.duration + (a.options.delay || 0) <= 560), 'Template transition finishes within 560ms');
@@ -66,5 +82,18 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   const count = active.length;
   motion.reveal(element());
   assert.equal(active.length, count, 'Off disables panel animation too');
+  assert.equal(body.dataset.ambient, 'off');
+  preference.value = 'on'; listeners.change(); listeners.focus();
+  assert.equal(body.dataset.ambient, 'on');
+  listeners.pointerdown(editingEvent('pointerdown')); listeners.blur();
+  assert.equal(body.dataset.ambient, 'off');
+  assert.equal(body.dataset.ambientEditing, 'false');
+  assert.equal(timers.size, 0, 'Blur clears the idle timer');
+  listeners.focus(); document.hidden = true; listeners.visibilitychange();
+  assert.equal(body.dataset.ambient, 'off');
+  document.hidden = false; listeners.visibilitychange();
+  assert.equal(body.dataset.ambient, 'on');
+  listeners.pointerdown(editingEvent('pointerdown')); listeners['visual-lab-mode-change']();
+  assert.equal(body.dataset.ambientEditing, 'false');
   console.log('Motion regression passed: preference, short strips, filter fade, panels, restart, input/blur cancellation, cleanup.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
