@@ -7,7 +7,7 @@
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261012-studio" />
     <link rel="stylesheet" href="poster.css?v=20261012-studio" />
-    <link rel="stylesheet" href="studio.css?v=20261012-studio" />
+    <link rel="stylesheet" href="studio.css?v=20261012-studio-motion" />
   </head>
   <body>
     <div class="app-shell">
@@ -36,6 +36,7 @@
 
       <main class="workspace">
         <section class="stage-column" aria-label="配方卡预览工作区">
+          <div class="studio-atmosphere" aria-hidden="true"><span class="studio-orbit"></span><span class="studio-orbit is-inner"></span></div>
           <div class="stage-heading">
             <div>
               <p class="eyebrow">01 / RECIPE CARD PREVIEW</p>
@@ -392,6 +393,7 @@
         <div class="poster-resizer poster-resizer-left" id="posterResizerLeft" role="separator" aria-orientation="vertical" tabindex="0" title="拖拽调整左侧栏宽度（双击复位）"></div>
 
         <section class="poster-stage" aria-label="海报编辑画布">
+          <div class="studio-atmosphere" aria-hidden="true"><span class="studio-orbit"></span><span class="studio-orbit is-inner"></span></div>
           <div class="poster-stage-topline">
             <p class="studio-stage-label">LIVE CANVAS <small>影像实验室 · 编辑展台</small></p>
             <span id="posterStatus">上传主图后开始索引</span>

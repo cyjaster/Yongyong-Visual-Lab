@@ -15,6 +15,8 @@
 
 ## 浏览器验收步骤
 
+2026-10-12 常驻 UI 动效加强记录见 [STUDIO_MOTION_REVIEW.md](STUDIO_MOTION_REVIEW.md)。动效开启后无需悬停：观察当前模板索引框、REMIX 错开光扫、左右标题巡游线与展台光学框。按住或调参时装饰暂停，停手恢复；关闭、系统减少动效与手动开启都应正常。实际浏览器及 03／20 PNG 开关对照检查：`node checks/studio-motion-browser-check.cjs`。光学框线在小屏隐藏，所有装饰不写入导出与历史。
+
 2026-10-12 影像实验室 UI 验收记录见 [STUDIO_UI_REVIEW.md](STUDIO_UI_REVIEW.md)。将“界面动效”选为“开启”，在桌面悬停模板缩略图，检查圆形透镜展示同一作品细节；滚动后重新移动、关闭动效、触摸和编辑时应能正确清除。示范点击仍会更换图片，上传作品请用三个 REMIX 保留素材。自动检查：`node checks/studio-browser-check.cjs`，实际 PNG 和截图证据仅存本地 `samples/results/studio/20261012/`。缩略图生成：本地服务启动后运行 `node checks/build-template-thumbnails.cjs`，只在开发时生成八份静态资源。
 
 1. 在独立浏览器上下文打开编辑器，避免旧 IndexedDB 草稿覆盖默认示范。已有作品请先导出，或使用新的浏览器上下文。
