@@ -29,9 +29,9 @@ async function measure(mode,enabled){return page.evaluate(async({mode,enabled})=
  // Holding a pointer must keep the scene decoration paused, not merely debounce it.
  const box=await page.locator('#posterStatus').boundingBox();await page.mouse.move(box.x+4,box.y+4);await page.mouse.down();await page.waitForTimeout(1400);
  assert.equal(await page.evaluate(()=>document.body.dataset.ambientEditing),'true');assert.equal((await ambient()).filter(a=>a.state==='paused').length,3);await page.mouse.up();await ready();assert.ok((await ambient()).every(a=>a.state==='running'));
- await page.evaluate(()=>window.dispatchEvent(new Event('blur')));assert.equal((await ambient()).length,0);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await ready();
+ await page.evaluate(()=>window.dispatchEvent(new Event('blur')));assert.equal((await ambient()).length,5);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await ready();
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.body.dataset.ambient==='off');assert.equal((await ambient()).length,0);
- await page.locator('#posterMotionPreference').selectOption('on');assert.equal((await ambient()).length,0,'Continuous loops respect reduced motion even with explicit on');
+ await page.locator('#posterMotionPreference').selectOption('on');assert.equal((await ambient()).length,5,'Explicit On overrides reduced motion');assert.ok((await page.evaluate(()=>document.getAnimations().filter(a=>a.animationName?.startsWith('lab-')).map(a=>a.effect.getTiming().duration))).every(d=>d>=6000),'Reduced-motion CSS must not shorten explicit ambient loops');
  await page.emulateMedia({reducedMotion:'no-preference'});await ready();
  await page.locator('#posterMotionPreference').selectOption('off');assert.equal((await ambient()).length,0);await page.locator('#posterMotionPreference').selectOption('on');await ready();
  report.checks.push('Five bounded CSS loops, stationary canvas/history, held-pointer pause and idle resume, blur/focus, reduced motion and off');

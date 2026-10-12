@@ -39,7 +39,7 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   preference.value = 'on';
   listeners.change();
   assert.equal(workspace.dataset.motion, 'on');
-  assert.equal(body.dataset.ambient, 'off', 'Continuous motion always respects reduced motion');
+  assert.equal(body.dataset.ambient, 'on', 'Explicit On overrides reduced motion');
   reduced.matches = false; listeners.change();
   assert.equal(body.dataset.ambient, 'on');
   const editingEvent = type => ({ type, target: { closest: () => workspace } });
@@ -86,7 +86,7 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   preference.value = 'on'; listeners.change(); listeners.focus();
   assert.equal(body.dataset.ambient, 'on');
   listeners.pointerdown(editingEvent('pointerdown')); listeners.blur();
-  assert.equal(body.dataset.ambient, 'off');
+  assert.equal(body.dataset.ambient, 'on', 'Visible page keeps breathing when chat takes focus');
   assert.equal(body.dataset.ambientEditing, 'false');
   assert.equal(timers.size, 0, 'Blur clears the idle timer');
   listeners.focus(); document.hidden = true; listeners.visibilitychange();

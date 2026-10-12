@@ -3,10 +3,10 @@ window.createPosterMotion = (canvas, wrap, preference) => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const workspace = wrap.closest('.poster-workspace');
   let overlay = null, animations = [];
-  let ambientTimer = 0, pointerHeld = false, focused = document.hasFocus();
+  let ambientTimer = 0, pointerHeld = false;
   const enabled = () => preference.value === 'on' || (preference.value === 'auto' && !reduced.matches);
   const syncAmbient = () => {
-    document.body.dataset.ambient = enabled() && !reduced.matches && !document.hidden && focused ? 'on' : 'off';
+    document.body.dataset.ambient = enabled() && !document.hidden ? 'on' : 'off';
   };
   const resumeAmbient = () => {
     clearTimeout(ambientTimer);
@@ -94,8 +94,8 @@ window.createPosterMotion = (canvas, wrap, preference) => {
   document.addEventListener('visibilitychange', () => { cancel(); resetAmbient(); });
   window.addEventListener('visual-lab-mode-change', () => { cancel(); resetAmbient(); });
   window.addEventListener('resize', cancel);
-  window.addEventListener('blur', () => { focused = false; cancel(); resetAmbient(); });
-  window.addEventListener('focus', () => { focused = true; syncAmbient(); });
+  window.addEventListener('blur', () => { cancel(); resetAmbient(); });
+  window.addEventListener('focus', syncAmbient);
   preference.addEventListener('change', syncPreference);
   reduced.addEventListener('change', syncPreference);
   document.body.dataset.ambientEditing = 'false';

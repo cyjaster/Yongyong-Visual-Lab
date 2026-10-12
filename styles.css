@@ -300,4 +300,9 @@ input, select, textarea { accent-color: var(--accent); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  /* Ambient is enabled here only when the visitor explicitly chooses On. */
+  body[data-ambient="on"] .brand-mark::after { animation-duration: 6s !important; }
+  body[data-ambient="on"] .topbar::before { animation-duration: 14s !important; }
+  body[data-ambient="on"] :is(.poster-stage, .stage-column)::before { animation-duration: 9s !important; }
+  body[data-ambient="on"] :is(.poster-stage, .stage-column)::after { animation-duration: 12s !important; }
 }
