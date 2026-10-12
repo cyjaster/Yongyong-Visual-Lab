@@ -4163,6 +4163,9 @@
   function updateMasterRemixControls() {
     const total = masterRemixList.length;
     const m = masterRemixList[currentMasterIndex];
+    document.querySelectorAll(".poster-demo-button").forEach((button, index) => {
+      button.setAttribute("aria-current", String(index === currentLayoutIndex));
+    });
     if (state.image) {
       status.textContent = 'LAYOUT [' + (currentLayoutIndex + 1) + '/' + layoutRemixList.length + '] · '
         + (state.imageName || layoutRemixList[currentLayoutIndex]?.nameZh || 'IMAGE').toUpperCase();
@@ -4933,23 +4936,15 @@
   viewport.addEventListener('wheel',(e)=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const r=viewport.getBoundingClientRect();zoomBy(e.deltaY < 0 ? .08 : -.08,{x:e.clientX-r.left,y:e.clientY-r.top});},{passive:false});
   viewport.addEventListener('pointerdown',(e)=>{if(!spaceDown)return;e.preventDefault();e.stopPropagation();pan={x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.classList.add('is-panning');viewport.setPointerCapture(e.pointerId);},true);
   viewport.addEventListener('pointermove',(e)=>{
-    if (e.pointerType !== 'touch' && $('#posterWorkspace').dataset.motion === 'on' && !drag && !pan) {
-      const rect = viewport.getBoundingClientRect();
-      viewport.style.setProperty('--scan-x', `${((e.clientX - rect.left) / rect.width) * 100}%`);
-      viewport.style.setProperty('--scan-y', `${((e.clientY - rect.top) / rect.height) * 100}%`);
-      viewport.classList.add('is-tracking');
-    }
     if(!pan)return;
     viewport.scrollLeft=pan.left-(e.clientX-pan.x);viewport.scrollTop=pan.top-(e.clientY-pan.y);
   });
-  viewport.addEventListener('pointerleave',()=>viewport.classList.remove('is-tracking'));
   viewport.addEventListener('pointerup',()=>{pan=null;viewport.classList.remove('is-panning');});
   viewport.addEventListener('pointercancel',()=>{pan=null;viewport.classList.remove('is-panning');});
   document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
   window.addEventListener('visual-lab-mode-change', (e) => {
-    viewport.classList.remove('is-tracking');
     if (e.detail.mode === 'poster' && zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
   });
   window.addEventListener('blur',()=>{

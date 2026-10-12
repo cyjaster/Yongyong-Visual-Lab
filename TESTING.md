@@ -15,6 +15,8 @@
 
 ## 浏览器验收步骤
 
+2026-10-12 影像实验室 UI 验收记录见 [STUDIO_UI_REVIEW.md](STUDIO_UI_REVIEW.md)。将“界面动效”选为“开启”，在桌面悬停模板缩略图，检查圆形透镜展示同一作品细节；滚动后重新移动、关闭动效、触摸和编辑时应能正确清除。示范点击仍会更换图片，上传作品请用三个 REMIX 保留素材。自动检查：`node checks/studio-browser-check.cjs`，实际 PNG 和截图证据仅存本地 `samples/results/studio/20261012/`。缩略图生成：本地服务启动后运行 `node checks/build-template-thumbnails.cjs`，只在开发时生成八份静态资源。
+
 1. 在独立浏览器上下文打开编辑器，避免旧 IndexedDB 草稿覆盖默认示范。已有作品请先导出，或使用新的浏览器上下文。
 2. 逐个打开「示范 01—08」，对照参考图检查构图、文字、照片框、贴纸、抠图和层次。参考照片的姿态不能由模板生成。
    示范 04／05 包含图库 20／03／09 三张；示范 06 包含 20／03／09／15 四张，右侧照片条使用前三张，AirDrop 使用 15 城市外景，各卡片不重复。桌面示范专项检查：`node checks/three-photo-demos-browser-check.cjs`；上传适配仍只取 03／20。

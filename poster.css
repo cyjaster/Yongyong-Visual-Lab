@@ -261,8 +261,6 @@ body.is-resizing-poster canvas {
   transform: translateY(1px);
 }
 .poster-viewport { min-width: 0; min-height: 420px; position: relative; overflow: auto; display: flex; align-items: flex-start; justify-content: flex-start; padding: 10px; scrollbar-width: thin; scrollbar-color: #566052 transparent; cursor: default; }
-.poster-viewport::after { content: ''; position: absolute; z-index: 4; width: 220px; height: 220px; left: var(--scan-x, 50%); top: var(--scan-y, 45%); border: 1px solid rgba(198,255,58,.65); border-radius: 50%; pointer-events: none; opacity: 0; background: radial-gradient(circle, rgba(198,255,58,.2) 0, rgba(198,255,58,.08) 42%, transparent 72%); transform: translate(-50%,-50%); transition: opacity 160ms ease, left 100ms ease-out, top 100ms ease-out; }
-.poster-viewport.is-tracking::after { opacity: .22; }
 .poster-viewport.is-panning { cursor: grabbing; user-select: none; }
 .poster-canvas-wrap { position: relative; flex: 0 0 auto; width: 675px; height: 900px; margin: auto; overflow: hidden; background: #d9d7d1; box-shadow: 0 20px 55px rgba(25,24,22,.19); transform-origin: center; }
 .poster-canvas-wrap::after { content: ''; position: absolute; inset: 0; border: 1px solid #efffd1; box-shadow: inset 0 0 16px #f2ffe533; pointer-events: none; opacity: 0; }
@@ -475,7 +473,6 @@ body[data-ambient-editing="true"] .poster-canvas-wrap::after { animation-play-st
 @media (max-width: 1040px) { .poster-workspace { grid-template-columns: 200px minmax(0,1fr) 236px; } .poster-resizer { display: none; } .poster-tools-content, .poster-inspector { padding: 20px 12px; } .poster-stage-note { flex-basis: 100%; } }
 @media (max-width: 820px) { .poster-workspace { height: auto; min-height: calc(100vh - 68px); grid-template-columns: 1fr; overflow: visible; } .poster-tools, .poster-inspector { overflow: visible; border: 0; border-top: 1px solid var(--line); } .poster-tools { display: block; } .poster-tools-content { overflow: visible; display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; } .poster-panel-heading { grid-column: 1 / -1; } .poster-stage { min-height: 760px; } .poster-viewport { min-height: 620px; } .poster-inspector { min-height: 300px; } }
 @media (max-width: 520px) { .poster-tools-content { display: block; } .poster-stage { padding: 12px 8px; min-height: 0; } .poster-viewport { min-height: 520px; padding: 10px; } .poster-stage-footer { justify-content: center; } .poster-stage-note { text-align: center; } }
-@media (hover: none) { .poster-viewport::after { display: none; } }
 .poster-workspace[data-motion="on"] button:not(:disabled) { transition: transform 140ms ease-out, background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
 @media (hover: hover) {
   .poster-workspace[data-motion="on"] button:not(:disabled):hover { transform: translateY(-1px); }
@@ -483,8 +480,6 @@ body[data-ambient-editing="true"] .poster-canvas-wrap::after { animation-play-st
 .poster-workspace[data-motion="on"] button:not(:disabled):active { transform: scale(.98); }
 .poster-workspace button:focus-visible { outline: 2px solid #002fa7; outline-offset: 2px; }
 .poster-workspace[data-motion="off"] button { transition: none; transform: none; }
-.poster-workspace[data-motion="off"] .poster-viewport::after { display: none; }
-@media (prefers-reduced-motion: reduce) { .poster-viewport::after { display: none; } }
 
 @media (max-width: 520px) { .poster-action-dock .poster-action, .poster-action-dock .poster-remix-button, .poster-action-dock .poster-filter-remix-button, .poster-action-dock .poster-history-actions button, .poster-master-remix-dock { min-height: 34px; } }
 @media (max-width: 520px) { .master-dock-tag { display: none; } }

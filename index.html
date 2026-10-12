@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0c0e0c" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
-    <link rel="stylesheet" href="styles.css?v=20261012-ambient-visible" />
-    <link rel="stylesheet" href="poster.css?v=20261012-ambient-visible" />
+    <link rel="stylesheet" href="styles.css?v=20261012-studio" />
+    <link rel="stylesheet" href="poster.css?v=20261012-studio" />
+    <link rel="stylesheet" href="studio.css?v=20261012-studio" />
   </head>
   <body>
     <div class="app-shell">
@@ -300,15 +301,15 @@
               <div class="poster-image-tray" id="posterImageTray"></div>
             </div>
             <span class="poster-tool-label">示范作品 · 会更换图片和排版</span>
-            <div class="poster-demo-button-row" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px;">
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo" title="恢复 Aespa 电光多图示范"><span>示范 01</span><kbd>DEMO 01</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-02" title="查看先锋机能模特 7 选拆解"><span>示范 02</span><kbd>DEMO 02</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-03" title="查看蓝色情绪拼贴示范"><span>示范 03</span><kbd>DEMO 03</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-04" title="查看粉色桌面拼贴示范"><span>示范 04</span><kbd>DEMO 04</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-05" title="查看Photo Booth 照片桌面示范"><span>示范 05</span><kbd>DEMO 05</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-06" title="查看AirDrop 照片日记示范"><span>示范 06</span><kbd>DEMO 06</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-07" title="查看夜晚相册叙事示范"><span>示范 07</span><kbd>DEMO 07</kbd></button>
-              <button class="poster-action poster-demo-button" style="min-width:0;padding:8px 4px;font-size:11px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:space-between;" type="button" data-poster-action="demo-08" title="查看电蓝黑白档案示范"><span>示范 08</span><kbd>DEMO 08</kbd></button>
+            <div class="poster-demo-button-row">
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo" aria-label="示范 01 · 电光拼贴，会更换图片和排版" title="示范 01 · 电光拼贴，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-01.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-01.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>01</b><small>电光拼贴</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-02" aria-label="示范 02 · 机能拆解，会更换图片和排版" title="示范 02 · 机能拆解，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-02.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-02.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>02</b><small>机能拆解</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-03" aria-label="示范 03 · 蓝色情绪，会更换图片和排版" title="示范 03 · 蓝色情绪，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-03.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-03.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>03</b><small>蓝色情绪</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-04" aria-label="示范 04 · 粉色桌面，会更换图片和排版" title="示范 04 · 粉色桌面，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-04.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-04.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>04</b><small>粉色桌面</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-05" aria-label="示范 05 · 照片窗口，会更换图片和排版" title="示范 05 · 照片窗口，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-05.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-05.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>05</b><small>照片窗口</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-06" aria-label="示范 06 · 照片日记，会更换图片和排版" title="示范 06 · 照片日记，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-06.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-06.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>06</b><small>照片日记</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-07" aria-label="示范 07 · 夜晚相册，会更换图片和排版" title="示范 07 · 夜晚相册，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-07.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-07.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>07</b><small>夜晚相册</small></span></button>
+              <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-08" aria-label="示范 08 · 电蓝档案，会更换图片和排版" title="示范 08 · 电蓝档案，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-08.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-08.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>08</b><small>电蓝档案</small></span></button>
             </div>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
             <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
@@ -392,6 +393,7 @@
 
         <section class="poster-stage" aria-label="海报编辑画布">
           <div class="poster-stage-topline">
+            <p class="studio-stage-label">LIVE CANVAS <small>影像实验室 · 编辑展台</small></p>
             <span id="posterStatus">上传主图后开始索引</span>
 
             <div class="poster-resolution-badge-wrap" title="切换海报分辨率 (当前默认 1.2K 推荐)">
@@ -498,6 +500,7 @@
     <script src="poster-draft.js?v=20261009-local"></script>
     <script src="poster-cutout.js?v=20261009-stable"></script>
     <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261012-ui-motion"></script>
+    <script src="poster.js?v=20261012-studio"></script>
+    <script src="poster-gallery.js?v=20261012-studio"></script>
   </body>
 </html>
