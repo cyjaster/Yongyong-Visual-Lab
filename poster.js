@@ -2294,9 +2294,20 @@
     finally { cutoutBusy = false;cutoutLabel = '';renderInspector(); }
   }
   let inspectorTab = 'look', inspectorViewKey = '', inspectorEffect = '';
+  const inspectorGroups = new Map();
+  let inspectorGroupTarget = '';
+  const inspectorGroupKey = (target, node) => target.split(':')[0] + ':' + node.closest('[data-inspector-pane]').dataset.inspectorPane + ':' + node.querySelector(':scope > summary .acc-en').textContent;
   function renderInspector() {
+    if (inspectorGroupTarget) inspector.querySelectorAll('.poster-accordion').forEach(node => {
+      inspectorGroups.set(inspectorGroupKey(inspectorGroupTarget, node), node.open);
+    });
     renderInspectorContent();
     organizeInspector();
+    const target = inspector.querySelector('#posterInspectorTarget').value;
+    inspectorGroupTarget = target;
+    inspector.querySelectorAll('.poster-accordion').forEach(node => {
+      node.open = inspectorGroups.get(inspectorGroupKey(target, node)) ?? false;
+    });
   }
   function organizeInspector() {
     const key = state.selected ? state.selected.type + ':' + state.selected.id : 'canvas';
@@ -2313,7 +2324,6 @@
       const section = node.querySelector(':scope > summary .acc-en')?.textContent;
       const pane = layoutSections.has(section) || node.matches('.poster-layer-order,.poster-section-label') ? 'layout' : lookSections.has(section) || node.querySelector('[data-prop="imageId"]') ? 'look' : 'advanced';
       panes[pane].append(node);
-      if (node.matches('details')) node.open = pane !== 'advanced';
       if (section === 'STYLE') node.querySelectorAll('.poster-field').forEach(field => {
         if (field.querySelector('[data-prop="brightness"],[data-prop="contrast"],[data-prop="saturation"]')) panes.look.append(field);
       });
@@ -2333,7 +2343,7 @@
     if (!state.selected) {
       const paper = document.createElement('details'); paper.className = 'poster-accordion';
       paper.innerHTML = '<summary><span class="acc-zh">纸框与外框</span><span class="acc-en">PAPER & BORDER</span></summary><div class="poster-accordion-body"></div>';
-      const position=document.createElement('details');position.className='poster-accordion';position.open=true;
+      const position=document.createElement('details');position.className='poster-accordion';
       position.innerHTML='<summary><span class="acc-zh">纸框位置</span><span class="acc-en">PAPER POSITION</span></summary><div class="poster-accordion-body"></div>';
       panes.look.querySelectorAll('.poster-field').forEach(field => {
         const control = field.querySelector('[data-global]'); const prop = control?.dataset.global || '';
@@ -2361,7 +2371,7 @@
       }).join('')+'</select>';
       if (!advanced.some(node=>node.dataset.inspectorEffect===inspectorEffect)) inspectorEffect='';
       panes.advanced.prepend(picker);
-      advanced.forEach(node=>{node.hidden=node.dataset.inspectorEffect!==inspectorEffect;node.open=true;});
+      advanced.forEach(node=>{node.hidden=node.dataset.inspectorEffect!==inspectorEffect;});
 
     }
     for (const name of Object.keys(panes)) panes[name].hidden=name!==inspectorTab;

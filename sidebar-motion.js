@@ -11,6 +11,7 @@
  */
 (() => {
   function initMotionSystem() {
+    if (matchMedia('(pointer: coarse)').matches) return;
     // --- 1. 创建顶奢暗房探针光标 DOM ---
     let cursorWrap = document.querySelector('.kinetic-cursor-wrapper');
     if (!cursorWrap) {
@@ -49,6 +50,7 @@
         ringPos.y = mouse.y;
       }
       dot.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0)`;
+      wakeMotion();
     }, { passive: true });
 
     document.addEventListener('pointerleave', () => {
@@ -67,9 +69,7 @@
         ringPos.y += (mouse.y - ringPos.y) * 0.22;
         ring.style.transform = `translate3d(${ringPos.x}px, ${ringPos.y}px, 0)`;
       }
-      requestAnimationFrame(updateCursorLoop);
     }
-    requestAnimationFrame(updateCursorLoop);
 
     // 光标模式嗅探 (Stage Reticle vs Button Magnet)
     const stages = document.querySelectorAll('.poster-stage, .stage-column');
@@ -149,9 +149,7 @@
           wrap.style.removeProperty('--card-shadow-y');
         });
       }
-      requestAnimationFrame(updateCanvasFloatLoop);
     }
-    requestAnimationFrame(updateCanvasFloatLoop);
 
     // --- 3. 面板聚光灯光标跟随 ---
     const panels = document.querySelectorAll('.poster-tools-content, .poster-inspector, .inspector');
@@ -162,6 +160,30 @@
         panel.style.setProperty('--panel-my', `${(e.clientY - rect.top).toFixed(1)}px`);
       }, { passive: true });
     });
+
+    // One preview loop; off, hidden and touch layouts need no mouse animation.
+    let motionFrame = 0;
+    const motionEnabled = () => !document.hidden && document.body.dataset.ambient === 'on' && document.body.dataset.motionTier !== 'lite';
+    function tickMotion() {
+      motionFrame = 0;
+      if (!motionEnabled()) { wakeMotion(); return; }
+      updateCursorLoop();
+      updateCanvasFloatLoop();
+      motionFrame = requestAnimationFrame(tickMotion);
+    }
+    function wakeMotion() {
+      if (motionEnabled()) {
+        if (!motionFrame) motionFrame = requestAnimationFrame(tickMotion);
+      } else {
+        tiltTarget.x = tiltTarget.y = tiltCurrent.x = tiltCurrent.y = 0;
+        updateCanvasFloatLoop();
+        cursorWrap.classList.remove('is-visible');
+        isCursorVisible = false;
+      }
+    }
+    new MutationObserver(wakeMotion).observe(document.body, { attributes: true, attributeFilter: ['data-ambient', 'data-motion-tier'] });
+    document.addEventListener('visibilitychange', wakeMotion);
+    wakeMotion();
 
     // Delegate transient feedback so inspector rebuilds cannot retain old controls.
     const pressedControls = new Set();

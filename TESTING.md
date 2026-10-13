@@ -1,5 +1,7 @@
 # 网站验收入口
 
+2026-10-13 简洁界面与手机优化见 [本轮记录](COMPACT_MOBILE_REVIEW.md)。刷新检查左右与 Filter Lab 详细组默认关闭；展开后调参、切换对象、撤销重做，原展开状态应保留。390px 的跟随系统应显示静态水银背景，手动开启背景最长边不超过720像素；导出仍按所选分辨率。专项回归：`node checks/compact-mobile-regression.cjs`、`node checks/motion-regression.cjs`。实体手机性能未测。
+
 当前正式版为 2026-10-13 实验版整合，实测与限制见 [本次发布记录](RELEASE_20261013.md)。双击 `打开网站.cmd`；直接 `file://` 打开会提示改用 HTTP。观察左右磨砂面板下的背景、卡片纸边与雾化高光，检查动效关闭和编辑暂停。右侧背景缩略图应保留选中状态、键盘焦点、条件控件与撤销／重做。新增专项：`background-picker-regression.cjs`、`glass-card-regression.cjs`、`sidebar-feedback-regression.cjs`、`local-open-regression.cjs`，均位于 `checks/`，用 Node 运行。本轮实际 PNG、截图及离线输出只存本地 `samples/results/experimental-release/20261013/`；以下较早记录保留其原日期和范围。
 
 常驻呼吸见[本轮记录](AMBIENT_MOTION_REVIEW.md)：顶部“界面动效”在两个模式共用，开启后静置8–12秒查看背景／Y标志／顶部细线／纸边的节奏；关闭全部停止。跟随系统时尊重减少动态效果；手动开启应覆盖该设置，循环时长必须保持6–14秒，不能被全局CSS压到0.01ms。可见页面失焦继续呼吸，隐藏才停止。拖动期间背景和纸边暂停，按住不松不能提前恢复，结束1.2秒后恢复。检查两个模式在390／968／1280px无横向溢出，导出和草稿保持原像素。专项：`node checks/ambient-browser-check.cjs`，结果仅存本地`samples/results/ambient/20261012/`。

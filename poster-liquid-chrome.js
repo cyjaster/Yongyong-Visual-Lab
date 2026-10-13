@@ -408,27 +408,32 @@
         if (!this.state.running) this.start();
       }, { passive: true });
 
-      window.addEventListener('resize', () => this.resize(), { passive: true });
+      window.addEventListener('resize', () => { this.resize(); this.start(); }, { passive: true });
       // The existing motion controller owns system preferences and tab visibility.
-      new MutationObserver(() => this.start()).observe(document.body, { attributes: true, attributeFilter: ['data-ambient'] });
+      new MutationObserver(() => { this.resize(); this.start(); }).observe(document.body, { attributes: true, attributeFilter: ['data-ambient', 'data-motion-tier'] });
     }
 
     resize() {
       if (!this.canvas) return;
       const rect = this.canvas.parentElement ? this.canvas.parentElement.getBoundingClientRect() : this.canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // 性能保护：Retina 屏上限 1.5x
-      const w = Math.round((rect.width || 800) * dpr);
-      const h = Math.round((rect.height || 600) * dpr);
+      const lite = document.body.dataset.motionTier === 'lite';
+      const dpr = Math.min(window.devicePixelRatio || 1, lite ? 1 : 1.5);
+      const scale = lite ? Math.min(1, 720 / Math.max(rect.width || 800, rect.height || 600)) : 1;
+      const w = Math.round((rect.width || 800) * dpr * scale);
+      const h = Math.round((rect.height || 600) * dpr * scale);
 
       if (this.canvas.width !== w || this.canvas.height !== h) {
         this.canvas.width = w;
         this.canvas.height = h;
+        this.hasRendered = false;
         if (this.gl) this.gl.viewport(0, 0, w, h);
       }
     }
 
     start() {
       if (!this.gl || this.state.running) return;
+      this.state.lastTime = performance.now();
+      this.lastDraw = -Infinity;
       this.state.running = true;
       this.loop();
     }
@@ -451,6 +456,10 @@
       }
       this.state.elapsed += dt;
       const elapsedTime = this.state.elapsed;
+      if (document.body.dataset.motionTier === 'lite' && now - (this.lastDraw ?? -Infinity) < 1000 / 24) {
+        requestAnimationFrame(() => this.loop());
+        return;
+      }
 
       // 弹簧阻尼插值鼠标
       this.state.mouse.x += (this.state.targetMouse.x - this.state.mouse.x) * 0.14;
@@ -470,6 +479,7 @@
       }
 
       this.render(elapsedTime);
+      this.lastDraw = now;
       this.hasRendered = true;
 
       // Continue the ambient flow even after pointer disturbance has settled.

@@ -44,8 +44,37 @@
 .studio-stage-label { flex-basis: 100%; display: flex; align-items: center; gap: 8px; margin: 0 0 2px; color: #dfebe9; font: 600 10px ui-monospace, Consolas, monospace; letter-spacing: .14em; }
 .studio-stage-label::before { content: ''; width: 5px; height: 5px; background: #c6ff3a; border-radius: 50%; }
 .studio-stage-label small { margin-left: auto; font: 9px "Segoe UI", "Microsoft YaHei", sans-serif; color: #a4b8be; letter-spacing: normal; }
-.poster-action-dock { padding: 6px; border-radius: 8px; border-color: var(--line); background: #142229b8; backdrop-filter: blur(12px); box-shadow: 0 6px 18px #00000018; }
-.poster-action-dock .poster-history-actions button { background: #d2edee08; border-radius: 4px; }
+.poster-action-dock { padding: 8px; gap: 6px; border-radius: 12px; border-color: #d5e7ed33; background: linear-gradient(110deg, #61748358, #182a34b8); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 #ffffff12, 0 8px 24px #0003; }
+.poster-action-dock :is(button, .poster-action) { border-radius: 6px; min-height: 30px; background: #dcecf00c; color: #e8f1ef; border: 1px solid #d5e7ed30; box-shadow: none; }
+.poster-action-dock :is(#posterRemixButton, #posterFilterRemixButton, #posterCutoutEntry) { background: #dcecf00c; color: #e8f1ef; border-color: #d5e7ed30; }
+.poster-action-dock #posterRemixButton b { color: inherit; font-weight: 600; }
+.poster-action-dock #posterFilterRemixButton { font-weight: 600; }
+.poster-action-dock #posterMasterRemixDock { background: #c6ff3a0a; border: 1px solid #c6ff3a70; box-shadow: inset 0 -2px 0 #c6ff3a40; }
+.poster-action-dock .master-dock-tag { background: #dcecf012; color: #dce9ed; border-radius: 4px; padding: 2px 5px; }
+.poster-action-dock .master-dock-spark { color: #c6ff3a; }
+.poster-action-dock :is(button, .poster-action):hover { background: #dcecf020; border-color: #d5e7ed70; color: #fff; box-shadow: none; }
+.poster-action-dock #posterExportButton { background: #c6ff3a; color: #152026; border-color: #c6ff3a; font-weight: 700; }
+.poster-action-dock #posterExportButton:hover { background: #d5ff71; border-color: #d5ff71; }
+.poster-action-dock button:focus-visible { outline: 2px solid #c6ff3a; outline-offset: 2px; }
+.poster-toolbar-status { padding: 3px 2px 0; }
+.poster-tool-group > .poster-tool-summary, .poster-tray-header { padding: 10px 0; margin: 0; }
+details.poster-tool-group { padding: 0; }
+details.poster-tool-group[open] { padding-bottom: 12px; }
+.poster-tool-summary { align-items: center; font-size: 12px; }
+.poster-tool-summary small { font-size: 8px; }
+.poster-text-tools > summary { grid-column: 1 / -1; }
+.poster-demo-group > summary small { display: none; }
+.poster-tool-summary:hover, .settings-group > summary:hover { color: #eaffbc; }
+.poster-tray-header .poster-tray-count { margin-left: auto; }
+.poster-tray-header::after { margin-left: 2px; }
+.poster-tool-group > details { border-top: 1px solid var(--line); }
+body[data-ambient="off"] .kinetic-cursor-wrapper, body[data-motion-tier="lite"] .kinetic-cursor-wrapper { display: none; }
+body[data-ambient="off"] .mercury-hud-dot { animation: none; }
+body[data-motion-tier="lite"] :is(.poster-tools, .poster-inspector, .inspector) { backdrop-filter: blur(6px); }
+body[data-motion-tier="lite"] .poster-action-dock { backdrop-filter: none; }
+body[data-motion-tier="lite"] :is(.studio-orbit, .mercury-hud-dot) { animation: none !important; }
+body[data-motion-tier="lite"] :is(#posterCanvasWrap, .canvas-frame)::before { display: none; }
+body[data-motion-tier="lite"] :is(.poster-demo-art, #posterMasterRemixDock, #posterRemixButton, #posterFilterRemixButton, #randomAllButton, .poster-panel-heading, .poster-inspector-heading, .settings-intro)::after { animation: none !important; }
 .poster-viewport { padding: 20px 12px; scrollbar-color: #73888f transparent; }
 .poster-stage-note { color: #beced2; }
 .poster-zoom-controls { border-color: #5c7078; border-radius: 5px; overflow: hidden; background: #24363e; }

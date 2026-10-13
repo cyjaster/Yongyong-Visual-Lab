@@ -1,11 +1,13 @@
 // Preview-only paper transition. The editor canvas and history stay authoritative.
 window.createPosterMotion = (canvas, wrap, preference) => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const compact = matchMedia('(max-width: 700px), (pointer: coarse)');
   const workspace = wrap.closest('.poster-workspace');
   let overlay = null, animations = [];
   let ambientTimer = 0, pointerHeld = false;
-  const enabled = () => preference.value === 'on' || (preference.value === 'auto' && !reduced.matches);
+  const enabled = () => preference.value === 'on' || (preference.value === 'auto' && !reduced.matches && !compact.matches);
   const syncAmbient = () => {
+    document.body.dataset.motionTier = compact.matches ? 'lite' : 'full';
     document.body.dataset.ambient = enabled() && !document.hidden ? 'on' : 'off';
   };
   const resumeAmbient = () => {
@@ -98,6 +100,7 @@ window.createPosterMotion = (canvas, wrap, preference) => {
   window.addEventListener('focus', syncAmbient);
   preference.addEventListener('change', syncPreference);
   reduced.addEventListener('change', syncPreference);
+  compact.addEventListener('change', syncPreference);
   document.body.dataset.ambientEditing = 'false';
   syncPreference();
   return { capture, play, cancel, reveal };

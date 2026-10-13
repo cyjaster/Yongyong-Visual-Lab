@@ -8,7 +8,7 @@
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261012-studio" />
     <link rel="stylesheet" href="poster.css?v=20261012-studio" />
-    <link rel="stylesheet" href="studio.css?v=20261013-background-picker" />
+    <link rel="stylesheet" href="studio.css?v=20261013-compact-mobile" />
   </head>
   <body>
     <p id="localFileNotice" role="status" hidden style="margin:0;padding:12px 20px;background:#ccff33;color:#101010">完整功能请双击此文件夹的「打开网站.cmd」。直接打开 index.html 会限制图库滤镜、人像抠图与导出；照片仍只在本机处理。</p>
@@ -86,13 +86,13 @@
               <button id="randomAllButton" type="button"><span>全部随机 ✦</span><small>一键抽方案</small></button>
             </div>
 
-            <details class="settings-group title-settings" open>
+            <details class="settings-group title-settings">
               <summary>标题与文字</summary>
               <label for="recipeName">滤镜名称</label>
               <input id="recipeName" type="text" value="bloom study" maxlength="32" autocomplete="off" />
             </details>
 
-            <details class="settings-group" open>
+            <details class="settings-group">
               <summary>背景</summary>
               <fieldset class="style-picker">
               <div class="style-options">
@@ -130,7 +130,7 @@
               </fieldset>
             </details>
 
-            <details class="settings-group composition-controls" open>
+            <details class="settings-group composition-controls">
               <summary>照片与装饰</summary>
               <div class="control-heading">
                 <span>照片比例</span>
@@ -168,7 +168,7 @@
               </div>
             </details>
 
-            <details class="settings-group position-controls" open>
+            <details class="settings-group position-controls">
               <summary>排版位置</summary>
               <p>分别移动元素，让版面保持一点错落感。</p>
               <div class="position-grid">
@@ -190,7 +190,7 @@
               </div>
             </details>
 
-            <details class="settings-group export-settings" open>
+            <details class="settings-group export-settings">
               <summary>画布与导出</summary>
               <div class="export-settings-grid">
                 <div>
@@ -219,7 +219,7 @@
               <button class="round-button" id="addLayerButton" type="button" title="添加颜色图层" aria-label="添加颜色图层">＋</button>
             </summary>
 
-            <details class="settings-group color-preset-bar" open>
+            <details class="settings-group color-preset-bar">
               <summary>调色预设</summary>
               <div class="preset-controls">
                 <select id="colorPreset">
@@ -243,7 +243,7 @@
               <small id="colorPresetNote">纯色色层模拟色彩方向，不等同相机原生配置。</small>
             </details>
 
-            <details class="settings-group atmosphere-controls" open>
+            <details class="settings-group atmosphere-controls">
               <summary>整卡氛围滤镜</summary>
               <p>最终作用于整张配方卡，包括背景、照片、文字、箭头和图层面板。</p>
               <div class="atmosphere-presets" aria-label="氛围滤镜预设">
@@ -270,7 +270,7 @@
               </label>
             </details>
 
-            <details class="settings-group layer-stack" open>
+            <details class="settings-group layer-stack">
               <summary>颜色图层</summary>
               <ol class="layer-list" id="layerList" aria-live="polite"></ol>
             </details>
@@ -303,14 +303,15 @@
           <section class="poster-tool-group">
             <span class="poster-tool-label">IMAGE / FRAMES</span>
             <label class="poster-action poster-action-primary" for="posterImageInput" id="posterUploadImagesLabel" title="支持选择一张（单图创作）或按住 Ctrl/Shift 选择多张图片（多图创作）">＋ 上传图片 <small>单选 / 多选</small></label>
-            <div class="poster-tray-group" id="posterImageTrayGroup">
-              <div class="poster-tray-header">
+            <details class="poster-tray-group" id="posterImageTrayGroup">
+              <summary class="poster-tray-header poster-tool-summary">
                 <span class="poster-tool-label">当前图片 / IMAGES</span>
                 <span class="poster-tray-count" id="posterTrayCount" aria-live="polite">0 IMAGES</span>
-              </div>
+              </summary>
               <div class="poster-image-tray" id="posterImageTray"></div>
-            </div>
-            <span class="poster-tool-label">示范作品 · 会更换图片和排版</span>
+            </details>
+            <details class="poster-tool-group poster-demo-group">
+            <summary class="poster-tool-summary">示范作品 <small>会更换图片和排版</small></summary>
             <div class="poster-demo-button-row">
               <button class="poster-action poster-demo-button" type="button" data-poster-action="demo" aria-label="示范 01 · 电光拼贴，会更换图片和排版" title="示范 01 · 电光拼贴，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-01.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-01.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>01</b><small>电光拼贴</small></span></button>
               <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-02" aria-label="示范 02 · 机能拆解，会更换图片和排版" title="示范 02 · 机能拆解，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-02.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-02.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>02</b><small>机能拆解</small></span></button>
@@ -321,22 +322,25 @@
               <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-07" aria-label="示范 07 · 夜晚相册，会更换图片和排版" title="示范 07 · 夜晚相册，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-07.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-07.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>07</b><small>夜晚相册</small></span></button>
               <button class="poster-action poster-demo-button" type="button" data-poster-action="demo-08" aria-label="示范 08 · 电蓝档案，会更换图片和排版" title="示范 08 · 电蓝档案，会更换图片和排版"><span class="poster-demo-art" aria-hidden="true"><img src="assets/templates/template-08.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /><span class="poster-demo-fragment"></span><span class="poster-demo-lens"><img src="assets/templates/template-08.webp" width="240" height="320" alt="" loading="lazy" decoding="async" /></span></span><span class="poster-demo-caption"><b>08</b><small>电蓝档案</small></span></button>
             </div>
+            </details>
+            <details class="poster-tool-group">
+            <summary class="poster-tool-summary">索引与局部图 <small>INDEX</small></summary>
             <button class="poster-action" type="button" data-poster-action="frame">添加索引框 <kbd>F</kbd></button>
             <button class="poster-action" type="button" data-poster-action="detail">生成局部放大 <kbd>D</kbd></button>
+            </details>
           </section>
 
-          <section class="poster-tool-group poster-text-tools">
-            <span class="poster-tool-label">TYPE HIERARCHY</span>
-            <small class="poster-tool-desc">添加标题与信息文字</small>
+          <details class="poster-tool-group poster-text-tools">
+            <summary class="poster-tool-summary">标题与信息文字 <small>TYPE</small></summary>
             <button class="poster-action" type="button" data-poster-action="hero">+ 主标题</button>
             <button class="poster-action" type="button" data-poster-action="subtitle">+ 副标题</button>
             <button class="poster-action" type="button" data-poster-action="caption">+ 小字说明</button>
             <button class="poster-action" type="button" data-poster-action="micro">+ 微型信息</button>
             <button class="poster-action" type="button" data-poster-action="repeat">+ 重复文字</button>
-          </section>
+          </details>
 
-          <details class="poster-tool-group" open>
-            <summary class="poster-tool-summary">主图位置与裁切 <small>MAIN CROP & POSITION</small></summary>
+          <details class="poster-tool-group">
+            <summary class="poster-tool-summary">主图位置与裁切 <small>CROP</small></summary>
             <div class="poster-field">
               <div class="range-title">
                 <div class="poster-field-label-group">
@@ -385,12 +389,12 @@
           </details>
 
           <details class="poster-tool-group">
-            <summary class="poster-tool-summary">海报元素列表 <small>ELEMENTS LIST</small></summary>
+            <summary class="poster-tool-summary">海报元素列表 <small>LAYERS</small></summary>
             <div id="posterLeftElementsList" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;"></div>
           </details>
 
-          <details class="poster-tool-group poster-remix-group" open>
-            <summary class="poster-tool-summary">模板切换 <small>LAYOUT REMIX</small></summary>
+          <details class="poster-tool-group poster-remix-group">
+            <summary class="poster-tool-summary">模板切换 <small>REMIX</small></summary>
             <small>排版 REMIX 切换模板构图；总 REMIX 同时切换构图与滤镜。</small>
             <div class="poster-remix-status" id="posterRemixStatus" aria-live="polite"></div>
           </details>
@@ -504,15 +508,15 @@
     <script src="app.js"></script>
     <script src="mode-switcher.js?v=20260921-2"></script>
     <script src="assets/demo-collage-data.js"></script>
-    <script src="poster-motion.js?v=20261012-ambient-visible"></script>
-    <script src="poster-liquid-chrome.js?v=20261013-clear-glass"></script>
-    <script src="sidebar-motion.js?v=20261013-release"></script>
+    <script src="poster-motion.js?v=20261013-compact-mobile"></script>
+    <script src="poster-liquid-chrome.js?v=20261013-compact-mobile"></script>
+    <script src="sidebar-motion.js?v=20261013-compact-mobile"></script>
     <script src="poster-filter-engine.js?v=20261009-native-export"></script>
     <script src="poster-pixels.js?v=20261009-stable"></script>
     <script src="poster-draft.js?v=20261009-local"></script>
     <script src="poster-cutout.js?v=20261012-file-open"></script>
     <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261013-background-picker"></script>
+    <script src="poster.js?v=20261013-compact-mobile"></script>
     <script src="poster-gallery.js?v=20261012-studio"></script>
   </body>
 </html>

@@ -25,9 +25,10 @@ function element() {
 }
 const window = { ...eventTarget };
 const reduced = { ...eventTarget, matches: true };
+const compact = { ...eventTarget, matches: false };
 const document = { ...eventTarget, body, hidden: false, hasFocus: () => true, createElement: element };
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../poster-motion.js'), 'utf8'), {
-  window, document, matchMedia: () => reduced,
+  window, document, matchMedia: query => query.includes('prefers-reduced-motion') ? reduced : compact,
   setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id)
 });
 (async () => {
@@ -42,6 +43,13 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../post
   assert.equal(body.dataset.ambient, 'on', 'Explicit On overrides reduced motion');
   reduced.matches = false; listeners.change();
   assert.equal(body.dataset.ambient, 'on');
+  compact.matches = true; preference.value = 'auto'; listeners.change();
+  assert.equal(body.dataset.motionTier, 'lite');
+  assert.equal(body.dataset.ambient, 'off', 'Touch/mobile auto keeps the background static');
+  preference.value = 'on'; listeners.change();
+  assert.equal(body.dataset.ambient, 'on', 'Mobile can explicitly enable the limited motion');
+  compact.matches = false; listeners.change();
+  assert.equal(body.dataset.motionTier, 'full');
   const editingEvent = type => ({ type, target: { closest: () => workspace } });
   listeners.pointerdown(editingEvent('pointerdown'));
   assert.equal(body.dataset.ambientEditing, 'true');
