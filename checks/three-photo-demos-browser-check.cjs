@@ -18,7 +18,7 @@ async function control(prop,value){const c=page.locator('[data-prop="'+prop+'"],
 (async()=>{
  fs.mkdirSync(out,{recursive:true});for(const id of demoIds){const a=manifest.images.find(a=>a.id===id);assert.equal(hash(original(a)),a.sha256);}
  browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});page.setDefaultTimeout(60000);page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));
- await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>window.posterState?.image?.complete);await page.locator('#posterMotionPreference').selectOption('off');
+ await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>window.posterState?.image?.complete);await page.locator('#posterMotionPreference').selectOption('off');
  for(const n of [4,5,6]){
   await demo(n);assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),demoIds.slice(0,n===6?4:3));
   const used=await page.evaluate(()=>[...new Set([posterState.mainImageId,...posterState.secondaries.map(s=>s.imageId)])]);assert.equal(used.length,n===6?4:3);assert.ok(used.includes('asset-pink-camera'));

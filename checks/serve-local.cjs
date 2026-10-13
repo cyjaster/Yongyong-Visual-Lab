@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
 const open = process.argv.includes('--open');
 const port = Number(process.env.PORT || 8089);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new RangeError('PORT must be 1–65535');
-const url = `http://127.0.0.1:${port}/#poster`;
+const url = `http://127.0.0.1:${port}/#showcase`;
 function openBrowser() {
   console.log('Opening Microsoft Edge: ' + url);
   const browser = require('node:child_process').spawn('C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', [url], { windowsHide:true, stdio:'inherit' });

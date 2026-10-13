@@ -42,7 +42,7 @@ async function uploaded(n,list){await demo(n);await page.locator('#posterImageIn
   page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});page.setDefaultTimeout(30000);
   page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));
   page.on('request',r=>{if(!/^(http:\/\/localhost:8089\/|data:|blob:)/.test(r.url()))report.remote.push(r.url());});
-  await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);
+  await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>posterState?.image?.complete);
   await page.locator('#posterMotionPreference').selectOption('off');assert.equal(await page.locator('.poster-demo-button-row button').count(),8);
   for(const n of [5,6]){
     await demo(n);assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),['aespa-20','aespa-03','aespa-09']);

@@ -39,7 +39,7 @@ async function uploaded(n,list){await demo(n);await page.locator('#posterImageIn
 (async()=>{
   browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
   page=await browser.newPage({viewport:{width:1280,height:1000},acceptDownloads:true});page.setDefaultTimeout(60000);page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));
-  await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);await page.locator('#posterMotionPreference').selectOption('off');
+  await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>posterState?.image?.complete);await page.locator('#posterMotionPreference').selectOption('off');
   await demo(8);const base=await png('demo-08');
   const layout=await page.evaluate(()=>{
     const ctx=document.createElement('canvas').getContext('2d'),captions=['PERSONAL ARCHIVE','Keep the moments.\nMake them yours.','A PHOTO DIARY','Saved for later.'];

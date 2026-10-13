@@ -59,7 +59,7 @@ async function fullCycle(label){
   for(const a of samples)assert.equal(hash(original(a)),a.sha256);
   browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});page.setDefaultTimeout(60000);
   page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));page.on('request',r=>{if(!/^(http:\/\/localhost:8089\/|data:|blob:)/.test(r.url()))report.remote.push(r.url());});
-  await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);await page.locator('#posterMotionPreference').selectOption('off');
+  await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>posterState?.image?.complete);await page.locator('#posterMotionPreference').selectOption('off');
   for(const a of samples)await uploadedCase('single-'+a.id,[a]);
   await uploadedCase('pair-main-03',samples);const ids=await page.evaluate(()=>posterState.assets.map(a=>a.id));await page.locator('[data-asset-id="'+ids[1]+'"] [data-tray-action="set-main"]').click();await fullCycle('pair-main-20');
   const base=path.join(out,'pair-main-20-template-08.png'),cardIndex=await page.evaluate(()=>posterState.secondaries.findIndex(s=>s.cutout&&s.fit==='contain'));assert.ok(cardIndex>=0);await selectCard(cardIndex);

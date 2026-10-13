@@ -10,7 +10,7 @@ const evidence = path.join(root, 'samples/results/studio/20261012/thumbnails');
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, acceptDownloads: true });
     page.setDefaultTimeout(120000); page.on('dialog', dialog => dialog.accept());
-    await page.goto('http://localhost:8089/#poster');
+    await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());
     await page.waitForFunction(() => window.posterState?.image?.complete);
     await page.locator('#posterMotionPreference').selectOption('off');
     for (let i = 1; i <= 8; i++) {

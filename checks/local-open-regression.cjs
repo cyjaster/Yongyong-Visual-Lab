@@ -20,7 +20,7 @@ function preview(args, occupiedBody, browserFailure, port) {
     __dirname,process,console:{log(){},error(){}},
     require:name => name === 'node:http' ? http : name === 'node:child_process' ? {
       spawn(command,args,options) {
-        assert.equal(command,'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'); assert.deepEqual(Array.from(args),['http://127.0.0.1:8089/#poster']);
+        assert.equal(command,'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'); assert.deepEqual(Array.from(args),['http://127.0.0.1:8089/#showcase']);
         assert.equal(options.windowsHide,true); assert.equal(options.stdio,'inherit'); opened++;
         return {on(event,callback){ if(event === 'error' && browserFailure === 'spawn')callback(new Error('denied')); if(event === 'exit' && browserFailure === 'exit')callback(1); }};
       }

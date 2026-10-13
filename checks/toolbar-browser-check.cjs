@@ -10,7 +10,7 @@ const base=process.env.POSTER_BASE_URL||'http://localhost:8089/';
  try {
   const page=await browser.newPage({viewport:{width:968,height:800},acceptDownloads:true}),errors=[];
   page.setDefaultTimeout(60000);page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
-  await page.goto(base+'?toolbar=20261010#poster');await page.waitForFunction(()=>window.posterState?.image?.complete);
+  await page.goto(base+'?toolbar=20261010#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>window.posterState?.image?.complete);
   await page.locator('#posterMotionPreference').selectOption('off');
   for(const width of [1280,968,900,390]){
    await page.setViewportSize({width,height:800});await page.locator('[data-zoom-action="fit"]').click();

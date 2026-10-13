@@ -24,7 +24,7 @@ async function cycle(){const before=await page.evaluate(()=>({id:posterState.mai
  browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
  page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});page.setDefaultTimeout(15000);
  page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://localhost:8089/')&&!r.url().startsWith('data:'))report.remote.push(r.url());});
- await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);assert.equal(await page.evaluate(()=>posterState.backgroundStyle),'electric-tiger');
+ await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>posterState?.image?.complete);assert.equal(await page.evaluate(()=>posterState.backgroundStyle),'electric-tiger');
  await page.locator('#posterMotionPreference').selectOption('off');await demo();
  assert.deepEqual(await page.evaluate(()=>posterState.assets.map(a=>posterImageAssets.get(a.id).libraryId)),['aespa-20','aespa-03','aespa-09']);
  assert.equal(await page.evaluate(()=>posterState.secondaries.filter(s=>s.windowFrame).length),2);

@@ -10,7 +10,7 @@ fs.mkdirSync(out,{recursive:true});
  const page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});let acceptDemo=true;
  page.on('dialog',d=>acceptDemo?d.accept():d.dismiss());page.on('pageerror',e=>report.errors.push(e.message));
  page.on('request',r=>{if(!r.url().startsWith('http://localhost:8089/')&&!r.url().startsWith('data:'))report.remote.push(r.url());});
- await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);
+ await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>posterState?.image?.complete);
  await page.locator('#posterMotionPreference').selectOption('off');await page.locator('[data-poster-action="demo-04"]').click();
  await page.waitForFunction(()=>posterState.remixInfo.anchorEn==='Pink Desktop'&&posterState.secondaries[0].cutout);
  const sources=()=>page.evaluate(()=>({main:posterState.mainImageId,pool:posterState.assets.map(a=>({...a,src:posterImageAssets.get(a.id).image.src})),uploaded:posterHasUserUploadedImages()}));

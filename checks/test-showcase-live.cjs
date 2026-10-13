@@ -203,6 +203,16 @@ const { chromium } = require(packages + 'playwright');
   assert.ok(buf1.equals(buf2), 'Exported PNG bytes match identically before and after showcase toggle');
   console.log('PASS: Exported PNG bytes are bit-for-bit identical across showcase toggling');
 
+  for (const mode of ['poster', 'filter']) {
+    await page.goto(`http://127.0.0.1:8090/?entry=${mode}#${mode}`);
+    assert.equal(await page.locator('#showcaseFloatingDock').isVisible(), true, 'Old editing links start in showcase');
+    assert.ok(page.url().endsWith('#showcase'));
+    await page.locator('#showcaseDockAction').click();
+    assert.ok(page.url().endsWith('#' + mode));
+    await page.reload();
+    assert.equal(await page.locator('#showcaseFloatingDock').isVisible(), true, 'Reloading an editor returns to showcase');
+  }
+
   // Error check
   console.log('Observed errors during entire live session:', errors);
   assert.equal(errors.length, 0, 'No console or page errors allowed');

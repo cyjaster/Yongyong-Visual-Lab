@@ -16,7 +16,7 @@ const meaningful=()=>page.evaluate(()=>{const {image,selected,remixInfo,...scene
  browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
  page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});
  page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://localhost:8089/')&&!r.url().startsWith('data:'))report.remote.push(r.url());});
- await page.goto('http://localhost:8089/#poster');await ready();
+ await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await ready();
  assert.equal(await page.evaluate(()=>posterState.backgroundStyle),'electric-tiger');assert.equal(await page.evaluate(()=>PosterDraft.load()),undefined);
  report.checks.push('Fresh browser starts template 01 without silently creating a demo draft');
  await page.locator('#posterMotionPreference').selectOption('off');

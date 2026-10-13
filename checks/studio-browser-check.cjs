@@ -39,7 +39,7 @@ async function upload(p, list) {
   });
   for (const p of [page, old]) {
     p.setDefaultTimeout(60000); p.on('dialog', d => d.accept()); p.on('pageerror', e => report.errors.push(e.message));
-    await p.goto('http://localhost:8089/?check=studio#poster'); await p.waitForFunction(() => window.posterState?.image?.complete);
+    await p.goto('http://localhost:8089/?check=studio#poster'); await p.evaluate(() => window.visualLab?.enterEdit()); await p.waitForFunction(() => window.posterState?.image?.complete);
     await p.locator('#posterMotionPreference').selectOption('off');
   }
   for (const card of await page.locator('.poster-demo-button').all()) {

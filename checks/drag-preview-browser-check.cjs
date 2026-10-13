@@ -33,7 +33,7 @@ async function dragFrame(cancel=false){
  fs.mkdirSync(out,{recursive:true});browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
  page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});page.setDefaultTimeout(60000);page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));
  const old=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});old.setDefaultTimeout(60000);old.on('dialog',d=>d.accept());await old.route('**/poster.js?*',r=>r.fulfill({contentType:'application/javascript',body:baseline}));
- for(const p of [page,old]){await p.goto('http://localhost:8089/?check=drag-preview#poster');await p.waitForFunction(()=>window.posterState?.image?.complete);await p.locator('#posterMotionPreference').selectOption('off');}
+ for(const p of [page,old]){await p.goto('http://localhost:8089/?check=drag-preview#poster'); await p.evaluate(() => window.visualLab?.enterEdit());await p.waitForFunction(()=>window.posterState?.image?.complete);await p.locator('#posterMotionPreference').selectOption('off');}
  for(const n of [1,5,8]){
   if(n!==1)for(const p of [page,old]){await p.locator('[data-poster-action="demo-0'+n+'"]').click();await p.waitForFunction(n=>document.querySelector('#posterMasterRemixTag').textContent.includes('['+n+'/8]'),n);}
   assert.equal(await canvasHash(),await canvasHash(old),'Preview retains original pixels for template '+n);

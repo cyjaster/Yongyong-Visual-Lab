@@ -1,5 +1,9 @@
 # 网站验收入口
 
+## 2026-10-13｜默认展示入口修复
+
+初次打开根路径、`#showcase`、旧`#poster`或`#filter`链接都应显示作品展示；旧编辑链接保留对应模式。双击或点击进入编辑后，前后退仍在编辑与展示间往返；刷新编辑页应回到展示。当前入口规则替代下文历史记录中的旧编辑直链规则。本地启动器与README入口均指向`#showcase`。专项为`showcase-regression.cjs`、`local-open-regression.cjs`及更新的`test-showcase-live.cjs`；实际浏览器证据只存本地`samples/results/showcase-entry-20261013/`。
+
 ## 2026-10-13｜编辑操作栏与 FIT
 
 - 从展示态双击作品进入编辑，撤销／重做／复制应位于 Logo 右侧；展示态与 Filter Lab 隐藏这组按钮。分别用文字添加、复制、撤销、重做检查实际历史操作。

@@ -10,7 +10,7 @@ fs.mkdirSync(out,{recursive:true});
  browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
  const page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});page.setDefaultTimeout(15000);
  page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));
- await page.goto('http://localhost:8089/#poster');await page.waitForFunction(()=>posterState?.image?.complete);
+ await page.goto('http://localhost:8089/#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>posterState?.image?.complete);
  await page.locator('#posterMotionPreference').selectOption('off');
  await page.locator('#posterImageInput').setInputFiles(samples.map(a=>path.join(root,'samples/aespa',a.original)));
  await page.waitForFunction(()=>posterHasUserUploadedImages()&&posterState.assets.length===2);

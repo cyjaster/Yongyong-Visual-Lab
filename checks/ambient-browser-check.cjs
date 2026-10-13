@@ -21,7 +21,7 @@ async function measure(mode,enabled){return page.evaluate(async({mode,enabled})=
 },{mode,enabled});}
 (async()=>{
  fs.mkdirSync(out,{recursive:true});browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});page=await browser.newPage({viewport:{width:1280,height:1000},acceptDownloads:true});page.setDefaultTimeout(45000);
- page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));await page.goto('http://localhost:8089/?check=ambient#poster');await page.waitForFunction(()=>window.posterState?.image?.complete);await ready();
+ page.on('dialog',d=>d.accept());page.on('pageerror',e=>report.errors.push(e.message));await page.goto('http://localhost:8089/?check=ambient#poster'); await page.evaluate(() => window.visualLab?.enterEdit());await page.waitForFunction(()=>window.posterState?.image?.complete);await ready();
  await idle();assert.equal((await ambient()).length,5);
  for(const a of await ambient())for(const frame of a.frames)assert.ok(Object.keys(frame).every(k=>['offset','computedOffset','easing','composite','transform','opacity'].includes(k)),a.name+' must only animate transform/opacity');
  const bounds=await page.locator('#posterCanvas').boundingBox(),history=await page.evaluate(()=>JSON.stringify(posterHistory));

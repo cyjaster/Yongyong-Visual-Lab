@@ -17,7 +17,7 @@ assert.ok(css.includes('prefers-reduced-motion'), 'Reduced motion query freezes 
 // 2. Verify HTML structure in index.html
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 for (const asset of ['studio.css', 'mode-switcher.js', 'poster-motion.js', 'sidebar-motion.js', 'poster.js']) {
-  const version = ['studio.css', 'poster.js'].includes(asset) ? '20261013-editor-fit' : asset === 'mode-switcher.js' ? '20261013-showcase-tilt' : '20261013-showcase-fix';
+  const version = ['studio.css', 'poster.js'].includes(asset) ? '20261013-editor-fit' : asset === 'mode-switcher.js' ? '20261013-showcase-entry' : '20261013-showcase-fix';
   assert.ok(html.includes(asset + '?v=' + version), 'Updated cache version: ' + asset);
 }
 assert.ok(html.includes('id="showcaseEnterButton"'), 'Topbar has showcase enter button');
@@ -181,20 +181,33 @@ function createMockEnvironment(initialHash = '') {
   assert.equal(env.win.visualLab.getView(), 'edit', 'Enter key enters edit view');
 }
 
-// Case B: Direct deep-link to #poster opens editor
+// Case B: Old Poster links start in showcase; in-session history can still enter editing.
 {
   const env = createMockEnvironment('#poster');
-  assert.equal(env.win.visualLab.getView(), 'edit', '#poster hash enters edit view directly');
+  assert.equal(env.win.visualLab.getView(), 'showcase', 'Fresh #poster link starts in showcase');
   assert.equal(env.win.visualLab.getMode(), 'poster', 'Mode is poster');
-  assert.ok(!env.body.classList.contains('is-showcase'), 'is-showcase is false');
+  assert.equal(env.win.location.hash, '#showcase', 'Initial history entry is replaced, not appended');
+  env.posterCanvasWrap.dblclick();
+  assert.equal(env.win.location.hash, '#poster');
+  env.win.location.hash = '#showcase'; env.winListeners.popstate();
+  assert.equal(env.win.visualLab.getView(), 'showcase', 'Back returns to showcase');
+  env.win.location.hash = '#poster'; env.winListeners.popstate();
+  assert.equal(env.win.visualLab.getView(), 'edit', 'Forward restores the editor');
+  const refreshed = createMockEnvironment(env.win.location.hash);
+  assert.equal(refreshed.win.visualLab.getView(), 'showcase', 'Refreshing the editor starts in showcase');
 }
 
-// Case C: Direct deep-link to #filter opens Filter editor
+// Case C: Old Filter links keep their mode but start in showcase.
 {
   const env = createMockEnvironment('#filter');
-  assert.equal(env.win.visualLab.getView(), 'edit', '#filter hash enters edit view directly');
+  assert.equal(env.win.visualLab.getView(), 'showcase', 'Fresh #filter link starts in showcase');
   assert.equal(env.win.visualLab.getMode(), 'filter', 'Mode is filter');
-  assert.ok(!env.body.classList.contains('is-showcase'), 'is-showcase is false');
+  assert.equal(env.win.location.hash, '#showcase');
+  env.enterBtn.click();
+  assert.equal(env.win.visualLab.getView(), 'edit');
+  assert.equal(env.win.location.hash, '#filter');
+  env.win.location.hash = '#showcase'; env.winListeners.hashchange();
+  assert.equal(env.win.visualLab.getView(), 'showcase');
 }
 
 console.log('PASS: showcase-regression.cjs - state machine, routing, buttons, dblclick, keydown, and CSS animation assertions');

@@ -126,16 +126,12 @@
   window.addEventListener('popstate', syncFromHash);
   window.addEventListener('hashchange', syncFromHash);
 
-  // Initial resolve
+  // A fresh visit always starts in showcase; edit hashes only select the artwork mode.
   const initHash = (window.location.hash || '').toLowerCase();
   const saved = localStorage.getItem('visual-lab-mode') || 'poster';
-  if (initHash === '#poster') {
-    applyState({ mode: 'poster', view: 'edit' }, false);
-  } else if (initHash === '#filter') {
-    applyState({ mode: 'filter', view: 'edit' }, false);
-  } else {
-    applyState({ mode: saved, view: 'showcase' }, false);
-  }
+  const initialMode = initHash === '#poster' ? 'poster' : initHash === '#filter' ? 'filter' : saved;
+  history.replaceState(null, '', '#showcase');
+  applyState({ mode: initialMode, view: 'showcase' }, false);
 
   // Public API
   window.visualLab = {

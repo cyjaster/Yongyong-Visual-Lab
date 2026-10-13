@@ -34,7 +34,7 @@ async function probe(mode, enabled) {
   browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' });
   page = await browser.newPage({ viewport: { width: 1280, height: 900 }, acceptDownloads: true }); page.setDefaultTimeout(60000);
   page.on('dialog', d => d.accept()); page.on('pageerror', e => report.errors.push(e.message));
-  await page.goto('http://localhost:8089/?check=studio-motion#poster'); await page.waitForFunction(() => window.posterState?.image?.complete);
+  await page.goto('http://localhost:8089/?check=studio-motion#poster'); await page.evaluate(() => window.visualLab?.enterEdit()); await page.waitForFunction(() => window.posterState?.image?.complete);
   await page.locator('#posterMotionPreference').selectOption('on'); await ready();
   assert.equal((await loops()).length, 13);
   for (const loop of await loops()) for (const frame of loop.frames) assert.ok(Object.keys(frame).every(k => ['offset', 'computedOffset', 'easing', 'composite', 'transform', 'opacity'].includes(k)), loop.name);
