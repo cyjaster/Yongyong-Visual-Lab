@@ -96,6 +96,7 @@ node checks/serve-local.cjs
 
 ## 项目文档
 
+- [demo2.0 更新说明](RELEASE_v2.0.0.md)
 - [操作验收与测试说明](TESTING.md)
 - [开发记录](DEVELOPMENT_LOG.md) · [当前项目节点](CHECKPOINT.md)
 - [界面整合与发布记录](RELEASE_20261013.md)
