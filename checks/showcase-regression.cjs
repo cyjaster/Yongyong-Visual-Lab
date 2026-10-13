@@ -17,7 +17,7 @@ assert.ok(css.includes('prefers-reduced-motion'), 'Reduced motion query freezes 
 // 2. Verify HTML structure in index.html
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 for (const asset of ['studio.css', 'mode-switcher.js', 'poster-motion.js', 'sidebar-motion.js', 'poster.js']) {
-  const version = ['studio.css', 'poster.js'].includes(asset) ? '20261013-editor-fit' : asset === 'mode-switcher.js' ? '20261013-showcase-entry' : '20261013-showcase-fix';
+  const version = asset === 'poster.js' ? '20261013-default-demo05' : asset === 'studio.css' ? '20261013-editor-fit' : asset === 'mode-switcher.js' ? '20261013-showcase-entry' : '20261013-showcase-fix';
   assert.ok(html.includes(asset + '?v=' + version), 'Updated cache version: ' + asset);
 }
 assert.ok(html.includes('id="showcaseEnterButton"'), 'Topbar has showcase enter button');

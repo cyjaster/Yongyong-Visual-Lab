@@ -154,7 +154,7 @@
     try {
       const record=await window.PosterDraft.load();
       if(snapshot()!==initial)return;
-      if(!record){loadDemo(false);draftStatus('编辑后自动保存');return;}
+      if(!record){await loadDemoDesktop(4,false);draftStatus('编辑后自动保存');return;}
       if(record.version!==1 || !record.scene?.main || !record.scene?.filters
         || !['assets','secondaries','fragments','frames','details','texts','layers'].every(key=>Array.isArray(record.scene[key]))
         || !Array.isArray(record.assets) || !record.assets.some(a=>a.id===record.scene.mainImageId))throw new Error('草稿数据不完整。');
@@ -169,7 +169,7 @@
       history=[JSON.stringify(record.scene)];historyIndex=0;restore(0);
       resolutionSelect.value=state.exportResolution.join('x');resolutionSelect.dispatchEvent(new Event('change'));
       restored=true;draftHasEdits=true;draftDirty=false;draftStatus('已恢复本地作品');toast('已恢复本地草稿，可继续编辑。');
-    } catch(error) {console.warn('Draft restore failed',error);draftStatus('恢复失败，旧草稿保留');toast('草稿未能恢复：'+error.message+'。旧草稿仍保留。');if(snapshot()===initial)loadDemo(false);}
+    } catch(error) {console.warn('Draft restore failed',error);draftStatus('恢复失败，旧草稿保留');toast('草稿未能恢复：'+error.message+'。旧草稿仍保留。');if(snapshot()===initial)await loadDemoDesktop(4,false);}
     finally {draftReady=true;if(!restored)scheduleDraftSave();}
   }
 
@@ -2711,7 +2711,11 @@
       }
       if(snapshot()!==requested){toast('作品已修改，未替换成'+templateLabel+'。');return;}
       const asset=imageAssets.get(mainId);
-      if(!asset.cutoutImage){toast('正在本地抠出'+templateLabel+'的前景人像…');asset.cutoutImage=await window.posterCutout.removeBackground(asset.image);}
+      if(!asset.cutoutImage){
+        // The fixed demo uses the same precomputed cutout; user photos still run locally.
+        if(!userMode)asset.cutoutImage=await loadDraftImage('assets/demo-pink-hero.png');
+        else {toast('正在本地抠出'+templateLabel+'的前景人像…');asset.cutoutImage=await window.posterCutout.removeBackground(asset.image);}
+      }
       if(snapshot()!==requested){toast('作品已修改，未替换成'+templateLabel+'。');return;}
       callback();
     }catch(error){console.warn('Desktop preparation failed',error);toast(templateLabel+'未载入：'+error.message+'。原作品保留，请重试。');}
@@ -4328,8 +4332,8 @@
     if(show && (hasUserUploadedImages() || hasSecondaryImages() || state.remixInfo?.isManuallyEdited || history.length>1)
       && !window.confirm('切换示范模板会替换当前海报及历史记录。确定切换吗？'))return;
     if(show)draftHasEdits=true;
-    const apply=()=>applyMasterRemixByIndex(index,null,true,'示范 0'+(index+1)+' · '+masterRemixList[index].shortZh);
-    if(index>=6)prepareNarrative(apply,index,true);else preparePinkDesktop(apply,true,'模板'+(index+1),index===5);
+    const apply=()=>applyMasterRemixByIndex(index,null,true,show?'示范 0'+(index+1)+' · '+masterRemixList[index].shortZh:'');
+    return index>=6?prepareNarrative(apply,index,true):preparePinkDesktop(apply,true,'模板'+(index+1),index===5);
   }
   const layoutTemplates = [
     { id: 'template-01-richman', nameZh: '模板 01 · Aespa 电光档案', apply: applyLayoutTemplate01 },
