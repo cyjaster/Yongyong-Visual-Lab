@@ -13,7 +13,7 @@
   <body class="is-showcase">
     <p id="localFileNotice" role="status" hidden style="margin:0;padding:12px 20px;background:#ccff33;color:#101010">完整功能请双击此文件夹的「打开网站.cmd」。直接打开 index.html 会限制图库滤镜、人像抠图与导出；照片仍只在本机处理。</p>
     <script>document.getElementById('localFileNotice').hidden = location.protocol !== 'file:';</script>
-    <div class="app-shell">
+    <div class="app-shell poster-active is-showcase">
       <div class="interactive-fluid-backdrop" aria-hidden="true"><canvas class="interactive-fluid-canvas"></canvas><div class="fluid-stage-vignette"></div></div>
       <header class="topbar">
         <a class="brand" href="#showcase" aria-label="Yongyong Visual Lab 首页">
@@ -37,8 +37,8 @@
         </div>
 
         <nav class="mode-switcher" aria-label="工作模式">
-          <button class="mode-tab is-active" type="button" data-mode="filter" aria-pressed="true"><span>01</span> Filter Lab</button>
-          <button class="mode-tab" type="button" data-mode="poster" aria-pressed="false"><span>02</span> Collage Poster</button>
+          <button class="mode-tab" type="button" data-mode="filter" aria-pressed="false"><span>01</span> Filter Lab</button>
+          <button class="mode-tab is-active" type="button" data-mode="poster" aria-pressed="true"><span>02</span> Collage Poster</button>
         </nav>
 
         <div class="top-actions">
@@ -50,7 +50,7 @@
         </div>
       </header>
 
-      <main class="workspace">
+      <main class="workspace" hidden>
         <section class="stage-column" aria-label="配方卡预览工作区">
           <div class="studio-atmosphere" aria-hidden="true"><span class="studio-orbit"></span><span class="studio-orbit is-inner"></span></div>
           <div class="stage-heading">
@@ -298,7 +298,7 @@
         </aside>
       </main>
 
-      <main class="poster-workspace" id="posterWorkspace" hidden aria-label="Collage Poster 编辑器">
+      <main class="poster-workspace" id="posterWorkspace" aria-label="Collage Poster 编辑器">
         <aside class="poster-tools" aria-label="拼贴海报工具栏">
           <div class="poster-tools-content">
           <div class="poster-panel-heading">
@@ -520,19 +520,18 @@
     <input id="posterBackgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="app.js"></script>
-    <script src="mode-switcher.js?v=20261013-showcase-entry"></script>
-    <script src="showcase-motion.js?v=20261013-motion-defaults"></script>
-    <script src="assets/demo-collage-data.js"></script>
-    <script src="poster-motion.js?v=20261013-showcase-fix"></script>
-    <script src="poster-liquid-chrome.js?v=20261013-showcase-tilt"></script>
-    <script src="sidebar-motion.js?v=20261013-showcase-fix"></script>
-    <script src="poster-filter-engine.js?v=20261009-native-export"></script>
-    <script src="poster-pixels.js?v=20261009-stable"></script>
-    <script src="poster-draft.js?v=20261009-local"></script>
-    <script src="poster-cutout.js?v=20261012-file-open"></script>
-    <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261013-editor-fit"></script>
-    <script src="poster-gallery.js?v=20261012-studio"></script>
+    <script src="app.js?v=20261013-startup" defer></script>
+    <script src="mode-switcher.js?v=20261013-showcase-entry" defer></script>
+    <script src="showcase-motion.js?v=20261013-motion-defaults" defer></script>
+    <script src="poster-motion.js?v=20261013-showcase-fix" defer></script>
+    <script src="poster-liquid-chrome.js?v=20261013-showcase-tilt" defer></script>
+    <script src="sidebar-motion.js?v=20261013-showcase-fix" defer></script>
+    <script src="poster-filter-engine.js?v=20261009-native-export" defer></script>
+    <script src="poster-pixels.js?v=20261009-stable" defer></script>
+    <script src="poster-draft.js?v=20261009-local" defer></script>
+    <script src="poster-cutout.js?v=20261012-file-open" defer></script>
+    <script src="poster-decor.js?v=20261010-function-fit-font-backing" defer></script>
+    <script src="poster.js?v=20261013-editor-fit" defer></script>
+    <script src="poster-gallery.js?v=20261012-studio" defer></script>
   </body>
 </html>

@@ -185,6 +185,7 @@ const state = {
 function createDemoImage() {
   const image = new Image();
   image.onload = () => {
+    if (state.image) return;
     state.image = image;
     state.fileName = "demo-karina.jpg";
     ui.dropZone.classList.remove("is-empty");
@@ -192,6 +193,7 @@ function createDemoImage() {
     renderPreview();
   };
   image.onerror = () => {
+    if (state.image) return;
     ui.dropZone.classList.add("is-empty");
     ui.imageStatus.textContent = "预设照片未找到 · 请上传照片";
   };
@@ -1149,4 +1151,8 @@ function showToast(message) {
 ui.dropZone.classList.add("is-empty");
 randomizeLayout(false);
 renderAll();
-createDemoImage();
+window.addEventListener('visual-lab-mode-change', function loadFilterDemo(event) {
+  if (event.detail.mode !== 'filter') return;
+  window.removeEventListener('visual-lab-mode-change', loadFilterDemo);
+  if (!state.image) createDemoImage();
+});
