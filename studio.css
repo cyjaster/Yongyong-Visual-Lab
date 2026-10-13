@@ -681,7 +681,14 @@ body.is-showcase :is(#posterCanvasWrap, .canvas-frame):hover {
 body[data-ambient="off"].is-showcase :is(#posterCanvasWrap, .canvas-frame),
 body[data-motion-tier="lite"].is-showcase :is(#posterCanvasWrap, .canvas-frame) {
   animation: none !important;
-  transform: perspective(1000px) rotateY(0deg) rotateX(0deg) !important;
+  transform: perspective(1000px) rotateY(var(--showcase-tilt-y, 0deg)) rotateX(var(--showcase-tilt-x, 0deg)) !important;
+}
+
+/* Input owns the preview transform; mobile idle sway stays disabled. */
+body.is-showcase[data-showcase-input] :is(#posterCanvasWrap, .canvas-frame) {
+  animation: none !important;
+  transform: perspective(1000px) rotateY(var(--showcase-tilt-y, 0deg)) rotateX(var(--showcase-tilt-x, 0deg)) scale(.94) !important;
+  transition: transform 160ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -695,6 +702,19 @@ body[data-motion-tier="lite"].is-showcase :is(#posterCanvasWrap, .canvas-frame) 
 .showcase-floating-dock {
   display: none;
 }
+
+.showcase-gyro-button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(213, 231, 237, .3);
+  border-radius: 999px;
+  background: rgba(213, 231, 237, .1);
+  color: #dce9ed;
+  font-size: 11px;
+  cursor: pointer;
+}
+.showcase-gyro-button:disabled { opacity: .5; cursor: default; }
+.showcase-gyro-button[hidden] { display: none; }
 
 body.is-showcase .showcase-floating-dock {
   display: flex;
@@ -810,6 +830,7 @@ body:not(.is-showcase) .showcase-back-button {
   .showcase-dock-tag {
     font-size: 10px;
   }
+  .showcase-floating-dock:has(.showcase-gyro-button:not([hidden])) .showcase-dock-tag { display: none; }
   .showcase-dock-action {
     padding: 5px 12px;
     font-size: 11px;

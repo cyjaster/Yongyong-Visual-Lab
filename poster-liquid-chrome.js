@@ -26,6 +26,7 @@
     uniform float u_time;
     uniform vec2 u_mouse;
     uniform vec2 u_velocity;
+    uniform vec2 u_gravityOffset;
     uniform float u_disturbance;
     uniform vec4 u_click; // x, y, age, intensity
     uniform float u_mode;  // 0.0 = static export poster, 1.0 = interactive stage atmosphere
@@ -53,6 +54,7 @@
 
     // Viscous molten chrome height field with organic gyroid folds + interactive cursor disturbance
     float liquidChrome(vec2 p, vec2 mPos, float aspect) {
+      p -= u_gravityOffset * u_mode;
       // 1. 光标扰动与涡流推力 (Cursor Disturbance & Swirl Vortex)
       vec2 toM = p - mPos;
       float distM = length(toM);
@@ -282,6 +284,7 @@
       setU('u_time', l => gl.uniform1f(l, 0.0));
       setU('u_mouse', l => gl.uniform2f(l, 0.5, 0.5));
       setU('u_velocity', l => gl.uniform2f(l, 0.0, 0.0));
+      setU('u_gravityOffset', l => gl.uniform2f(l, 0.0, 0.0));
       setU('u_disturbance', l => gl.uniform1f(l, 0.0));
       setU('u_click', l => gl.uniform4f(l, 0.5, 0.5, -1.0, 0.0));
       setU('u_mode', l => gl.uniform1f(l, 0.0));
@@ -361,6 +364,7 @@
         u_time: gl.getUniformLocation(prog, 'u_time'),
         u_mouse: gl.getUniformLocation(prog, 'u_mouse'),
         u_velocity: gl.getUniformLocation(prog, 'u_velocity'),
+        u_gravityOffset: gl.getUniformLocation(prog, 'u_gravityOffset'),
         u_disturbance: gl.getUniformLocation(prog, 'u_disturbance'),
         u_click: gl.getUniformLocation(prog, 'u_click'),
         u_mode: gl.getUniformLocation(prog, 'u_mode')
@@ -409,6 +413,7 @@
       }, { passive: true });
 
       window.addEventListener('resize', () => { this.resize(); this.start(); }, { passive: true });
+      window.addEventListener('visual-lab-gravity', event => this.setGravity(event.detail));
       // The existing motion controller owns system preferences and tab visibility.
       new MutationObserver(() => { this.resize(); this.start(); }).observe(document.body, { attributes: true, attributeFilter: ['data-ambient', 'data-motion-tier'] });
     }
@@ -438,10 +443,19 @@
       this.loop();
     }
 
+    setGravity({ x, y, active }) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      this.gravity = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)), active };
+      this.gravityFlow ??= { x: 0, y: 0 };
+      this.gravityOffset ??= { x: 0, y: 0 };
+      if (!active) this.gravityFlow.x = this.gravityFlow.y = 0;
+      if (active) this.start();
+    }
+
     loop() {
       if (!this.state.running) return;
 
-      if (document.hidden || document.body.dataset.ambient !== 'on') {
+      if (document.hidden || (document.body.dataset.ambient !== 'on' && !this.gravity?.active)) {
         if (!this.hasRendered && !document.hidden) { this.render(0); this.hasRendered = true; }
         this.state.running = false;
         return;
@@ -469,6 +483,14 @@
       this.state.velocity.x *= 0.88;
       this.state.velocity.y *= 0.88;
       this.state.disturbance *= 0.945;
+
+      if (this.gravity?.active) {
+        const flowDt = Math.min(.1, (now - (this.lastDraw ?? now - 16)) / 1000);
+        this.gravityFlow.x += (this.gravity.x - this.gravityFlow.x) * .12;
+        this.gravityFlow.y += (this.gravity.y - this.gravityFlow.y) * .12;
+        this.gravityOffset.x += this.gravityFlow.x * flowDt * .5;
+        this.gravityOffset.y += this.gravityFlow.y * flowDt * .5;
+      }
 
       // 点击冲击波推进
       if (this.state.click.age >= 0.0) {
@@ -498,6 +520,7 @@
       gl.uniform1f(u.u_time, time);
       gl.uniform2f(u.u_mouse, this.state.mouse.x, this.state.mouse.y);
       gl.uniform2f(u.u_velocity, this.state.velocity.x, this.state.velocity.y);
+      gl.uniform2f(u.u_gravityOffset, this.gravityOffset?.x || 0, this.gravityOffset?.y || 0);
       gl.uniform1f(u.u_disturbance, this.state.disturbance);
       gl.uniform4f(u.u_click, this.state.click.x, this.state.click.y, this.state.click.age, this.state.click.intensity);
       gl.uniform1f(u.u_mode, 1.0); // 展台环境深邃模式

@@ -17,7 +17,8 @@ assert.ok(css.includes('prefers-reduced-motion'), 'Reduced motion query freezes 
 // 2. Verify HTML structure in index.html
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 for (const asset of ['studio.css', 'mode-switcher.js', 'poster-motion.js', 'sidebar-motion.js', 'poster.js']) {
-  assert.ok(html.includes(asset + '?v=20261013-showcase-fix'), 'Updated cache version: ' + asset);
+  const version = ['studio.css', 'mode-switcher.js'].includes(asset) ? '20261013-showcase-tilt' : '20261013-showcase-fix';
+  assert.ok(html.includes(asset + '?v=' + version), 'Updated cache version: ' + asset);
 }
 assert.ok(html.includes('id="showcaseEnterButton"'), 'Topbar has showcase enter button');
 assert.ok(html.includes('id="showcaseBackButton"'), 'Topbar has showcase back button');
@@ -174,6 +175,8 @@ function createMockEnvironment(initialHash = '') {
   assert.equal(env.win.visualLab.getView(), 'showcase', 'Brand click returns to showcase');
 
   // Trigger enterEdit via keyboard Enter
+  env.docListeners.keydown({ key: 'Enter', target: { closest: () => ({}) }, preventDefault() { throw Error('Native control activation must remain available'); } });
+  assert.equal(env.win.visualLab.getView(), 'showcase', 'Enter on the gyro button does not enter editing');
   env.docListeners.keydown({ key: 'Enter', preventDefault() {} });
   assert.equal(env.win.visualLab.getView(), 'edit', 'Enter key enters edit view');
 }

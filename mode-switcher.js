@@ -112,7 +112,7 @@
 
   // Keyboard Enter in showcase triggers edit entry
   document.addEventListener('keydown', (e) => {
-    if (currentView === 'showcase' && e.key === 'Enter') {
+    if (currentView === 'showcase' && e.key === 'Enter' && !e.target?.closest?.('button, a, input, select, textarea, [contenteditable]')) {
       e.preventDefault();
       enterEdit();
     }
