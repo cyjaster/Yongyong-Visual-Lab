@@ -76,7 +76,7 @@
     stages.forEach((stg) => {
       stg.addEventListener('pointerenter', () => {
         cursorWrap.classList.add('is-reticle');
-        if (label) label.textContent = 'STIR · 拨动水银';
+        if (label) label.textContent = document.body?.classList?.contains?.('is-showcase') ? 'DOUBLE CLICK · 进入编辑' : 'STIR · 拨动水银';
       });
       stg.addEventListener('pointerleave', () => {
         cursorWrap.classList.remove('is-reticle');
@@ -111,7 +111,7 @@
 
     stages.forEach((stage) => {
       stage.addEventListener('pointermove', (e) => {
-        if (document.body.dataset.ambientEditing === 'true' || e.target.closest('#posterCanvasWrap, .canvas-frame')) {
+        if (document.body?.classList?.contains?.('is-showcase') || document.body.dataset.ambientEditing === 'true' || e.target.closest('#posterCanvasWrap, .canvas-frame')) {
           tiltTarget.x = 0;
           tiltTarget.y = 0;
           return;
@@ -130,13 +130,13 @@
     });
 
     function updateCanvasFloatLoop() {
-      if (document.body.dataset.ambient !== 'on' || document.body.dataset.ambientEditing === 'true') {
+      if (document.body?.classList?.contains?.('is-showcase') || document.body.dataset.ambient !== 'on' || document.body.dataset.ambientEditing === 'true') {
         tiltTarget.x = tiltTarget.y = tiltCurrent.x = tiltCurrent.y = 0;
       }
       tiltCurrent.x += (tiltTarget.x - tiltCurrent.x) * 0.1;
       tiltCurrent.y += (tiltTarget.y - tiltCurrent.y) * 0.1;
 
-      if (Math.abs(tiltCurrent.x) > 0.02 || Math.abs(tiltCurrent.y) > 0.02) {
+      if (!document.body?.classList?.contains?.('is-showcase') && (Math.abs(tiltCurrent.x) > 0.02 || Math.abs(tiltCurrent.y) > 0.02)) {
         canvasWraps.forEach((wrap) => {
           wrap.style.transform = `perspective(900px) rotateX(${tiltCurrent.x.toFixed(2)}deg) rotateY(${tiltCurrent.y.toFixed(2)}deg)`;
           wrap.style.setProperty('--card-shadow-x', `${(-tiltCurrent.y * 6).toFixed(1)}px`);

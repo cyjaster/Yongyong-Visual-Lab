@@ -559,3 +559,266 @@ option { background-color: #142229; }
 .poster-background-thumb[data-style="dots"] { background-image: radial-gradient(#1e243073 1px, transparent 1px); background-size: 6px 6px; }
 .poster-background-thumb[data-style="soft-y2k"] { background: repeating-radial-gradient(circle at 18% 20%, transparent 0 14px, #718bd4 15px 16px, transparent 17px 24px), linear-gradient(135deg, #e1ecff, #f0e6f5 46%, #d4e1f5); }
 .poster-background-thumb[data-style="blueprint"] { background-color: #b9cbed; background-image: linear-gradient(#fff9 1px, transparent 1px), linear-gradient(90deg, #fff9 1px, transparent 1px); background-size: 6px 6px; }
+
+/* ==========================================================================
+   10. 作品展示入口态 (Showcase Presentation Mode)
+   ========================================================================== */
+body.is-showcase .app-shell {
+  height: 100dvh;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+body.is-showcase .poster-tools,
+body.is-showcase .poster-inspector,
+body.is-showcase .poster-resizer,
+body.is-showcase .poster-action-dock,
+body.is-showcase .poster-stage-topline,
+body.is-showcase .poster-stage-footer,
+body.is-showcase .inspector,
+body.is-showcase .stage-heading,
+body.is-showcase .stage-footer,
+body.is-showcase .quick-actions,
+body.is-showcase .privacy-note,
+body.is-showcase .editor-only-action {
+  display: none !important;
+}
+
+body.is-showcase .top-actions {
+  display: flex !important;
+}
+
+body.is-showcase .poster-workspace:not([hidden]) {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+body.is-showcase .poster-stage {
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  overflow: visible;
+}
+
+body.is-showcase .poster-viewport {
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: visible;
+  padding: 24px 16px 80px;
+  box-sizing: border-box;
+}
+
+body.is-showcase .workspace:not([hidden]) {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+body.is-showcase .stage-column {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 16px 80px;
+  box-sizing: border-box;
+}
+
+/* 立体彩卡自动转动微视差 */
+@keyframes showcase-card-sway {
+  0% {
+    transform: perspective(1000px) rotateY(-4.5deg) rotateX(2.5deg) translateY(-4px);
+  }
+  50% {
+    transform: perspective(1000px) rotateY(4.5deg) rotateX(-2.5deg) translateY(4px);
+  }
+  100% {
+    transform: perspective(1000px) rotateY(-4.5deg) rotateX(2.5deg) translateY(-4px);
+  }
+}
+
+body.is-showcase :is(#posterCanvasWrap, .canvas-frame) {
+  cursor: pointer;
+  transform-style: preserve-3d;
+  animation: showcase-card-sway 11s ease-in-out infinite;
+  will-change: transform;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.is-showcase :is(#posterCanvasWrap, .canvas-frame):hover {
+  filter: drop-shadow(0 20px 48px rgba(0, 0, 0, 0.75));
+}
+
+/* 动效关闭 / 移动端减负 / 系统减少动态效果时停止转动 */
+body[data-ambient="off"].is-showcase :is(#posterCanvasWrap, .canvas-frame),
+body[data-motion-tier="lite"].is-showcase :is(#posterCanvasWrap, .canvas-frame) {
+  animation: none !important;
+  transform: perspective(1000px) rotateY(0deg) rotateX(0deg) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.is-showcase :is(#posterCanvasWrap, .canvas-frame) {
+    animation: none !important;
+    transform: perspective(1000px) rotateY(0deg) rotateX(0deg) !important;
+  }
+}
+
+/* 底部悬浮控制胶囊 (Showcase Floating Dock) */
+.showcase-floating-dock {
+  display: none;
+}
+
+body.is-showcase .showcase-floating-dock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 6px 8px 6px 14px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(26, 38, 48, 0.85), rgba(16, 27, 33, 0.92));
+  border: 1px solid rgba(213, 231, 237, 0.22);
+  backdrop-filter: blur(16px) saturate(120%);
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  pointer-events: auto;
+  animation: showcase-dock-fadein 0.35s ease forwards;
+}
+
+@keyframes showcase-dock-fadein {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.showcase-dock-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #dce9ed;
+}
+
+.showcase-dock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #002FA7;
+  box-shadow: 0 0 8px #002FA7, 0 0 14px rgba(0, 47, 167, 0.8);
+  animation: showcase-dot-pulse 2.2s infinite ease-in-out;
+}
+
+@keyframes showcase-dot-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.showcase-dock-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 47, 167, 0.6);
+  background: #002FA7;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 47, 167, 0.4);
+}
+
+.showcase-dock-action:hover {
+  background: #1142bf;
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 47, 167, 0.6);
+}
+
+.showcase-dock-action:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.showcase-dock-action small {
+  font-size: 10px;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+/* 顶部操作栏状态显示切换 */
+body.is-showcase .showcase-enter-button {
+  display: inline-flex !important;
+}
+body.is-showcase .showcase-back-button {
+  display: none !important;
+}
+
+body:not(.is-showcase) .showcase-enter-button {
+  display: none !important;
+}
+body:not(.is-showcase) .showcase-back-button {
+  display: inline-flex !important;
+}
+
+.app-shell.poster-active .top-actions {
+  display: flex !important;
+}
+.app-shell.poster-active .editor-only-action {
+  display: none !important;
+}
+
+/* 移动端紧凑响应 (<= 700px) */
+@media (max-width: 700px) {
+  body.is-showcase .showcase-floating-dock {
+    bottom: 16px;
+    padding: 5px 8px 5px 12px;
+    gap: 8px;
+    width: min(calc(100vw - 32px), 340px);
+    justify-content: space-between;
+  }
+  .showcase-dock-tag {
+    font-size: 10px;
+  }
+  .showcase-dock-action {
+    padding: 5px 12px;
+    font-size: 11px;
+  }
+  .showcase-dock-action small {
+    display: none;
+  }
+  body.is-showcase .poster-viewport,
+  body.is-showcase .stage-column {
+    padding: 16px 10px 72px;
+  }
+}

@@ -8,7 +8,7 @@
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261012-studio" />
     <link rel="stylesheet" href="poster.css?v=20261012-studio" />
-    <link rel="stylesheet" href="studio.css?v=20261013-compact-mobile" />
+    <link rel="stylesheet" href="studio.css?v=20261013-showcase-fix" />
   </head>
   <body>
     <p id="localFileNotice" role="status" hidden style="margin:0;padding:12px 20px;background:#ccff33;color:#101010">完整功能请双击此文件夹的「打开网站.cmd」。直接打开 index.html 会限制图库滤镜、人像抠图与导出；照片仍只在本机处理。</p>
@@ -16,7 +16,7 @@
     <div class="app-shell">
       <div class="interactive-fluid-backdrop" aria-hidden="true"><canvas class="interactive-fluid-canvas"></canvas><div class="fluid-stage-vignette"></div></div>
       <header class="topbar">
-        <a class="brand" href="#" aria-label="Yongyong Visual Lab 首页">
+        <a class="brand" href="#showcase" aria-label="Yongyong Visual Lab 首页">
           <span class="brand-mark">Y.</span>
           <span>
             <strong>Yongyong <span>Visual Lab</span></strong>
@@ -37,9 +37,11 @@
         </nav>
 
         <div class="top-actions">
-          <button class="text-button" id="importRecipeButton" type="button">导入配方</button>
-          <button class="text-button" id="saveRecipeButton" type="button">保存配方</button>
-          <button class="primary-button" id="exportCardButton" type="button">导出配方卡</button>
+          <button class="primary-button showcase-enter-button" id="showcaseEnterButton" type="button" aria-label="进入作品编辑器"><span>进入编辑 ✦</span></button>
+          <button class="text-button showcase-back-button" id="showcaseBackButton" type="button" aria-label="返回立体展示" style="display:none;"><span>⤺ 返回展示</span></button>
+          <button class="text-button editor-only-action" id="importRecipeButton" type="button">导入配方</button>
+          <button class="text-button editor-only-action" id="saveRecipeButton" type="button">保存配方</button>
+          <button class="primary-button editor-only-action" id="exportCardButton" type="button">导出配方卡</button>
         </div>
       </header>
 
@@ -448,6 +450,7 @@
 
               <button class="poster-remix-button" id="posterRemixButton" type="button" data-poster-action="remix" aria-label="排版 REMIX ↻"><b>排版 REMIX ↻</b></button>
               <button class="poster-filter-remix-button" id="posterFilterRemixButton" type="button" data-poster-action="filter-remix" title="滤镜 REMIX：保留排版与当前图片，只切换照片调色配方">滤镜 REMIX ↻</button>
+              <button class="poster-action showcase-back-button" id="posterShowcaseBackButton" type="button" title="返回作品立体展示">⤺ 返回展示</button>
               <button class="poster-action" id="posterExportButton" type="button">导出 PNG</button>
             </div>
             <div class="poster-toolbar-status">
@@ -495,6 +498,17 @@
           <div id="posterInspectorContent"></div>
         </aside>
       </main>
+
+      <div class="showcase-floating-dock" id="showcaseFloatingDock" aria-label="立体彩卡展示控制">
+        <div class="showcase-dock-tag">
+          <span class="showcase-dock-dot"></span>
+          <span>立体彩卡 · 动态展台</span>
+        </div>
+        <button class="showcase-dock-action" id="showcaseDockAction" type="button">
+          <span>进入编辑 ✦</span>
+          <small>双击卡片 · Enter</small>
+        </button>
+      </div>
     </div>
 
     <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
@@ -506,17 +520,17 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
-    <script src="mode-switcher.js?v=20260921-2"></script>
+    <script src="mode-switcher.js?v=20261013-showcase-fix"></script>
     <script src="assets/demo-collage-data.js"></script>
-    <script src="poster-motion.js?v=20261013-compact-mobile"></script>
+    <script src="poster-motion.js?v=20261013-showcase-fix"></script>
     <script src="poster-liquid-chrome.js?v=20261013-compact-mobile"></script>
-    <script src="sidebar-motion.js?v=20261013-compact-mobile"></script>
+    <script src="sidebar-motion.js?v=20261013-showcase-fix"></script>
     <script src="poster-filter-engine.js?v=20261009-native-export"></script>
     <script src="poster-pixels.js?v=20261009-stable"></script>
     <script src="poster-draft.js?v=20261009-local"></script>
     <script src="poster-cutout.js?v=20261012-file-open"></script>
     <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261013-compact-mobile"></script>
+    <script src="poster.js?v=20261013-showcase-fix"></script>
     <script src="poster-gallery.js?v=20261012-studio"></script>
   </body>
 </html>

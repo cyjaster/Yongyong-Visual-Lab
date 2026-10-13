@@ -83,6 +83,7 @@ window.createPosterMotion = (canvas, wrap, preference) => {
   };
   const pauseForEditing = (event) => {
     cancel();
+    if (document.body?.classList?.contains?.('is-showcase')) return;
     if (!event?.target?.closest('#posterWorkspace, .workspace')) return;
     if (event.type === 'pointerdown') pointerHeld = true;
     document.body.dataset.ambientEditing = 'true'; resumeAmbient();

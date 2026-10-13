@@ -2061,6 +2061,7 @@
   }
   function eventPoint(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
   canvas.addEventListener('pointerdown', (e) => {
+    if (document.body?.classList?.contains?.('is-showcase')) return;
     const p = eventPoint(e), hit = hitAt(p.x, p.y);
     if (!hit) { setSelected(null, null); render(); return; }
     setSelected(hit.type, hit.item);
@@ -4977,11 +4978,14 @@
   });
   viewport.addEventListener('pointerup',()=>{pan=null;viewport.classList.remove('is-panning');});
   viewport.addEventListener('pointercancel',()=>{pan=null;viewport.classList.remove('is-panning');});
-  document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden)return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
+  document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden||document.body?.classList?.contains?.('is-showcase'))return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
   window.addEventListener('visual-lab-mode-change', (e) => {
     if (e.detail.mode === 'poster' && zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
+  });
+  window.addEventListener('visual-lab-view-change', () => {
+    if (!$('#posterWorkspace').hidden && zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
   });
   window.addEventListener('blur',()=>{
     spaceDown=false; pan=null; viewport.classList.remove('is-panning');

@@ -1,5 +1,14 @@
 # 网站验收入口
 
+2026-10-13 作品展示入口页（Showcase Presentation Mode）：
+
+复核时务必检查非当前工作区不可见、真实 `.poster-action-dock` 元素存在且在展示态隐藏；390px作品四边完整位于首屏并在胶囊上方。专项脚本已增加这些断言以及前后退和控制台错误收集。资源标识：`20261013-showcase-fix`。最新验证使用内嵌浏览器真实操作，原脚本保留为可复用入口；实体手机／Safari未测。
+
+- 根路径与 `#showcase` 默认展示纯净立体彩卡居中展示，隐藏左右编辑侧栏；保留背景水银流动与自转微动。
+- 交互测试：双击卡片、按 Enter 键、点击底部浮动胶囊「进入编辑」或顶部操作栏按钮均可无缝进入编辑器；编辑器内点击顶部或工具栏「⤺ 返回展示」实时返回立体展示。
+- 隔离保护：展示态下阻断画布图层拖动与按键删除（Delete/Backspace）。
+- 专项测试脚本：离线回归 `node checks/showcase-regression.cjs`；真实浏览器多视口与一致性测试 `node checks/test-showcase-live.cjs`（结果存入 `samples/results/showcase-live-20261013/`）。
+
 2026-10-13 简洁界面与手机优化见 [本轮记录](COMPACT_MOBILE_REVIEW.md)。刷新检查左右与 Filter Lab 详细组默认关闭；展开后调参、切换对象、撤销重做，原展开状态应保留。390px 的跟随系统应显示静态水银背景，手动开启背景最长边不超过720像素；导出仍按所选分辨率。专项回归：`node checks/compact-mobile-regression.cjs`、`node checks/motion-regression.cjs`。实体手机性能未测。
 
 当前正式版为 2026-10-13 实验版整合，实测与限制见 [本次发布记录](RELEASE_20261013.md)。双击 `打开网站.cmd`；直接 `file://` 打开会提示改用 HTTP。观察左右磨砂面板下的背景、卡片纸边与雾化高光，检查动效关闭和编辑暂停。右侧背景缩略图应保留选中状态、键盘焦点、条件控件与撤销／重做。新增专项：`background-picker-regression.cjs`、`glass-card-regression.cjs`、`sidebar-feedback-regression.cjs`、`local-open-regression.cjs`，均位于 `checks/`，用 Node 运行。本轮实际 PNG、截图及离线输出只存本地 `samples/results/experimental-release/20261013/`；以下较早记录保留其原日期和范围。
