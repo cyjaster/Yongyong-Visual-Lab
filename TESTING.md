@@ -1,5 +1,11 @@
 # 网站验收入口
 
+## 2026-10-13｜动效与体感默认开启
+
+新访客默认动效「开启」；选择「跟随系统」或「关闭」后刷新保留选择。无需requestPermission的手机在展示态自动监听并以首个姿势校准；需要权限的浏览器首次显示「授权开启体感」，按钮点击才请求权限，已有授权会尝试恢复监听。明确关闭体感后刷新保持关闭，无数据不会自动反复请求权限。减少动效策略仍由「跟随系统」控制，默认「开启」采用原显式开启规则。
+
+20组离线回归与14份根JS语法通过；新增默认启动、授权恢复、关闭记忆及存储受限断言。真实浏览器的390px模拟传感器页面验证自动启动、卡片倾斜、关闭记忆、动效关闭后不监听以及720最长边背景；0控制台错误。模拟不能替代实体手机权限或耗电验收。证据仅存本地`samples/results/motion-defaults-20261013/`。首次权限点击要求见[MDN说明](https://developer.mozilla.org/en-US/docs/Web/API/DeviceOrientationEvent/requestPermission_static)。
+
 ## 2026-10-13｜默认展示入口修复
 
 初次打开根路径、`#showcase`、旧`#poster`或`#filter`链接都应显示作品展示；旧编辑链接保留对应模式。双击或点击进入编辑后，前后退仍在编辑与展示间往返；刷新编辑页应回到展示。当前入口规则替代下文历史记录中的旧编辑直链规则。本地启动器与README入口均指向`#showcase`。专项为`showcase-regression.cjs`、`local-open-regression.cjs`及更新的`test-showcase-live.cjs`；实际浏览器证据只存本地`samples/results/showcase-entry-20261013/`。

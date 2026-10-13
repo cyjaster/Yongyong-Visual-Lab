@@ -1,7 +1,7 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(path.join(__dirname, '../showcase-motion.js'), 'utf8');
-function setup({ coarse = false, permission = 'granted', secure = true, supported = true, permissionAPI = true } = {}) {
+function setup({ coarse = false, permission = 'granted', secure = true, supported = true, permissionAPI = true, store = {}, storageBlocked = false } = {}) {
   const listeners = new Map(), timers = new Map(), frames = new Map();
   let id = 0, requests = 0, showcase = true;
   const target = () => ({ addEventListener(type, fn) { listeners.set(this.name + type, fn); },
@@ -23,7 +23,9 @@ function setup({ coarse = false, permission = 'granted', secure = true, supporte
     DeviceOrientationEvent: supported ? { requestPermission: async () => { requests++; if (permission instanceof Error) throw permission; return permission; } } : undefined };
   let mutation;
   if (supported && !permissionAPI) delete window.DeviceOrientationEvent.requestPermission;
-  vm.runInNewContext(source, { document, window, CustomEvent: class { constructor(type, { detail }) { this.type = type; this.detail = detail; } }, matchMedia: q => q.includes('reduced') ? reduced : touch,
+  vm.runInNewContext(source, { document, window,
+    localStorage: { getItem(key) { if (storageBlocked) throw Error('blocked'); return store[key] ?? null; }, setItem(key, value) { if (storageBlocked) throw Error('blocked'); store[key] = value; } },
+    CustomEvent: class { constructor(type, { detail }) { this.type = type; this.detail = detail; } }, matchMedia: q => q.includes('reduced') ? reduced : touch,
     requestAnimationFrame: fn => { frames.set(++id, fn); return id; }, cancelAnimationFrame: id => frames.delete(id),
     setTimeout: fn => { timers.set(++id, fn); return id; }, clearTimeout: id => timers.delete(id),
     MutationObserver: class { constructor(fn) { mutation = fn; } observe() {} } });
@@ -47,6 +49,7 @@ function setup({ coarse = false, permission = 'granted', secure = true, supporte
   mouse.body.dataset.ambient = 'off'; mouse.mutation(); assert.equal(mouse.props.size, 0);
   const phone = setup({ coarse: true });
   assert.equal(phone.button.hidden, false); assert.equal(phone.requests(), 0, 'Permission needs a click');
+  assert.equal(phone.button.textContent, '授权开启体感');
   await phone.emit('buttonclick'); assert.equal(phone.requests(), 1);
   phone.emit('windowdeviceorientation', { beta: null, gamma: 5 }); assert.equal(phone.frames.size, 0);
   phone.emit('windowdeviceorientation', { beta: 45, gamma: 0 }); phone.flush();
@@ -88,7 +91,26 @@ function setup({ coarse = false, permission = 'granted', secure = true, supporte
   assert.equal(setup({ coarse: true, secure: false }).button.hidden, true);
   assert.equal(setup({ coarse: true, supported: false }).button.hidden, true);
   const android = setup({ coarse: true, permissionAPI: false });
-  await android.emit('buttonclick'); assert.equal(android.listeners.has('windowdeviceorientation'), true, 'No permission API still supports Android sensors');
+  assert.equal(android.listeners.has('windowdeviceorientation'), true, 'Permission-free phones start sensors automatically');
+  await android.emit('buttonclick'); assert.equal(android.listeners.has('windowdeviceorientation'), false, 'Automatic sensors can be disabled');
+  const store = {};
+  const first = setup({ coarse: true, store }); await first.emit('buttonclick');
+  const reload = setup({ coarse: true, store });
+  assert.equal(reload.listeners.has('windowdeviceorientation'), true, 'Previous grants resume without another request');
+  assert.equal(reload.requests(), 0);
+  await reload.emit('buttonclick');
+  assert.equal(setup({ coarse: true, store }).listeners.has('windowdeviceorientation'), false, 'Explicit sensor off survives reload');
+  assert.equal(setup({ coarse: true, permissionAPI: false, store }).listeners.has('windowdeviceorientation'), false);
+  first.preference.value = 'off'; first.emit('preferencechange');
+  const motionOff = setup({ coarse: true, permissionAPI: false, store });
+  assert.equal(motionOff.preference.value, 'off', 'Explicit motion off survives reload');
+  assert.equal(motionOff.listeners.has('windowdeviceorientation'), false);
+  const deniedGrant = setup({ coarse: true, permission: 'denied', store: {} }); await deniedGrant.emit('buttonclick');
+  assert.equal(deniedGrant.requests(), 1, 'Denied permission is never retried automatically');
+  assert.equal(setup({ coarse: true, permissionAPI: false, storageBlocked: true }).listeners.has('windowdeviceorientation'), true, 'Blocked storage does not break default activation');
+  const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  assert.match(html, /<option value="on" selected>开启/);
+  assert.ok(html.includes('showcase-motion.js?v=20261013-motion-defaults'));
   const css = fs.readFileSync(path.join(__dirname, '../studio.css'), 'utf8');
   assert.match(css, /body\.is-showcase\[data-showcase-input\][\s\S]*?animation: none !important/);
   const liquid = fs.readFileSync(path.join(__dirname, '../poster-liquid-chrome.js'), 'utf8');

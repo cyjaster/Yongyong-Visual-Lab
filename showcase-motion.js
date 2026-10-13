@@ -1,4 +1,4 @@
-// Preview transforms only: mouse and opt-in device tilt never touch canvas pixels.
+// Preview transforms only: mouse and device tilt never touch canvas pixels.
 (() => {
   const body = document.body;
   const cards = document.querySelectorAll('#posterCanvasWrap, .canvas-frame');
@@ -6,7 +6,17 @@
   const preference = document.getElementById('posterMotionPreference');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const touch = matchMedia('(pointer: coarse)');
-  let frame = 0, x = 0, y = 0, gyro = false, listening = false;
+  let savedGyro;
+  try {
+    const savedMotion = localStorage.getItem('visual-lab-motion');
+    if (['on', 'auto', 'off'].includes(savedMotion)) preference.value = savedMotion;
+    savedGyro = localStorage.getItem('visual-lab-gyro');
+  } catch (_) {}
+  const needsPermission = typeof window.DeviceOrientationEvent?.requestPermission === 'function';
+  // Permission browsers can resume a previous grant; a first grant still needs a button click.
+  let gyro = touch.matches && !!window.DeviceOrientationEvent && window.isSecureContext
+    && savedGyro !== 'off' && (!needsPermission || savedGyro === 'on');
+  let frame = 0, x = 0, y = 0, listening = false;
   let origin = null, sensorTimeout = 0, requesting = false;
   const active = () => body.classList.contains('is-showcase') && !document.hidden
     && (!reduced.matches || preference?.value === 'on') && preference?.value !== 'off';
@@ -67,7 +77,7 @@
     button.disabled = requesting || !active();
     button.title = reduced.matches && preference?.value !== 'on' ? '系统已开启减少动态效果' : preference?.value === 'off' ? '请先开启界面动效或选择跟随系统' : '随手机倾斜旋转作品';
     button.setAttribute('aria-pressed', String(gyro));
-    button.textContent = gyro ? '等待体感 · 关闭' : '开启体感';
+    button.textContent = gyro ? '等待体感 · 关闭' : needsPermission ? '授权开启体感' : '开启体感';
     if (!gyro || !active()) return;
     window.addEventListener('deviceorientation', orientation, { passive: true });
     listening = true;
@@ -77,12 +87,17 @@
   }
   button.addEventListener('click', async () => {
     if (requesting || !active()) return;
-    if (gyro) { gyro = false; sync(); return; }
+    if (gyro) {
+      gyro = false;
+      try { localStorage.setItem('visual-lab-gyro', 'off'); } catch (_) {}
+      sync(); return;
+    }
     requesting = true; button.disabled = true;
     try {
       const permission = typeof window.DeviceOrientationEvent.requestPermission === 'function'
         ? await window.DeviceOrientationEvent.requestPermission() : 'granted';
       gyro = permission === 'granted';
+      if (gyro) { try { localStorage.setItem('visual-lab-gyro', 'on'); } catch (_) {} }
       requesting = false; sync();
       if (!gyro) button.textContent = '未授权 · 重试';
     } catch (_) {
@@ -95,7 +110,10 @@
   window.addEventListener('focus', sync);
   window.addEventListener('orientationchange', () => { origin = null; });
   window.screen.orientation?.addEventListener('change', () => { origin = null; });
-  preference?.addEventListener('change', sync);
+  preference?.addEventListener('change', () => {
+    try { localStorage.setItem('visual-lab-motion', preference.value); } catch (_) {}
+    sync();
+  });
   reduced.addEventListener('change', sync);
   touch.addEventListener('change', sync);
   new MutationObserver(() => {
