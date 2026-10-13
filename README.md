@@ -1,4 +1,6 @@
-# Yongyong Visual Lab — Demo 01
+# Yongyong Visual Lab — Filter & Collage Studio
+
+**当前定稿 · 2026-10-13：实验版已整合为正式版本。** Filter Lab 与 Collage Poster 共用半透明磨砂面板、全屏流动水银背景和有纸边厚度、投影、雾化高光的立体彩卡预览。右侧背景样式提供 11 个缩略图入口；编辑、草稿、历史与高清导出保留。界面特效只用于预览，不进入作品 PNG。发布测试、代码精简和原定稿回滚方法见 [本次发布记录](RELEASE_20261013.md)。
 
 **在线验收：[打开编辑器](https://cyjaster.github.io/Yongyong-Visual-Lab/#poster) · [八组模板对照](samples/results/template-function-acceptance/20261010/index.html) · [操作与测试说明](TESTING.md)。** 本次发布包含最新验收结果；下文较早的结果链接是仅保留在本地的历史记录。
 
@@ -98,19 +100,21 @@ Main Fragment 与索引系统的 Detail Crop 是两类独立对象：Fragment �
 
 ## 打开方法
 
-直接双击 `index.html` 即可。照片处理与导出都发生在浏览器本地，不会上传到网络。
+双击本文件夹的 `打开网站.cmd`，会启动本地 HTTP 服务并用本机已安装的 Microsoft Edge 打开 `http://127.0.0.1:8089/#poster`。使用电脑已有的 Node.js，无需安装新依赖；预览期间保持启动窗口打开。再次启动会复用相同项目的服务，端口被其他网站占用时会提示。照片处理与导出都发生在浏览器本地，不会上传到网络。
+
+若实验版服务仍占用 8089，先关闭其启动窗口，再打开正式版。独立测试可在 PowerShell 用 `$env:PORT=8090; node checks/serve-local.cjs`；不同端口和线上网址的草稿各自保存。原实验目录保留，当前正式源码位于 `Yongyong-Visual-Lab`。
 
 默认预设照片保存在 `assets/demo-karina.jpg`，不是网页程序生成图；点击“更换照片”后可换成自己的图片。
 
-如果浏览器限制了本地文件的剪贴板权限，可以在此文件夹打开 PowerShell，用电脑上已有的 Python 运行：
+不要直接双击 `index.html` 使用完整编辑器：`file://` 会限制图库像素读取及本地抠图模型。也可在此文件夹打开 PowerShell 运行：
 
 ```powershell
-python -m http.server 8000
+node checks/serve-local.cjs
 ```
 
-然后访问 `http://localhost:8000`。
+然后访问 `http://127.0.0.1:8089/#poster`。
 
-本机目前没有把 `python` 命令加入 PATH，但不影响直接双击使用。Codex 测试时使用的是其自带 Python 运行环境。
+草稿按浏览器和站点地址保存；旧 `file://` 页面中的作品不会自动迁移到 HTTP 地址，旧页面和草稿请保留。
 
 ## 读代码的推荐顺序
 

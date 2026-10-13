@@ -3,16 +3,21 @@
   let model;
   async function getModel() {
     if (!model) model = (async () => {
-      const { FilesetResolver, ImageSegmenter } = await import('./vendor/mediapipe/vision_bundle.js');
-      const files = await FilesetResolver.forVisionTasks('vendor/mediapipe/wasm');
+      const baseUrl = document.baseURI || window.location.href;
+      const bundleUrl = new URL('vendor/mediapipe/vision_bundle.js', baseUrl).href;
+      const wasmPath = new URL('vendor/mediapipe/wasm', baseUrl).href;
+      const modelPath = new URL('vendor/mediapipe/selfie_segmenter.tflite', baseUrl).href;
+      const { FilesetResolver, ImageSegmenter } = await import(bundleUrl);
+      const files = await FilesetResolver.forVisionTasks(wasmPath);
       return ImageSegmenter.createFromOptions(files, {
-        baseOptions: { modelAssetPath:'vendor/mediapipe/selfie_segmenter.tflite', delegate:'CPU' },
-        runningMode:'IMAGE', outputConfidenceMasks:true, outputCategoryMask:false
+        baseOptions: { modelAssetPath: modelPath, delegate: 'CPU' },
+        runningMode: 'IMAGE', outputConfidenceMasks: true, outputCategoryMask: false
       });
     })().catch(error => { model = null; throw error; });
     return model;
   }
   async function removeBackground(image) {
+    if (window.location.protocol === 'file:') throw new Error('请双击「打开网站.cmd」启动网站；直接打开 index.html 无法读取图库像素或加载抠图模型');
     image = window.PosterPixels?.normalize(image) || image;
     const segmenter = await getModel();
     const canvas = document.createElement('canvas');

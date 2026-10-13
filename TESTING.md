@@ -1,5 +1,7 @@
 # 网站验收入口
 
+当前正式版为 2026-10-13 实验版整合，实测与限制见 [本次发布记录](RELEASE_20261013.md)。双击 `打开网站.cmd`；直接 `file://` 打开会提示改用 HTTP。观察左右磨砂面板下的背景、卡片纸边与雾化高光，检查动效关闭和编辑暂停。右侧背景缩略图应保留选中状态、键盘焦点、条件控件与撤销／重做。新增专项：`background-picker-regression.cjs`、`glass-card-regression.cjs`、`sidebar-feedback-regression.cjs`、`local-open-regression.cjs`，均位于 `checks/`，用 Node 运行。本轮实际 PNG、截图及离线输出只存本地 `samples/results/experimental-release/20261013/`；以下较早记录保留其原日期和范围。
+
 常驻呼吸见[本轮记录](AMBIENT_MOTION_REVIEW.md)：顶部“界面动效”在两个模式共用，开启后静置8–12秒查看背景／Y标志／顶部细线／纸边的节奏；关闭全部停止。跟随系统时尊重减少动态效果；手动开启应覆盖该设置，循环时长必须保持6–14秒，不能被全局CSS压到0.01ms。可见页面失焦继续呼吸，隐藏才停止。拖动期间背景和纸边暂停，按住不松不能提前恢复，结束1.2秒后恢复。检查两个模式在390／968／1280px无横向溢出，导出和草稿保持原像素。专项：`node checks/ambient-browser-check.cjs`，结果仅存本地`samples/results/ambient/20261012/`。
 
 界面动效第一批见[2026-10-12验收记录](UI_MOTION_REVIEW.md)。画布底部“界面动效”默认跟随系统，可选开启／关闭；分别检查按钮反馈、外观／布局／高级选项卡、总／排版REMIX纸片转场、滤镜REMIX淡化，快速重复或失焦后不能残留覆盖层。拖滑块不播放面板动效；草稿刷新后不能出现“上传照片”的空提示。动效浏览器专项：`node checks/ui-motion-browser-check.cjs`，需先启动本地服务，比较基线`b2289a8`；结果存本地`samples/results/ui-motion/20261012/`。

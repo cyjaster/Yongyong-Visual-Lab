@@ -2126,6 +2126,28 @@
   const select = (zh, en, key, value, options, global = false, hint = '') =>
     `<div class="poster-field"><div class="poster-field-label"><div class="poster-field-label-group"><span class="poster-label-main">${zh}</span><span class="poster-label-sub">${en}</span></div></div>${hint ? `<span class="poster-field-hint">${hint}</span>` : ''}<select data-${global ? 'global' : 'prop'}="${key}">${options.map(([v, optZh, optEn]) => `<option value="${escapeHTML(v)}" ${String(v) === String(value) ? 'selected' : ''}>${optZh} · ${optEn || v}</option>`).join('')}</select></div>`;
 
+  const backgroundStyles = [['blue-valentine','蓝色情绪拼贴'],['electric-tiger','电光虎纹'],['liquid-chrome','酸性全息水银'],['solid','纯色基底'],['grid','坐标网格'],['chrome','金属渐变'],['pink-paper','淡粉扫描纸'],['scan','复印扫描纸'],['dots','点阵印刷'],['soft-y2k','柔和 Y2K'],['blueprint','工程蓝图']];
+  const backgroundPreviewImages = new Map();
+  function backgroundPreviewImage(style) {
+    if (style !== 'electric-tiger' && style !== 'liquid-chrome') return '';
+    if (!backgroundPreviewImages.has(style)) {
+      let preview;
+      if (style === 'electric-tiger') {
+        preview = document.createElement('canvas'); preview.width = 96; preview.height = 128;
+        const previewCtx = preview.getContext('2d'); previewCtx.scale(96 / W, 128 / H);
+        drawElectricTigerPattern(previewCtx, W, H);
+      } else {
+        preview = window.posterLiquidChrome?.renderToCanvas(96, 128, 0);
+      }
+      backgroundPreviewImages.set(style, preview ? preview.toDataURL() : '');
+    }
+    const src = backgroundPreviewImages.get(style);
+    return src ? `<img src="${src}" alt="" width="96" height="128">` : '';
+  }
+  function backgroundStylePicker() {
+    return `<div class="poster-field"><span class="poster-label-main">背景样式</span><div class="poster-segmented poster-background-picker" role="group" aria-label="背景样式">${backgroundStyles.map(([value, label]) => `<button type="button" data-global="backgroundStyle" data-val="${value}" aria-pressed="${value === (state.backgroundStyle || 'solid')}" class="${value === (state.backgroundStyle || 'solid') ? 'is-active' : ''}" title="${label}"><span class="poster-background-thumb" data-style="${value}" style="--bg-color:${escapeHTML(state.background)}">${backgroundPreviewImage(value)}</span><span>${label}</span></button>`).join('')}</div></div>`;
+  }
+
   const accordion = (zh, en, content, open = false) =>
     `<details class="poster-accordion" ${open ? 'open' : ''}><summary><span class="acc-zh">${zh}</span><span class="acc-en">${en}</span></summary><div class="poster-accordion-body">${content}</div></details>`;
 
@@ -2403,7 +2425,7 @@
 
       const bgPresetsContent =
         field('画布底色','Background Color','background',state.background,'color',true)
-      + select('背景样式','Background Style','backgroundStyle',state.backgroundStyle||'solid',[['blue-valentine','蓝色情绪拼贴','Blue Valentine'],['electric-tiger','电光虎纹','Electric Tiger'],['liquid-chrome','酸性全息水银','Liquid Chrome'],['solid','纯色基底','Solid'],['grid','坐标网格','Index Grid'],['chrome','金属渐变','Chrome Gradient'],['pink-paper','淡粉扫描纸','Pink Paper'],['scan','复印扫描纸','Scan Paper'],['dots','点阵印刷','Dot Matrix'],['soft-y2k','柔和 Y2K','Soft Y2K'],['blueprint','工程蓝图','Blue Print']],true)
+      + backgroundStylePicker()
       + bgStyleControls + bgImageControls
       + toggle('内层纸框','Inner Paper','paperEnabled',!!state.posterPaper,true)
       + (state.posterPaper ? field('纸框 X','Paper X','paper_x',state.posterPaper.x,'number',true)+field('纸框 Y','Paper Y','paper_y',state.posterPaper.y,'number',true)+field('纸框宽度','Paper Width','paper_w',state.posterPaper.w,'number',true)+field('纸框高度','Paper Height','paper_h',state.posterPaper.h,'number',true)+field('纸框颜色','Paper Color','paper_color',state.posterPaper.color||'#fafaff','color',true)+field('标题栏颜色','Header Color','paper_headerColor',state.posterPaper.headerColor||'#3152ed','color',true)+range('标题栏高度','Header Height','paper_headerH',state.posterPaper.headerH??178,0,400,1,true) : '')
@@ -4683,6 +4705,10 @@
           parentSeg.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b === segBtn));
         }
         render();
+        if (p === 'backgroundStyle') {
+          renderInspector();
+          inspector.querySelector(`[data-global="backgroundStyle"][data-val="${root[p]}"]`)?.focus({ preventScroll: true });
+        }
         commit(false);
         markManuallyEdited();
       }
