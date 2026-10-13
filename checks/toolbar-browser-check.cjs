@@ -17,10 +17,11 @@ const base=process.env.POSTER_BASE_URL||'http://localhost:8089/';
    const geometry=await page.evaluate(()=>{
     const dock=document.querySelector('.poster-action-dock'),side=document.querySelector('.poster-tools-content'),stage=document.querySelector('.poster-stage'),vp=document.querySelector('#posterViewport');
     const rect=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height};};
-    const d=rect(dock);return {inStage:stage.contains(dock),masters:document.querySelectorAll('[data-poster-action="master-remix"]').length,overflow:document.documentElement.scrollWidth>innerWidth,dock:d,side:rect(side),viewport:rect(vp),buttons:[...dock.querySelectorAll('button:not([hidden])')].map(e=>({...rect(e),text:e.textContent.trim()}))};
+    const d=rect(dock);return {inStage:stage.contains(dock),masters:document.querySelectorAll('[data-poster-action="master-remix"]').length,overflow:document.documentElement.scrollWidth>innerWidth,dock:d,side:rect(side),viewport:rect(vp),card:rect(document.querySelector('#posterCanvasWrap')),buttons:[...dock.querySelectorAll('button:not([hidden])')].map(e=>({...rect(e),text:e.textContent.trim()}))};
    });
    assert.equal(geometry.inStage,true);assert.equal(geometry.masters,1);assert.equal(geometry.overflow,false);
    assert.ok(geometry.dock.bottom<=geometry.viewport.top,'Toolbar must not overlap canvas');
+   assert.ok(geometry.card.top>=geometry.viewport.top-1&&geometry.card.bottom<=geometry.viewport.bottom+1,'FIT must show the complete artwork');
    if(width>820)assert.ok(geometry.dock.height<=100,'Compact toolbar must stay within 100px');
    if(width>820){assert.ok(geometry.side.height>650,'Sidebar must use the full available height');assert.ok(geometry.side.right<=geometry.dock.left);}
    for(const b of geometry.buttons){assert.ok(b.left>=geometry.dock.left-1&&b.right<=geometry.dock.right+1,b.text+' must fit toolbar');}
@@ -29,9 +30,9 @@ const base=process.env.POSTER_BASE_URL||'http://localhost:8089/';
   await page.setViewportSize({width:968,height:800});
   const count=()=>page.evaluate(()=>posterState.texts.length);
   const before=await count();await page.locator('[data-poster-action="hero"]').click();assert.equal(await count(),before+1);
-  await page.locator('.poster-action-dock [data-poster-action="duplicate"]').click();assert.equal(await count(),before+2);
-  await page.locator('.poster-action-dock [data-poster-action="undo"]').click();assert.equal(await count(),before+1);
-  await page.locator('.poster-action-dock [data-poster-action="redo"]').click();assert.equal(await count(),before+2);
+  await page.locator('.poster-header-history [data-poster-action="duplicate"]').click();assert.equal(await count(),before+2);
+  await page.locator('.poster-header-history [data-poster-action="undo"]').click();assert.equal(await count(),before+1);
+  await page.locator('.poster-header-history [data-poster-action="redo"]').click();assert.equal(await count(),before+2);
   const manifest=JSON.parse(fs.readFileSync(path.join(root,'samples/aespa/manifest.json')));
   await page.locator('#posterImageInput').setInputFiles([2,19].map(i=>path.join(root,'samples/aespa',manifest.images[i].original)));
   await page.waitForFunction(()=>posterHasUserUploadedImages()&&posterState.assets.length===2);

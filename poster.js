@@ -59,7 +59,7 @@
   }
   function applyZoom(next, mode = 'manual', anchor = null) {
     const previous = zoom;
-    zoom = Math.max(.2, Math.min(2, (mode === 'fit' ? Math.floor(next * 100) : Math.round(next * 100)) / 100));
+    zoom = Math.max(mode === 'fit' ? .01 : .2, Math.min(2, (mode === 'fit' ? Math.floor(next * 100) : Math.round(next * 100)) / 100));
     zoomMode = mode;
     const ratio = zoom / previous;
     const left = anchor ? anchor.x : viewport.clientWidth / 2;
@@ -78,8 +78,8 @@
     if ($('#posterWorkspace').hidden) return;
     // Fit the actual UI padding; rounding up can create a needless scrollbar.
     const style = getComputedStyle(viewport);
-    const availableW = Math.max(180, viewport.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
-    const availableH = Math.max(240, viewport.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
+    const availableW = Math.max(1, viewport.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+    const availableH = Math.max(1, viewport.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
     applyZoom(Math.min(availableW / W, availableH / H, 1.35), 'fit');
     requestAnimationFrame(() => requestAnimationFrame(() => { viewport.scrollLeft = 0; viewport.scrollTop = 0; }));
   }
@@ -4418,7 +4418,7 @@
     }
   }
 
-  document.querySelectorAll('.poster-tools, .poster-action-dock').forEach(node => node.addEventListener('click', (e) => {
+  document.querySelectorAll('.poster-tools, .poster-action-dock, .poster-header-history').forEach(node => node.addEventListener('click', (e) => {
     const targetItem = e.target.closest('[data-poster-action]');
     const a = targetItem?.dataset.posterAction, elemId = targetItem?.dataset.id;
     if (!a) return;
@@ -4981,6 +4981,11 @@
   document.addEventListener('keydown',(e)=>{if($('#posterWorkspace').hidden||document.body?.classList?.contains?.('is-showcase'))return;if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){spaceDown=true;e.preventDefault();return;}if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();}if(mod&&k==='z'&&!e.shiftKey){e.preventDefault();undo();}if(mod&&k==='z'&&e.shiftKey){e.preventDefault();redo();}if(mod&&k==='d'){e.preventDefault();duplicateSelected();}if(!mod&&k==='f')addFrame();if(!mod&&k==='d')addDetail();});
   document.addEventListener('keyup',(e)=>{if(e.code==='Space'){spaceDown=false;pan=null;viewport.classList.remove('is-panning');}});
   window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(()=>{if(zoomMode==='fit')fitWorkspace();},120);});
+  // Toolbar wrapping and late status updates can resize the viewport after entering edit mode.
+  new ResizeObserver(() => {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(() => { if (zoomMode === 'fit') fitWorkspace(); }, 120);
+  }).observe(viewport);
   window.addEventListener('visual-lab-mode-change', (e) => {
     if (e.detail.mode === 'poster' && zoomMode === 'fit') requestAnimationFrame(fitWorkspace);
   });

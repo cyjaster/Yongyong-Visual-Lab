@@ -77,8 +77,6 @@ body.is-resizing-poster canvas {
 .poster-toolbar-row { display: contents; }
 .poster-toolbar-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .poster-action-dock .poster-action, .poster-action-dock .poster-remix-button { width: auto; margin: 0; min-height: 28px; padding: 4px 6px; justify-content: center; font-size: 11px; }
-.poster-action-dock .poster-history-actions { display: contents; }
-.poster-action-dock .poster-history-actions button { min-height: 28px; padding: 4px; border: 1px solid var(--line); border-radius: 3px; }
 .poster-action-dock .poster-remix-button b { font-size: 11px; letter-spacing: normal; }
 #posterCutoutEntry { background: var(--accent); color: var(--on-accent); border: 1px solid var(--ink); font-weight: 800; }
 #posterCutoutEntry:disabled { opacity: .65; cursor: default; }
@@ -260,7 +258,7 @@ body.is-resizing-poster canvas {
   color: #002FA7;
   transform: translateY(1px);
 }
-.poster-viewport { min-width: 0; min-height: 420px; position: relative; overflow: auto; display: flex; align-items: flex-start; justify-content: flex-start; padding: 10px; scrollbar-width: thin; scrollbar-color: #566052 transparent; cursor: default; }
+.poster-viewport { min-width: 0; min-height: 0; position: relative; overflow: auto; display: flex; align-items: flex-start; justify-content: flex-start; padding: 10px; scrollbar-width: thin; scrollbar-color: #566052 transparent; cursor: default; }
 .poster-viewport.is-panning { cursor: grabbing; user-select: none; }
 .poster-canvas-wrap { position: relative; flex: 0 0 auto; width: 675px; height: 900px; margin: auto; overflow: hidden; background: #d9d7d1; box-shadow: 0 20px 55px rgba(25,24,22,.19); transform-origin: center; }
 .poster-canvas-wrap::after { content: ''; position: absolute; inset: 0; border: 1px solid #efffd1; box-shadow: inset 0 0 16px #f2ffe533; pointer-events: none; opacity: 0; }

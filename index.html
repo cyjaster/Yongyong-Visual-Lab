@@ -7,8 +7,8 @@
     <meta name="description" content="Yongyong Visual Lab：本地照片滤镜与八组拼贴海报编辑器，磨砂玻璃工作区、流动水银背景与立体彩卡预览，支持草稿、撤销重做和高清 PNG 导出。" />
     <title>Yongyong Visual Lab — Filter & Collage Studio</title>
     <link rel="stylesheet" href="styles.css?v=20261012-studio" />
-    <link rel="stylesheet" href="poster.css?v=20261012-studio" />
-    <link rel="stylesheet" href="studio.css?v=20261013-showcase-tilt" />
+    <link rel="stylesheet" href="poster.css?v=20261013-editor-fit" />
+    <link rel="stylesheet" href="studio.css?v=20261013-editor-fit" />
   </head>
   <body>
     <p id="localFileNotice" role="status" hidden style="margin:0;padding:12px 20px;background:#ccff33;color:#101010">完整功能请双击此文件夹的「打开网站.cmd」。直接打开 index.html 会限制图库滤镜、人像抠图与导出；照片仍只在本机处理。</p>
@@ -23,6 +23,11 @@
             <small>Filter / Collage · 本地视觉实验室</small>
           </span>
         </a>
+      <div class="poster-history-actions poster-header-history" role="group" aria-label="编辑历史">
+        <button type="button" data-poster-action="undo" aria-label="撤销" title="撤销 Ctrl+Z">↶</button>
+        <button type="button" data-poster-action="redo" aria-label="重做" title="重做 Ctrl+Shift+Z">↷</button>
+        <button type="button" data-poster-action="duplicate" aria-label="复制选中元素" title="复制 Ctrl+D">⧉</button>
+      </div>
 
         <label class="poster-motion-control">界面动效 <select id="posterMotionPreference" aria-label="界面动效"><option value="on">开启</option><option value="auto" selected>跟随系统</option><option value="off">关闭</option></select></label>
         <div class="mercury-hud-indicator" title="全息液态水银交互系统已激活：光标划过展台拨动流体，点击激发展台震荡波">
@@ -428,11 +433,6 @@
             </div>
           <section class="poster-action-dock" aria-label="常用海报操作">
             <div class="poster-toolbar-row">
-            <div class="poster-history-actions" role="group" aria-label="编辑历史">
-              <button type="button" data-poster-action="undo" title="撤销 Ctrl+Z">↶ 撤销</button>
-              <button type="button" data-poster-action="redo" title="重做 Ctrl+Shift+Z">↷ 重做</button>
-              <button type="button" data-poster-action="duplicate" title="复制 Ctrl+D">⧉ 复制</button>
-            </div>
             <button class="poster-action" id="posterCutoutEntry" title="先点画布中的照片，再点自动抠图；照片只在本机处理" type="button" data-poster-action="cutout-current">✂ 自动抠图</button>
             </div>
 
@@ -532,7 +532,7 @@
     <script src="poster-draft.js?v=20261009-local"></script>
     <script src="poster-cutout.js?v=20261012-file-open"></script>
     <script src="poster-decor.js?v=20261010-function-fit-font-backing"></script>
-    <script src="poster.js?v=20261013-showcase-fix"></script>
+    <script src="poster.js?v=20261013-editor-fit"></script>
     <script src="poster-gallery.js?v=20261012-studio"></script>
   </body>
 </html>
