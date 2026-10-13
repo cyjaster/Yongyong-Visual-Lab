@@ -1,4 +1,4 @@
-# Yongyong Visual Lab
+# Yongyong Visual Lab · demo2.0
 
 **把照片变成拼贴海报，也把喜欢的色彩留成滤镜配方。**
 
@@ -27,9 +27,22 @@ Yongyong Visual Lab 是一个在浏览器里使用的照片创作工具。上传
 
 ## 作品预览
 
-下面是两张照片应用八组模板的实际导出对照。模板是创作起点，照片、文字和细节都可以继续修改。
+下面是网站内置的示范 01—08，与编辑器「示范作品」中的预览一致。模板是创作起点，照片、文字和细节都可以继续修改。
 
-![两张照片应用八组拼贴模板的实际导出作品](samples/results/template-function-acceptance/20261010/review-pair-main-20.png)
+<table>
+  <tr>
+    <td align="center"><img src="assets/templates/template-01.webp" width="200" alt="示范 01 · Aespa 电光档案"><br>01 · Aespa 电光档案</td>
+    <td align="center"><img src="assets/templates/template-02.webp" width="200" alt="示范 02 · AFTER IMAGE"><br>02 · AFTER IMAGE</td>
+    <td align="center"><img src="assets/templates/template-03.webp" width="200" alt="示范 03 · Blue Valentine"><br>03 · Blue Valentine</td>
+    <td align="center"><img src="assets/templates/template-04.webp" width="200" alt="示范 04 · Pink Desktop"><br>04 · Pink Desktop</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/templates/template-05.webp" width="200" alt="示范 05 · Photo Booth"><br>05 · Photo Booth</td>
+    <td align="center"><img src="assets/templates/template-06.webp" width="200" alt="示范 06 · AirDrop Diary"><br>06 · AirDrop Diary</td>
+    <td align="center"><img src="assets/templates/template-07.webp" width="200" alt="示范 07 · After Hours Album"><br>07 · After Hours Album</td>
+    <td align="center"><img src="assets/templates/template-08.webp" width="200" alt="示范 08 · Electric Blue Archive"><br>08 · Electric Blue Archive</td>
+  </tr>
+</table>
 
 | 模板 | 视觉方向 |
 | --- | --- |
@@ -52,7 +65,7 @@ Yongyong Visual Lab 是一个在浏览器里使用的照片创作工具。上传
 
 没有本地草稿时，首次展示默认采用 **05 · Photo Booth**；已有海报草稿时优先恢复自己的作品。
 
-## 这次的界面更新
+## demo2.0 · 界面更新
 
 - **立体彩卡展示**：打开网站先看作品，进入编辑后继续创作，随时返回展示。
 - **水银背景与磨砂面板**：背景流动、纸边与高光构成立体展台，两种创作模式共用界面动效开关。
